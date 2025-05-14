@@ -92,7 +92,7 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
   return (
     <div className="w-full bg-transparent px-4 py-6">
       <div className="max-w-7xl mx-auto">
-        <div className="relative bg-[#0e0e10] rounded-xl border border-[#2a2a30]">
+        <div className="relative bg-background rounded-xl border border-border">
           <div className="overflow-y-auto">
             <Textarea
               ref={textareaRef}
@@ -108,10 +108,10 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
                 "resize-none",
                 "bg-transparent",
                 "border-none",
-                "text-white text-sm",
+                "text-foreground text-sm",
                 "focus:outline-none",
                 "focus-visible:ring-0 focus-visible:ring-offset-0",
-                "placeholder:text-[#6a6a70] placeholder:text-sm",
+                "placeholder:text-muted-foreground placeholder:text-sm",
                 "min-h-[60px]"
               )}
               style={{
@@ -121,11 +121,11 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
             />
           </div>
 
-          <div className="flex items-center justify-between p-3 border-t border-[#2a2a30]">
+          <div className="flex items-center justify-between p-3 border-t border-border">
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="p-2 text-[#6a6a70] hover:text-white hover:bg-[#2a2a30] rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                 disabled={disabled}
               >
                 <Paperclip className="w-4 h-4" />
@@ -134,14 +134,14 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="p-2 text-[#6a6a70] hover:text-white hover:bg-[#2a2a30] rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                 disabled={disabled}
               >
                 <Mic className="w-5 h-5" />
               </button>
               <button
                 type="button"
-                className="p-2 text-[#6a6a70] hover:text-white hover:bg-[#2a2a30] rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                 disabled={disabled}
               >
                 <Camera className="w-5 h-5" />
@@ -154,7 +154,7 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
                   "px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1",
                   message.trim() && !disabled
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-[#2a2a30] text-[#6a6a70] cursor-not-allowed"
+                    : "bg-secondary text-muted-foreground cursor-not-allowed"
                 )}
               >
                 <Send className="w-4 h-4" />

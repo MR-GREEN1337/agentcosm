@@ -28,15 +28,15 @@ export function AppSelector({ value, onChange }: AppSelectorProps) {
 
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-64 bg-[#2a2a30] border-[#3a3a40] text-white hover:bg-[#33333a] transition-colors">
+      <SelectTrigger className="w-64 bg-secondary/30 border-border text-foreground hover:bg-secondary transition-colors">
         <SelectValue placeholder={loading ? "Loading..." : "Select an app"} />
       </SelectTrigger>
-      <SelectContent className="bg-[#2a2a30] border-[#3a3a40]">
+      <SelectContent className="bg-popover border-border">
         {apps.map((app) => (
           <SelectItem 
             key={app} 
             value={app} 
-            className="text-white hover:bg-[#33333a] focus:bg-[#33333a]"
+            className="text-popover-foreground hover:bg-accent focus:bg-accent"
           >
             {app}
           </SelectItem>

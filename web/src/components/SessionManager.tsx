@@ -87,19 +87,19 @@ export function SessionManager({
   return (
     <div className="flex items-center gap-2">
       <Select value={currentSession} onValueChange={onSessionChange}>
-        <SelectTrigger className="w-64 bg-[#2a2a30] border-[#3a3a40] text-white hover:bg-[#33333a] transition-colors">
+        <SelectTrigger className="w-64 bg-secondary/30 border-border text-foreground hover:bg-secondary transition-colors">
           <SelectValue placeholder={loading ? "Loading..." : "Select a session"} />
         </SelectTrigger>
-        <SelectContent className="bg-[#2a2a30] border-[#3a3a40]">
+        <SelectContent className="bg-popover border-border">
           {sessions.map((session) => (
             <SelectItem 
               key={session.id} 
               value={session.id} 
-              className="text-white hover:bg-[#33333a] focus:bg-[#33333a]"
+              className="text-popover-foreground hover:bg-accent focus:bg-accent"
             >
               <div className="flex items-center justify-between w-full">
                 <span>{session.id.substring(0, 8)}...</span>
-                <span className="text-xs text-[#a0a0a8] ml-2">
+                <span className="text-xs text-muted-foreground ml-2">
                   {new Date(session.creation_timestamp * 1000).toLocaleDateString()}
                 </span>
               </div>
@@ -112,7 +112,7 @@ export function SessionManager({
         onClick={createNewSession}
         variant="ghost"
         size="icon"
-        className="text-blue-400 hover:text-blue-300 hover:bg-[#2a2a30]"
+        className="text-blue-400 hover:text-blue-300 hover:bg-accent/50"
       >
         <Plus className="w-4 h-4" />
       </Button>
@@ -121,7 +121,7 @@ export function SessionManager({
         onClick={fetchSessions}
         variant="ghost"
         size="icon"
-        className="text-[#a0a0a8] hover:text-white hover:bg-[#2a2a30]"
+        className="text-muted-foreground hover:text-foreground hover:bg-accent/50"
       >
         <RefreshCw className="w-4 h-4" />
       </Button>
@@ -132,20 +132,20 @@ export function SessionManager({
             <Button
               variant="ghost"
               size="icon"
-              className="text-red-400 hover:text-red-300 hover:bg-[#2a2a30]"
+              className="text-red-400 hover:text-red-300 hover:bg-accent/50"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent className="bg-[#1a1a1f] border-[#2a2a30]">
+          <AlertDialogContent className="bg-popover border-border">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-white">Confirm delete</AlertDialogTitle>
-              <AlertDialogDescription className="text-[#a0a0a8]">
+              <AlertDialogTitle className="text-popover-foreground">Confirm delete</AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground">
                 Are you sure you want to delete this session {currentSession.substring(0, 8)}...?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="bg-[#2a2a30] text-white border-[#3a3a40] hover:bg-[#33333a]">
+              <AlertDialogCancel className="bg-secondary text-secondary-foreground border-border hover:bg-secondary/80">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction

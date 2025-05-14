@@ -1,3 +1,5 @@
+// Updated app/(pages)/chat/page.tsx with theme-aware colors
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -17,6 +19,7 @@ import InteractiveFolder from '@/components/InteractiveFolder'
 import { api } from '@/lib/api'
 import Link from 'next/link'
 import { PlanetIcon } from '@/components/PlanetIcon'
+import { ModeToggle } from '@/components/ThemeToggle'
 
 const queryClient = new QueryClient()
 
@@ -109,35 +112,38 @@ export default function AgentDevUI() {
         <div className="w-8 h-8 mx-auto mb-2 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
           <FileText className="w-4 h-4 text-white" />
         </div>
-        <p className="text-xs font-medium text-gray-700 truncate max-w-[60px]">{app}</p>
+        <p className="text-xs font-medium text-foreground truncate max-w-[60px]">{app}</p>
       </div>
     </div>
   ))
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col h-screen bg-[#0e0e10]">
+      <div className="flex flex-col h-screen bg-background">
         {/* Top Navigation Bar */}
-        <header className="bg-[#1a1a1f] border-b border-[#2a2a30] px-6 py-3">
+        <header className="bg-card border-b border-border px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-6">
                 <Link href="/" className="flex items-center gap-2">
                   <PlanetIcon />
-                  <h1 className="text-[1.3rem] font-normal tracking-[0.02em] text-white">agent cosm</h1>
+                  <h1 className="text-[1.3rem] font-normal tracking-[0.02em] text-foreground">agent cosm</h1>
                 </Link>
               </div>
               <AppSelector value={selectedApp} onChange={setSelectedApp} />
             </div>
-            {selectedApp && (
-              <SessionManager
-                appName={selectedApp}
-                userId={userId}
-                currentSession={currentSession}
-                onSessionChange={handleSessionChange}
-                onNewSession={handleNewSession}
-              />
-            )}
+            <div className="flex items-center gap-4">
+              {selectedApp && (
+                <SessionManager
+                  appName={selectedApp}
+                  userId={userId}
+                  currentSession={currentSession}
+                  onSessionChange={handleSessionChange}
+                  onNewSession={handleNewSession}
+                />
+              )}
+              <ModeToggle />
+            </div>
           </div>
         </header>
 
@@ -146,7 +152,7 @@ export default function AgentDevUI() {
           {selectedApp && currentSession ? (
             <div className="flex-1 flex">
               {/* Left Sidebar with Tabs */}
-              <div className="w-60 bg-[#17171b] border-r border-[#2a2a30]">
+              <div className="w-60 bg-secondary/30 border-r border-border">
                 <Tabs
                   value={activeTab}
                   onValueChange={setActiveTab}
@@ -156,35 +162,35 @@ export default function AgentDevUI() {
                   <TabsList className="flex flex-col w-full bg-transparent p-2 h-auto">
                     <TabsTrigger
                       value="events"
-                      className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
+                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
                     >
                       <Folder className="w-4 h-4 mr-3" />
                       Events
                     </TabsTrigger>
                     <TabsTrigger
                       value="state"
-                      className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
+                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
                     >
                       <FileText className="w-4 h-4 mr-3" />
                       State
                     </TabsTrigger>
                     <TabsTrigger
                       value="artifacts"
-                      className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
+                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
                     >
                       <Database className="w-4 h-4 mr-3" />
                       Artifacts
                     </TabsTrigger>
                     <TabsTrigger
                       value="sessions"
-                      className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
+                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
                     >
                       <GitBranch className="w-4 h-4 mr-3" />
                       Sessions
                     </TabsTrigger>
                     <TabsTrigger
                       value="eval"
-                      className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
+                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
                     >
                       <TestTube className="w-4 h-4 mr-3" />
                       Eval
@@ -194,7 +200,7 @@ export default function AgentDevUI() {
               </div>
 
               {/* Main Content Area */}
-              <div className="flex-1 flex flex-col bg-[#0e0e10]">
+              <div className="flex-1 flex flex-col bg-background">
                 {activeTab === 'events' ? (
                   <>
                     <EventsTab
@@ -251,8 +257,8 @@ export default function AgentDevUI() {
                     items={appItems}
                   />
                 </div>
-                <h2 className="text-2xl font-medium text-white mb-2">Welcome to agent cosm</h2>
-                <p className="text-[#a0a0a8] text-lg max-w-md">
+                <h2 className="text-2xl font-medium text-foreground mb-2">Welcome to agent cosm</h2>
+                <p className="text-muted-foreground text-lg max-w-md">
                   {!selectedApp
                     ? 'Select an app from the folder to get started'
                     : 'Loading session...'}
