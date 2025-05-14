@@ -15,6 +15,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Folder, FileText, Database, GitBranch, TestTube } from 'lucide-react'
 import InteractiveFolder from '@/components/InteractiveFolder'
 import { api } from '@/lib/api'
+import Link from 'next/link'
+import { PlanetIcon } from '@/components/PlanetIcon'
 
 const queryClient = new QueryClient()
 
@@ -25,7 +27,7 @@ export default function AgentDevUI() {
   const [activeTab, setActiveTab] = useState('events')
   const [sessionEvents, setSessionEvents] = useState<any[]>([])
   const [availableApps, setAvailableApps] = useState<string[]>([])
-  
+
   const { sendMessage, events: wsEvents, isConnected } = useWebSocket(
     selectedApp && currentSession
       ? `${process.env.NEXT_PUBLIC_WS_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}`
@@ -69,7 +71,7 @@ export default function AgentDevUI() {
       try {
         const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions`)
         const sessions = response.data
-        
+
         if (sessions.length > 0) {
           // Select the most recent session (first in the list)
           setCurrentSession(sessions[0].id)
@@ -119,7 +121,12 @@ export default function AgentDevUI() {
         <header className="bg-[#1a1a1f] border-b border-[#2a2a30] px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <h1 className="text-xl font-medium text-white">ADK Studio</h1>
+              <div className="flex items-center gap-6">
+                <Link href="/" className="flex items-center gap-2">
+                  <PlanetIcon />
+                  <h1 className="text-[1.3rem] font-normal tracking-[0.02em] text-white">agent cosm</h1>
+                </Link>
+              </div>
               <AppSelector value={selectedApp} onChange={setSelectedApp} />
             </div>
             {selectedApp && (
@@ -147,36 +154,36 @@ export default function AgentDevUI() {
                   className="h-full"
                 >
                   <TabsList className="flex flex-col w-full bg-transparent p-2 h-auto">
-                    <TabsTrigger 
-                      value="events" 
+                    <TabsTrigger
+                      value="events"
                       className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
                     >
                       <Folder className="w-4 h-4 mr-3" />
                       Events
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="state" 
+                    <TabsTrigger
+                      value="state"
                       className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
                     >
                       <FileText className="w-4 h-4 mr-3" />
                       State
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="artifacts" 
+                    <TabsTrigger
+                      value="artifacts"
                       className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
                     >
                       <Database className="w-4 h-4 mr-3" />
                       Artifacts
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="sessions" 
+                    <TabsTrigger
+                      value="sessions"
                       className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
                     >
                       <GitBranch className="w-4 h-4 mr-3" />
                       Sessions
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="eval" 
+                    <TabsTrigger
+                      value="eval"
                       className="w-full justify-start text-left py-3 px-4 text-[#a0a0a8] hover:text-white data-[state=active]:bg-[#1f1f24] data-[state=active]:text-white rounded-lg mb-1"
                     >
                       <TestTube className="w-4 h-4 mr-3" />
@@ -244,7 +251,7 @@ export default function AgentDevUI() {
                     items={appItems}
                   />
                 </div>
-                <h2 className="text-2xl font-medium text-white mb-2">Welcome to ADK Studio</h2>
+                <h2 className="text-2xl font-medium text-white mb-2">Welcome to agent cosm</h2>
                 <p className="text-[#a0a0a8] text-lg max-w-md">
                   {!selectedApp
                     ? 'Select an app from the folder to get started'
