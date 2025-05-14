@@ -49,7 +49,7 @@ const InteractiveFolder: React.FC<InteractiveFolderProps> = ({
   items = [],
   className = "",
 }) => {
-  const maxItems = 3;
+  const maxItems = items.length || 3;
   let displayedItems = items.slice(0, maxItems);
 
   // Pad displayedItems with nulls if needed to always have maxItems slots

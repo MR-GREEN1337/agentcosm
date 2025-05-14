@@ -1,6 +1,6 @@
 .PHONY: backend
 backend:
-	cd backend && python -m adk api_server --allow_origins "http://localhost:3000"
+	cd backend && adk api_server --allow_origins "http://localhost:3000"
 
 .PHONY: web
 web:
