@@ -9,8 +9,8 @@ web:
 .PHONY: deploy
 deploy:
 	@echo "Deploying agent to Google Cloud Run..."
-	@export $(shell cat .env | xargs) && \
-	adk deploy cloud_run \
+	@export $(shell cat backend/multi_agent_tool/.env | xargs) && \
+	cd backend && adk deploy cloud_run \
 		--project=$$GOOGLE_CLOUD_PROJECT \
 		--region=$$GOOGLE_CLOUD_LOCATION \
 		--service_name=$$SERVICE_NAME \
