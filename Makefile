@@ -17,3 +17,12 @@ deploy:
 		--app_name=$$APP_NAME \
 		--with_ui \
 		$$AGENT_PATH
+	
+.PHONY: stop
+stop:
+	@echo "Stopping all services"
+	@echo "Stopping backend"
+	-pkill -f 'uvicorn.*8000'
+
+	@echo "Stopping web"
+	-pkill -f 'node.*web'
