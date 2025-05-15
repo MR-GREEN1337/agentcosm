@@ -64,21 +64,37 @@ function useAutoResizeTextarea({
   return { textareaRef, adjustHeight }
 }
 
-export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
+export function MessageInput({ onSendMessage, disabled = false }: MessageInputProps) {
   const [message, setMessage] = useState('')
+  const [isSending, setIsSending] = useState(false)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
   })
 
-  const handleSend = () => {
-    if (message.trim() && !disabled) {
-      onSendMessage({
-        type: 'text',
-        text: message.trim()
-      })
-      setMessage('')
-      adjustHeight(true)
+  const handleSend = async () => {
+    if (message.trim() && !disabled && !isSending) {
+      setIsSending(true)
+      
+      // Create content structure that matches backend format
+      const messagePayload = {
+        content: {
+          parts: [{
+            text: message.trim()
+          }],
+          role: "user"
+        }
+      }
+      
+      try {
+        await onSendMessage(messagePayload)
+        setMessage('')
+        adjustHeight(true)
+      } catch (error) {
+        console.error('Error sending message:', error)
+      } finally {
+        setIsSending(false)
+      }
     }
   }
 
@@ -90,9 +106,9 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
   }
 
   return (
-    <div className="w-full bg-transparent px-4 py-6">
+    <div className="sticky bottom-0 w-full px-4 py-4 bg-background border-t border-border">
       <div className="max-w-7xl mx-auto">
-        <div className="relative bg-background rounded-xl border border-border">
+        <div className="relative bg-secondary/30 rounded-xl border border-border">
           <div className="overflow-y-auto">
             <Textarea
               ref={textareaRef}
@@ -117,7 +133,7 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
               style={{
                 overflow: "hidden",
               }}
-              disabled={disabled}
+              disabled={disabled || isSending}
             />
           </div>
 
@@ -126,7 +142,7 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
               <button
                 type="button"
                 className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                disabled={disabled}
+                disabled={disabled || isSending}
               >
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -135,29 +151,33 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
               <button
                 type="button"
                 className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                disabled={disabled}
+                disabled={disabled || isSending}
               >
                 <Mic className="w-5 h-5" />
               </button>
               <button
                 type="button"
                 className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                disabled={disabled}
+                disabled={disabled || isSending}
               >
                 <Camera className="w-5 h-5" />
               </button>
               <button
                 type="button"
                 onClick={handleSend}
-                disabled={!message.trim() || disabled}
+                disabled={!message.trim() || disabled || isSending}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1",
-                  message.trim() && !disabled
+                  message.trim() && !disabled && !isSending
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
                     : "bg-secondary text-muted-foreground cursor-not-allowed"
                 )}
               >
-                <Send className="w-4 h-4" />
+                {isSending ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>

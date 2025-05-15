@@ -1,8 +1,6 @@
-// Updated app/(pages)/chat/page.tsx with theme-aware colors
-
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AppSelector } from '@/components/AppSelector'
 import { SessionManager } from '@/components/SessionManager'
@@ -12,7 +10,7 @@ import { ArtifactsTab } from '@/components/tabs/ArtifactsTab'
 import { SessionsTab } from '@/components/tabs/SessionsTab'
 import { EvalTab } from '@/components/tabs/EvalTab'
 import { MessageInput } from '@/components/MessageInput'
-import { useWebSocket } from '@/hooks/useWebsocket'
+import { useSSE } from '@/hooks/use-sse'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Folder, FileText, Database, GitBranch, TestTube } from 'lucide-react'
 import InteractiveFolder from '@/components/InteractiveFolder'
@@ -30,19 +28,85 @@ export default function AgentDevUI() {
   const [activeTab, setActiveTab] = useState('events')
   const [sessionEvents, setSessionEvents] = useState<any[]>([])
   const [availableApps, setAvailableApps] = useState<string[]>([])
+  const processedEventsRef = useRef<Set<string>>(new Set())
 
-  const { sendMessage, events: wsEvents, isConnected } = useWebSocket(
+  const { sendMessage, events: sseEvents, isLoading } = useSSE(
     selectedApp && currentSession
-      ? `${process.env.NEXT_PUBLIC_WS_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}`
+      ? `${process.env.NEXT_PUBLIC_API_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}&modalities=TEXT`
       : null
   )
 
+  // Process SSE events
   useEffect(() => {
-    if (wsEvents.length > 0) {
-      setSessionEvents(prev => [...prev, ...wsEvents])
-    }
-  }, [wsEvents])
+    if (sseEvents.length === 0) return
+    
+    // Get the latest event
+    const latestEvent = sseEvents[sseEvents.length - 1]
+    
+    // Only process events with text content
+    const text = latestEvent.content?.parts?.[0]?.text
+    if (!text) return
+    
+    setSessionEvents(prev => {
+      // If this is a streaming event, update the last message
+      if (latestEvent.isStreaming || latestEvent.partial) {
+        const lastIndex = prev.length - 1
+        if (lastIndex >= 0 && prev[lastIndex].author === latestEvent.author) {
+          // Update the last message with the new streaming content
+          const updated = [...prev]
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            text: text,
+            isStreaming: true
+          }
+          return updated
+        }
+      }
+      
+      // This is a new message or the final version
+      const eventToAdd = {
+        id: latestEvent.id || `event-${Date.now()}-${Math.random()}`,
+        author: latestEvent.author || 'assistant',
+        text: text,
+        timestamp: latestEvent.timestamp || Date.now() / 1000,
+        isStreaming: latestEvent.isStreaming || false,
+        function_calls: latestEvent.actions?.function_calls,
+        function_responses: latestEvent.function_responses
+      }
+      
+      // If we were streaming and this is the final message, replace the last one
+      if (!latestEvent.partial && !latestEvent.isStreaming) {
+        const lastIndex = prev.length - 1
+        if (lastIndex >= 0 && 
+            prev[lastIndex].author === eventToAdd.author && 
+            prev[lastIndex].isStreaming) {
+          // Replace the streaming message with the final one
+          const updated = [...prev]
+          updated[lastIndex] = {
+            ...eventToAdd,
+            isStreaming: false
+          }
+          return updated
+        }
+      }
+      
+      // Check if this exact text already exists from the same author
+      const exists = prev.some(e => 
+        e.author === eventToAdd.author && 
+        e.text === eventToAdd.text &&
+        !e.isStreaming
+      )
+      
+      if (exists) {
+        console.log('Skipping duplicate in state:', eventToAdd.text)
+        return prev
+      }
+      
+      return [...prev, eventToAdd]
+    })
+  }, [sseEvents])
 
+  // Fetch available apps
   useEffect(() => {
     const fetchApps = async () => {
       try {
@@ -55,51 +119,98 @@ export default function AgentDevUI() {
     fetchApps()
   }, [])
 
-  const handleSessionChange = (sessionId: string) => {
+  const handleSessionChange = async (sessionId: string) => {
     setCurrentSession(sessionId)
     setSessionEvents([])
+    processedEventsRef.current.clear()
+    
+    // Load session events
+    try {
+      const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions/${sessionId}`)
+      if (response.data.events) {
+        setSessionEvents(response.data.events)
+      }
+    } catch (error) {
+      console.error('Error loading session events:', error)
+    }
   }
 
   const handleNewSession = () => {
     const newSessionId = crypto.randomUUID()
     setCurrentSession(newSessionId)
     setSessionEvents([])
+    processedEventsRef.current.clear()
   }
 
-  // Auto-select session when app changes
+  const handleResendMessage = async (text: string) => {
+    // Create a new message with the resent text
+    const message = {
+      content: {
+        parts: [{ text }],
+        role: "user"
+      }
+    }
+    await handleSendMessage(message)
+  }
+
+  const handleSendMessage = async (message: any) => {
+    // Add user message to events immediately
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      author: 'user',
+      text: message.content.parts?.[0]?.text || '',
+      timestamp: Date.now() / 1000,
+      isStreaming: false
+    }
+    
+    setSessionEvents(prev => [...prev, userMessage])
+    
+    // Send through SSE
+    await sendMessage(message)
+  }
+  const handleEditMessage = async (messageId: string, newText: string) => {
+    // Find the message and update it
+    setSessionEvents(prev => 
+      prev.map(event => 
+        event.id === messageId 
+          ? { ...event, text: newText }
+          : event
+      )
+    )
+    
+    // Optionally resend the edited message
+    await handleResendMessage(newText)
+  }
+
+  // Auto-select or create session when app changes
   useEffect(() => {
     if (!selectedApp) return
 
-    const selectOrCreateSession = async () => {
+    const initializeSession = async () => {
       try {
         const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions`)
         const sessions = response.data
 
         if (sessions.length > 0) {
-          // Select the most recent session (first in the list)
-          setCurrentSession(sessions[0].id)
+          await handleSessionChange(sessions[0].id)
         } else {
-          // Create a new session if none exist
           const newSessionResponse = await api.post(`/apps/${selectedApp}/users/${userId}/sessions`)
-          setCurrentSession(newSessionResponse.data.id)
+          await handleSessionChange(newSessionResponse.data.id)
         }
       } catch (error) {
-        console.error('Error handling session selection:', error)
-        // Fallback: create a new session
-        try {
-          const newSessionResponse = await api.post(`/apps/${selectedApp}/users/${userId}/sessions`)
-          setCurrentSession(newSessionResponse.data.id)
-        } catch (createError) {
-          console.error('Error creating new session:', createError)
-        }
+        console.error('Error initializing session:', error)
       }
     }
 
-    selectOrCreateSession()
+    initializeSession()
   }, [selectedApp, userId])
 
-  // Create app items for the folder
-  const appItems = availableApps.slice(0, 3).map((app, index) => (
+  // Clear processed events when changing sessions
+  useEffect(() => {
+    processedEventsRef.current.clear()
+  }, [currentSession])
+
+  const appItems = availableApps.slice(0, 3).map((app) => (
     <div
       key={app}
       className="flex items-center justify-center h-full cursor-pointer hover:bg-white/10 transition-colors rounded-lg"
@@ -119,17 +230,15 @@ export default function AgentDevUI() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col h-screen bg-background">
+      <div className="flex flex-col h-screen bg-background overflow-hidden">
         {/* Top Navigation Bar */}
         <header className="bg-card border-b border-border px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-6">
-                <Link href="/" className="flex items-center gap-2">
-                  <PlanetIcon />
-                  <h1 className="text-[1.3rem] font-normal tracking-[0.02em] text-foreground">agent cosm</h1>
-                </Link>
-              </div>
+              <Link href="/" className="flex items-center gap-2">
+                <PlanetIcon />
+                <h1 className="text-[1.3rem] font-normal tracking-[0.02em] text-foreground">agent cosm</h1>
+              </Link>
               <AppSelector value={selectedApp} onChange={setSelectedApp} />
             </div>
             <div className="flex items-center gap-4">
@@ -150,9 +259,9 @@ export default function AgentDevUI() {
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
           {selectedApp && currentSession ? (
-            <div className="flex-1 flex">
+            <div className="flex-1 flex h-full">
               {/* Left Sidebar with Tabs */}
-              <div className="w-60 bg-secondary/30 border-r border-border">
+              <div className="w-60 bg-secondary/30 border-r border-border flex-shrink-0">
                 <Tabs
                   value={activeTab}
                   onValueChange={setActiveTab}
@@ -200,19 +309,25 @@ export default function AgentDevUI() {
               </div>
 
               {/* Main Content Area */}
-              <div className="flex-1 flex flex-col bg-background">
+              <div className="flex-1 flex flex-col bg-background min-h-0">
                 {activeTab === 'events' ? (
                   <>
-                    <EventsTab
-                      appName={selectedApp}
-                      userId={userId}
-                      sessionId={currentSession}
-                      events={sessionEvents}
-                    />
-                    <MessageInput
-                      onSendMessage={sendMessage}
-                      disabled={!isConnected}
-                    />
+                    <div className="flex-1 overflow-hidden">
+                      <EventsTab
+                        appName={selectedApp}
+                        userId={userId}
+                        sessionId={currentSession}
+                        events={sessionEvents}
+                        onResendMessage={handleResendMessage}
+                        onEditMessage={handleEditMessage}
+                      />
+                    </div>
+                    <div className="flex-shrink-0">
+                      <MessageInput
+                        onSendMessage={handleSendMessage}
+                        disabled={false}
+                      />
+                    </div>
                   </>
                 ) : (
                   <div className="flex-1 overflow-hidden">

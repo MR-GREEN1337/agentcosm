@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AgentCosm",
+  title: "agent cosm",
   description: "A New Kind of Intelligence",
 };
 

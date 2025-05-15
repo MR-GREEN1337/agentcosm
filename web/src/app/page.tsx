@@ -712,7 +712,7 @@ export const Page = ({ className }: PageProps) => {
                   className="space-y-6 text-center"
                 >
                   <div className="space-y-1">
-                    <h1 className="text-[2.9rem] font-bold leading-[1.1] tracking-tight text-white">Agent Cosm</h1>
+                    <h1 className="text-[2.9rem] font-bold leading-[1.1] tracking-tight text-white">agent cosm</h1>
                     <h1 className="text-[1.7rem] font-semibold leading-[1.1] tracking-tight text-white">A New Kind of Intelligence</h1>
                     <p className="text-[1.2rem] text-white/70 font-light">Emerging from silence, shaped by thought</p>
                   </div>
@@ -794,7 +794,7 @@ export const Page = ({ className }: PageProps) => {
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
             >
-              <span>Submission for Google Cloud Multi-Agents Hackathon</span>
+              <span>Submission for Google Cloud's Agent Development Kit Hackathon</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
