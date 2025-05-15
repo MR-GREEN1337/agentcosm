@@ -1,17 +1,38 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Bot, User } from 'lucide-react'
+import { Bot, User, Copy, Edit, RotateCcw, MoreVertical, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
+
+import { Textarea } from '@/components/ui/textarea'
 
 interface EventsTabProps {
   appName: string
   userId: string
   sessionId: string
   events: any[]
+  onResendMessage?: (text: string) => void
+  onEditMessage?: (messageId: string, newText: string) => void
 }
 
-export function EventsTab({ appName, userId, sessionId, events = [] }: EventsTabProps) {
+export function EventsTab({ 
+  appName, 
+  userId, 
+  sessionId, 
+  events = [],
+  onResendMessage,
+  onEditMessage 
+}: EventsTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -20,13 +41,66 @@ export function EventsTab({ appName, userId, sessionId, events = [] }: EventsTab
     }
   }, [events])
 
+  const handleCopy = async (text: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedMessageId(messageId)
+      setTimeout(() => setCopiedMessageId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const handleEdit = (messageId: string, text: string) => {
+    setEditingMessageId(messageId)
+    setEditText(text)
+  }
+
+  const handleSaveEdit = (messageId: string) => {
+    if (onEditMessage && editText.trim()) {
+      onEditMessage(messageId, editText)
+    }
+    setEditingMessageId(null)
+    setEditText('')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null)
+    setEditText('')
+  }
+
+  const formatTimestamp = (timestamp: number) => {
+    try {
+      const date = new Date(timestamp * 1000)
+      const now = new Date()
+      const isToday = date.toDateString() === now.toDateString()
+      
+      if (isToday) {
+        // Format as HH:mm
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        return `${hours}:${minutes}`
+      } else {
+        // Format as MMM d, HH:mm
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const month = months[date.getMonth()]
+        const day = date.getDate()
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        return `${month} ${day}, ${hours}:${minutes}`
+      }
+    } catch {
+      return ''
+    }
+  }
+
   if (events.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <Bot className="w-16 h-16 text-[#3a3a40] mx-auto mb-4" />
-          <p className="text-[#a0a0a8] text-lg">Start a conversation</p>
-          <p className="text-[#6a6a70] text-sm mt-2">Type a message below</p>
+          <Bot className="w-16 h-16 text-gray-300 dark:text-[#3a3a40] mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-[#a0a0a8] text-lg">Start a conversation</p>
+          <p className="text-gray-500 dark:text-[#6a6a70] text-sm mt-2">Type a message below</p>
         </div>
       </div>
     )
@@ -40,12 +114,24 @@ export function EventsTab({ appName, userId, sessionId, events = [] }: EventsTab
           const eventKey = event.id || `${event.author}-${event.timestamp}-${index}`
           const isUser = event.author === 'user' || event.content?.role === 'user'
           
-          // Extract message text
+          // Extract message text and images
           let messageText = event.text || ''
-          if (!messageText && event.content?.parts?.[0]?.text) {
+          let messageImages: string[] = []
+          
+          if (event.content?.parts) {
+            for (const part of event.content.parts) {
+              if (part.text) {
+                messageText = part.text
+              } else if (part.inline_data) {
+                // Convert inline_data to data URL
+                const mimeType = part.inline_data.mime_type || 'image/jpeg'
+                const dataUrl = `data:${mimeType};base64,${part.inline_data.data}`
+                messageImages.push(dataUrl)
+              }
+            }
+          } else if (!messageText && event.content?.parts?.[0]?.text) {
             messageText = event.content.parts[0].text
-          }
-          if (!messageText && typeof event.content === 'string') {
+          } else if (!messageText && typeof event.content === 'string') {
             messageText = event.content
           }
           
@@ -54,71 +140,195 @@ export function EventsTab({ appName, userId, sessionId, events = [] }: EventsTab
           const functionResponses = event.function_responses || event.actions?.function_responses
           
           // Skip empty events
-          if (!messageText && !functionCalls && !functionResponses) {
+          if (!messageText && !functionCalls && !functionResponses && messageImages.length === 0) {
             return null
           }
+
+          const isEditing = editingMessageId === eventKey
           
           return (
             <div
               key={eventKey}
               className={cn(
-                "flex gap-3",
+                "flex gap-3 group relative",
                 isUser ? "justify-end" : "justify-start"
               )}
             >
               {!isUser && (
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-lg overflow-hidden">
+                    <img 
+                      src="/face.png" 
+                      alt="AI Assistant" 
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 </div>
               )}
               
-              <div
-                className={cn(
-                  "max-w-[70%] rounded-2xl px-4 py-3",
-                  isUser 
-                    ? "bg-blue-600 text-white" 
-                    : "bg-[#1a1a1f] border border-[#2a2a30] text-[#d0d0d8]"
-                )}
-              >
-                {messageText && (
-                  <p className="whitespace-pre-wrap break-words">
-                    {messageText}
-                    {event.isStreaming && (
-                      <span className="inline-block w-1 h-4 bg-current opacity-70 animate-pulse ml-1 align-middle" />
+              <div className="flex flex-col gap-1 max-w-[70%]">
+                <div className="flex items-end gap-2">
+                  <div
+                    className={cn(
+                      "rounded-2xl px-4 py-3 relative",
+                      isUser 
+                        ? "bg-blue-600 text-white dark:bg-blue-500" 
+                        : "bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]"
                     )}
-                  </p>
-                )}
-                
-                {functionCalls && functionCalls.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm text-blue-400 font-medium">Function calls:</p>
-                    {functionCalls.map((call: any, idx: number) => (
-                      <div key={idx} className="text-sm bg-[#0e0e10] p-2 rounded text-blue-400 font-mono">
-                        {call.name}({call.arguments ? JSON.stringify(call.arguments) : ''})
+                  >
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="min-h-[60px] bg-transparent border-0 p-0 resize-none focus:ring-0"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleSaveEdit(eventKey)}
+                            className="h-7 px-2"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleCancelEdit}
+                            className="h-7 px-2"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-                
-                {functionResponses && functionResponses.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm text-green-400 font-medium">Function responses:</p>
-                    {functionResponses.map((response: any, idx: number) => (
-                      <div key={idx} className="text-sm bg-[#0e0e10] p-2 rounded">
-                        <span className="text-green-400 font-mono">{response.name}</span>
-                        <span className="text-[#a0a0a8]">: {JSON.stringify(response.response_data || response.data)}</span>
+                    ) : (
+                      <>
+                        {messageText && (
+                          <p className="whitespace-pre-wrap break-words">
+                            {messageText}
+                            {event.isStreaming && (
+                              <span className="inline-block w-1 h-4 bg-current opacity-70 animate-pulse ml-1 align-middle" />
+                            )}
+                          </p>
+                        )}
+                        
+                        {/* Display attached images */}
+                        {messageImages.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {messageImages.map((imageUrl, idx) => (
+                              <img
+                                key={idx}
+                                src={imageUrl}
+                                alt={`Message attachment ${idx + 1}`}
+                                className="max-w-full rounded-lg"
+                                style={{ maxHeight: '300px' }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
+                    {functionCalls && functionCalls.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Function calls:</p>
+                        {functionCalls.map((call: any, idx: number) => (
+                          <div key={idx} className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded text-blue-700 dark:text-blue-400 font-mono">
+                            {call.name}({call.arguments ? JSON.stringify(call.arguments) : ''})
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+                    
+                    {functionResponses && functionResponses.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm text-green-600 dark:text-green-400 font-medium">Function responses:</p>
+                        {functionResponses.map((response: any, idx: number) => (
+                          <div key={idx} className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded">
+                            <span className="text-green-700 dark:text-green-400 font-mono">{response.name}</span>
+                            <span className="text-gray-600 dark:text-[#a0a0a8]">: {JSON.stringify(response.response_data || response.data)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  {/* Action Menu */}
+                  {messageText && !event.isStreaming && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent 
+                          align={isUser ? "end" : "start"} 
+                          className="bg-white dark:bg-[#2a2a30] border-gray-200 dark:border-[#3a3a40]"
+                        >
+                          <DropdownMenuItem
+                            onClick={() => handleCopy(messageText, eventKey)}
+                            className="text-gray-700 dark:text-[#d0d0d8] hover:bg-gray-100 dark:hover:bg-[#3a3a40] hover:text-gray-900 dark:hover:text-white"
+                          >
+                            {copiedMessageId === eventKey ? (
+                              <>
+                                <Check className="mr-2 h-4 w-4" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          {isUser && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(eventKey, messageText)}
+                                className="text-gray-700 dark:text-[#d0d0d8] hover:bg-gray-100 dark:hover:bg-[#3a3a40] hover:text-gray-900 dark:hover:text-white"
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              {onResendMessage && (
+                                <DropdownMenuItem
+                                  onClick={() => onResendMessage(messageText)}
+                                  className="text-gray-700 dark:text-[#d0d0d8] hover:bg-gray-100 dark:hover:bg-[#3a3a40] hover:text-gray-900 dark:hover:text-white"
+                                >
+                                  <RotateCcw className="mr-2 h-4 w-4" />
+                                  Resend
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
+
+                {/* Timestamp */}
+                {event.timestamp && (
+                  <span className={cn(
+                    "text-xs text-gray-500 dark:text-[#6a6a70] px-1",
+                    isUser ? "text-right" : "text-left"
+                  )}>
+                    {formatTimestamp(event.timestamp)}
+                  </span>
                 )}
               </div>
               
               {isUser && (
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 rounded-lg bg-[#2a2a30] flex items-center justify-center">
-                    <User className="w-4 h-4 text-[#a0a0a8]" />
+                  <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-[#2a2a30] flex items-center justify-center">
+                    <User className="w-4 h-4 text-gray-600 dark:text-[#a0a0a8]" />
                   </div>
                 </div>
               )}

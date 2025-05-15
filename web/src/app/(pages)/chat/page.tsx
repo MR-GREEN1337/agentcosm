@@ -168,6 +168,7 @@ export default function AgentDevUI() {
     // Send through SSE
     await sendMessage(message)
   }
+
   const handleEditMessage = async (messageId: string, newText: string) => {
     // Find the message and update it
     setSessionEvents(prev => 

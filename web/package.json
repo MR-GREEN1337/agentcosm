@@ -29,6 +29,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-three": "^0.9.7",
+    "react-webcam": "^7.2.0",
     "tailwind-merge": "^3.3.0",
     "three": "^0.176.0"
   },
