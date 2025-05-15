@@ -81,8 +81,8 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
   
   const webcamRef = useRef<Webcam>(null)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
-    minHeight: 60,
-    maxHeight: 200,
+    minHeight: 44,
+    maxHeight: 160,
   })
 
   const handleSend = async () => {
@@ -161,21 +161,21 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
 
   return (
     <>
-      <div className="sticky bottom-0 w-full px-4 py-4 bg-background border-t border-border">
-        <div className="max-w-7xl mx-auto">
+      <div className="sticky bottom-0 w-full px-2 sm:px-4 py-2 sm:py-4 bg-transparent">
+        <div className="max-w-3xl mx-auto">
           <div className="relative bg-secondary/30 rounded-xl border border-border">
             {/* Attached Image Preview */}
             {attachedImage && (
-              <div className="p-3 border-b border-border">
+              <div className="p-2 border-b border-border">
                 <div className="relative inline-block">
                   <img 
                     src={attachedImage} 
                     alt="Attached" 
-                    className="h-20 rounded-lg object-cover"
+                    className="h-16 rounded-lg object-cover"
                   />
                   <button
                     onClick={removeAttachedImage}
-                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -183,66 +183,64 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
               </div>
             )}
 
-            <div className="overflow-y-auto">
-              <Textarea
-                ref={textareaRef}
-                value={message}
-                onChange={(e) => {
-                  setMessage(e.target.value)
-                  adjustHeight()
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                className={cn(
-                  "w-full px-4 py-3",
-                  "resize-none",
-                  "bg-transparent",
-                  "border-none",
-                  "text-foreground text-sm",
-                  "focus:outline-none",
-                  "focus-visible:ring-0 focus-visible:ring-offset-0",
-                  "placeholder:text-muted-foreground placeholder:text-sm",
-                  "min-h-[60px]"
-                )}
-                style={{
-                  overflow: "hidden",
-                }}
-                disabled={disabled || isSending}
-              />
-            </div>
+            <div className="flex items-end">
+              <div className="flex-1">
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value)
+                    adjustHeight()
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type a message..."
+                  className={cn(
+                    "w-full px-3 py-2.5",
+                    "resize-none",
+                    "bg-transparent",
+                    "border-none",
+                    "text-foreground text-sm",
+                    "focus:outline-none",
+                    "focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "placeholder:text-muted-foreground placeholder:text-sm",
+                    "min-h-[44px]"
+                  )}
+                  style={{
+                    overflow: "hidden",
+                  }}
+                  disabled={disabled || isSending}
+                />
+              </div>
 
-            <div className="flex items-center justify-between p-3 border-t border-border">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 px-2 pb-2">
                 <button
                   type="button"
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                   disabled={disabled || isSending}
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
-              </div>
-              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                   disabled={disabled || isSending}
                 >
-                  <Mic className="w-5 h-5" />
+                  <Mic className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCamera(true)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors hidden sm:block"
                   disabled={disabled || isSending}
                 >
-                  <Camera className="w-5 h-5" />
+                  <Camera className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={handleSend}
                   disabled={(!message.trim() && !attachedImage) || disabled || isSending}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1",
+                    "p-1.5 rounded-lg transition-all flex items-center justify-center",
                     (message.trim() || attachedImage) && !disabled && !isSending
                       ? "bg-blue-600 hover:bg-blue-700 text-white"
                       : "bg-secondary text-muted-foreground cursor-not-allowed"

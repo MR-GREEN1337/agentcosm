@@ -29,12 +29,22 @@ export default function AgentDevUI() {
   const [sessionEvents, setSessionEvents] = useState<any[]>([])
   const [availableApps, setAvailableApps] = useState<string[]>([])
   const processedEventsRef = useRef<Set<string>>(new Set())
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const eventsTabRef = useRef<{ scrollToBottom: () => void }>(null)
 
   const { sendMessage, events: sseEvents, isLoading } = useSSE(
     selectedApp && currentSession
       ? `${process.env.NEXT_PUBLIC_API_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}&modalities=TEXT`
       : null
   )
+
+  // Auto-scroll function
+  const scrollToBottom = () => {
+    // If the EventsTab has its own scroll method, use it
+    if (eventsTabRef.current?.scrollToBottom) {
+      eventsTabRef.current.scrollToBottom()
+    }
+  }
 
   // Process SSE events
   useEffect(() => {
@@ -106,6 +116,13 @@ export default function AgentDevUI() {
     })
   }, [sseEvents])
 
+  // Auto-scroll when session events change
+  useEffect(() => {
+    if (sessionEvents.length > 0) {
+      scrollToBottom()
+    }
+  }, [sessionEvents])
+
   // Fetch available apps
   useEffect(() => {
     const fetchApps = async () => {
@@ -129,6 +146,8 @@ export default function AgentDevUI() {
       const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions/${sessionId}`)
       if (response.data.events) {
         setSessionEvents(response.data.events)
+        // Scroll to bottom after loading session events
+        setTimeout(scrollToBottom, 100)
       }
     } catch (error) {
       console.error('Error loading session events:', error)
@@ -164,6 +183,9 @@ export default function AgentDevUI() {
     }
     
     setSessionEvents(prev => [...prev, userMessage])
+    
+    // Scroll to bottom after adding user message
+    setTimeout(scrollToBottom, 50)
     
     // Send through SSE
     await sendMessage(message)
@@ -233,16 +255,16 @@ export default function AgentDevUI() {
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col h-screen bg-background overflow-hidden">
         {/* Top Navigation Bar */}
-        <header className="bg-card border-b border-border px-6 py-3">
+        <header className="bg-card border-b border-border px-3 sm:px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 sm:gap-6">
               <Link href="/" className="flex items-center gap-2">
                 <PlanetIcon />
-                <h1 className="text-[1.3rem] font-normal tracking-[0.02em] text-foreground">agent cosm</h1>
+                <h1 className="text-lg sm:text-[1.3rem] font-normal tracking-[0.02em] text-foreground hidden sm:block">agent cosm</h1>
               </Link>
               <AppSelector value={selectedApp} onChange={setSelectedApp} />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {selectedApp && (
                 <SessionManager
                   appName={selectedApp}
@@ -262,59 +284,60 @@ export default function AgentDevUI() {
           {selectedApp && currentSession ? (
             <div className="flex-1 flex h-full">
               {/* Left Sidebar with Tabs */}
-              <div className="w-60 bg-secondary/30 border-r border-border flex-shrink-0">
+              <div className="w-14 md:w-16 bg-secondary/30 border-r border-border flex-shrink-0">
                 <Tabs
                   value={activeTab}
                   onValueChange={setActiveTab}
                   orientation="vertical"
                   className="h-full"
                 >
-                  <TabsList className="flex flex-col w-full bg-transparent p-2 h-auto">
+                  <TabsList className="flex flex-col w-full bg-transparent p-2 h-auto gap-2">
                     <TabsTrigger
                       value="events"
-                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
+                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
+                      title="Events"
                     >
-                      <Folder className="w-4 h-4 mr-3" />
-                      Events
+                      <Folder className="w-5 h-5" />
                     </TabsTrigger>
                     <TabsTrigger
                       value="state"
-                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
+                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
+                      title="State"
                     >
-                      <FileText className="w-4 h-4 mr-3" />
-                      State
+                      <FileText className="w-5 h-5" />
                     </TabsTrigger>
                     <TabsTrigger
                       value="artifacts"
-                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
+                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
+                      title="Artifacts"
                     >
-                      <Database className="w-4 h-4 mr-3" />
-                      Artifacts
+                      <Database className="w-5 h-5" />
                     </TabsTrigger>
                     <TabsTrigger
                       value="sessions"
-                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
+                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
+                      title="Sessions"
                     >
-                      <GitBranch className="w-4 h-4 mr-3" />
-                      Sessions
+                      <GitBranch className="w-5 h-5" />
                     </TabsTrigger>
                     <TabsTrigger
                       value="eval"
-                      className="w-full justify-start text-left py-3 px-4 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg mb-1"
+                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
+                      title="Eval"
                     >
-                      <TestTube className="w-4 h-4 mr-3" />
-                      Eval
+                      <TestTube className="w-5 h-5" />
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
 
               {/* Main Content Area */}
-              <div className="flex-1 flex flex-col bg-background min-h-0">
+              <div className="flex-1 flex flex-col bg-transparent min-h-0">
                 {activeTab === 'events' ? (
                   <>
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-hidden" ref={scrollContainerRef}>
                       <EventsTab
+                        ref={eventsTabRef}
                         appName={selectedApp}
                         userId={userId}
                         sessionId={currentSession}
@@ -323,7 +346,7 @@ export default function AgentDevUI() {
                         onEditMessage={handleEditMessage}
                       />
                     </div>
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 bg-transparent">
                       <MessageInput
                         onSendMessage={handleSendMessage}
                         disabled={false}
@@ -364,17 +387,17 @@ export default function AgentDevUI() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center p-4">
               <div className="text-center flex flex-col items-center">
-                <div className="pb-20">
+                <div className="pb-10 sm:pb-20">
                   <InteractiveFolder
                     color="#3b82f6"
-                    scale={2}
+                    scale={1.5}
                     items={appItems}
                   />
                 </div>
-                <h2 className="text-2xl font-medium text-foreground mb-2">Welcome to agent cosm</h2>
-                <p className="text-muted-foreground text-lg max-w-md">
+                <h2 className="text-xl sm:text-2xl font-medium text-foreground mb-2">Welcome to agent cosm</h2>
+                <p className="text-muted-foreground text-base sm:text-lg max-w-md px-4">
                   {!selectedApp
                     ? 'Select an app from the folder to get started'
                     : 'Loading session...'}
