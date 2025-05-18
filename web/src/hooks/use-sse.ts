@@ -14,6 +14,7 @@ interface SSEEvent {
   function_responses?: any
   partial?: boolean
   invocation_id?: string
+  isStreaming?: boolean
 }
 
 export function useSSE(url: string | null) {

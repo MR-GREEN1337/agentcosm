@@ -243,7 +243,6 @@ export default function AgentDevUI() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
-          {currentSession ? (
             <div className="flex-1 flex h-full">
               {/* Left Sidebar with Tabs */}
               <div className="w-14 md:w-16 bg-secondary/30 border-r border-border flex-shrink-0">
@@ -299,7 +298,7 @@ export default function AgentDevUI() {
                   <>
                     <div className="flex-1 overflow-hidden" ref={scrollContainerRef}>
                       <EventsTab
-                        ref={eventsTabRef}
+                        ref={eventsTabRef as any}
                         appName={selectedApp}
                         userId={userId}
                         sessionId={currentSession}
@@ -348,27 +347,6 @@ export default function AgentDevUI() {
                 )}
               </div>
             </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-4">
-              <div className="text-center">
-                <div className="flex justify-center mb-6">
-                  <div className="w-16 h-16 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <FileText className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-                <h2 className="text-xl sm:text-2xl font-medium text-foreground mb-2">Welcome to Cosm</h2>
-                <p className="text-muted-foreground text-base sm:text-lg max-w-md px-4 mb-6">
-                  Initializing your chat session...
-                </p>
-                <button 
-                  onClick={handleNewSession}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                >
-                  Start New Chat
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </QueryClientProvider>

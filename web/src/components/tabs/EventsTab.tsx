@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 
 interface EventsTabProps {
+  ref: React.RefObject<{ scrollToBottom: () => void }>
   appName: string
   userId: string
   sessionId: string
@@ -22,6 +23,7 @@ interface EventsTabProps {
 }
 
 export function EventsTab({ 
+  ref,
   appName, 
   userId, 
   sessionId, 
