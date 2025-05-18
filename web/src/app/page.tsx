@@ -711,10 +711,10 @@ export const Page = ({ className }: PageProps) => {
                   transition={{ duration: 0.4, ease: "easeOut" }}
                   className="space-y-6 text-center"
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-3">
                     <h1 className="text-[2.9rem] font-bold leading-[1.1] tracking-tight text-white">agent cosm</h1>
-                    <h1 className="text-[1.7rem] font-semibold leading-[1.1] tracking-tight text-white">A New Kind of Intelligence</h1>
-                    <p className="text-[1.2rem] text-white/70 font-light">Emerging from silence, shaped by thought</p>
+                    <h1 className="text-[1.2rem] text-white/70 font-light">Discover Your Next Market Launch Your Mini-Business.</h1>
+                    {/* <p className="text-[1.2rem] text-white/70 font-light">Let AI help you find unfulfilled needs and instantly scaffold a business concept.</p> */}
                   </div>
                   
                   <div className="space-y-4">
@@ -722,7 +722,7 @@ export const Page = ({ className }: PageProps) => {
                       <div className="relative">
                         <input 
                           type="email" 
-                          placeholder="Identify yourself, Explorer"
+                          placeholder="What business area are you curious about?"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full backdrop-blur-[1px] text-white border-1 border-white/10 rounded-full py-3 px-4 pr-12 focus:outline-none focus:border focus:border-white/30 text-center"
@@ -746,7 +746,7 @@ export const Page = ({ className }: PageProps) => {
                   </div>
                   
                   <p className="text-xs text-white/40 pt-10">
-                    By continuing, you accept the risks of venturing into the unknown — a multi-agent journey awaits, at your own peril.
+                  Let AI help you find unfulfilled needs and instantly scaffold a business concept.
                   </p>
                 </motion.div>
               ) : (
@@ -757,7 +757,7 @@ export const Page = ({ className }: PageProps) => {
                   transition={{ duration: 0.4, ease: "easeOut" }}
                   className="space-y-6 text-center"
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">Welcome, Explorer</h1>
                     <p className="text-[1.25rem] text-white/50 font-light">Your journey begins...</p>
                   </div>

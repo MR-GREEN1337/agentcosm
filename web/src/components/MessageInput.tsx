@@ -163,7 +163,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
     <>
       <div className="sticky bottom-0 w-full px-2 sm:px-4 py-2 sm:py-4 bg-transparent">
         <div className="max-w-3xl mx-auto">
-          <div className="relative bg-secondary/30 rounded-xl border border-border">
+          <div className="relative bg-secondary/30 backdrop-blur-sm rounded-xl border border-border shadow-lg">
             {/* Attached Image Preview */}
             {attachedImage && (
               <div className="p-2 border-b border-border">

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AppSelector } from '@/components/AppSelector'
 import { SessionManager } from '@/components/SessionManager'
 import { EventsTab } from '@/components/tabs/EventsTab'
 import { StateTab } from '@/components/tabs/StateTab'
@@ -13,7 +12,6 @@ import { MessageInput } from '@/components/MessageInput'
 import { useSSE } from '@/hooks/use-sse'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Folder, FileText, Database, GitBranch, TestTube } from 'lucide-react'
-import InteractiveFolder from '@/components/InteractiveFolder'
 import { api } from '@/lib/api'
 import Link from 'next/link'
 import { PlanetIcon } from '@/components/PlanetIcon'
@@ -22,12 +20,11 @@ import { ModeToggle } from '@/components/ThemeToggle'
 const queryClient = new QueryClient()
 
 export default function AgentDevUI() {
-  const [selectedApp, setSelectedApp] = useState<string>('')
+  const [selectedApp, setSelectedApp] = useState<string>('cosm') // Default to "cosm"
   const [currentSession, setCurrentSession] = useState<string>('')
   const [userId, setUserId] = useState<string>('default-user')
   const [activeTab, setActiveTab] = useState('events')
   const [sessionEvents, setSessionEvents] = useState<any[]>([])
-  const [availableApps, setAvailableApps] = useState<string[]>([])
   const processedEventsRef = useRef<Set<string>>(new Set())
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const eventsTabRef = useRef<{ scrollToBottom: () => void }>(null)
@@ -40,7 +37,6 @@ export default function AgentDevUI() {
 
   // Auto-scroll function
   const scrollToBottom = () => {
-    // If the EventsTab has its own scroll method, use it
     if (eventsTabRef.current?.scrollToBottom) {
       eventsTabRef.current.scrollToBottom()
     }
@@ -123,19 +119,6 @@ export default function AgentDevUI() {
     }
   }, [sessionEvents])
 
-  // Fetch available apps
-  useEffect(() => {
-    const fetchApps = async () => {
-      try {
-        const response = await api.get('/list-apps')
-        setAvailableApps(response.data)
-      } catch (error) {
-        console.error('Error fetching apps:', error)
-      }
-    }
-    fetchApps()
-  }, [])
-
   const handleSessionChange = async (sessionId: string) => {
     setCurrentSession(sessionId)
     setSessionEvents([])
@@ -205,10 +188,8 @@ export default function AgentDevUI() {
     await handleResendMessage(newText)
   }
 
-  // Auto-select or create session when app changes
+  // Initialize session on component mount
   useEffect(() => {
-    if (!selectedApp) return
-
     const initializeSession = async () => {
       try {
         const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions`)
@@ -222,34 +203,18 @@ export default function AgentDevUI() {
         }
       } catch (error) {
         console.error('Error initializing session:', error)
+        // If there's an error, create a new session anyway
+        handleNewSession()
       }
     }
 
     initializeSession()
-  }, [selectedApp, userId])
+  }, [userId]) // Only depends on userId now, not selectedApp
 
   // Clear processed events when changing sessions
   useEffect(() => {
     processedEventsRef.current.clear()
   }, [currentSession])
-
-  const appItems = availableApps.slice(0, 3).map((app) => (
-    <div
-      key={app}
-      className="flex items-center justify-center h-full cursor-pointer hover:bg-white/10 transition-colors rounded-lg"
-      onClick={(e) => {
-        e.stopPropagation()
-        setSelectedApp(app)
-      }}
-    >
-      <div className="text-center p-2">
-        <div className="w-8 h-8 mx-auto mb-2 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <FileText className="w-4 h-4 text-white" />
-        </div>
-        <p className="text-xs font-medium text-foreground truncate max-w-[60px]">{app}</p>
-      </div>
-    </div>
-  ))
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -262,18 +227,15 @@ export default function AgentDevUI() {
                 <PlanetIcon />
                 <h1 className="text-lg sm:text-[1.3rem] font-normal tracking-[0.02em] text-foreground hidden sm:block">agent cosm</h1>
               </Link>
-              <AppSelector value={selectedApp} onChange={setSelectedApp} />
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-              {selectedApp && (
-                <SessionManager
-                  appName={selectedApp}
-                  userId={userId}
-                  currentSession={currentSession}
-                  onSessionChange={handleSessionChange}
-                  onNewSession={handleNewSession}
-                />
-              )}
+              <SessionManager
+                appName={selectedApp}
+                userId={userId}
+                currentSession={currentSession}
+                onSessionChange={handleSessionChange}
+                onNewSession={handleNewSession}
+              />
               <ModeToggle />
             </div>
           </div>
@@ -281,7 +243,7 @@ export default function AgentDevUI() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
-          {selectedApp && currentSession ? (
+          {currentSession ? (
             <div className="flex-1 flex h-full">
               {/* Left Sidebar with Tabs */}
               <div className="w-14 md:w-16 bg-secondary/30 border-r border-border flex-shrink-0">
@@ -387,21 +349,23 @@ export default function AgentDevUI() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-4">
-              <div className="text-center flex flex-col items-center">
-                <div className="pb-10 sm:pb-20">
-                  <InteractiveFolder
-                    color="#3b82f6"
-                    scale={1.5}
-                    items={appItems}
-                  />
+            <div className="flex-1 flex flex-col items-center justify-center p-4">
+              <div className="text-center">
+                <div className="flex justify-center mb-6">
+                  <div className="w-16 h-16 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <FileText className="w-8 h-8 text-white" />
+                  </div>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-medium text-foreground mb-2">Welcome to agent cosm</h2>
-                <p className="text-muted-foreground text-base sm:text-lg max-w-md px-4">
-                  {!selectedApp
-                    ? 'Select an app from the folder to get started'
-                    : 'Loading session...'}
+                <h2 className="text-xl sm:text-2xl font-medium text-foreground mb-2">Welcome to Cosm</h2>
+                <p className="text-muted-foreground text-base sm:text-lg max-w-md px-4 mb-6">
+                  Initializing your chat session...
                 </p>
+                <button 
+                  onClick={handleNewSession}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                >
+                  Start New Chat
+                </button>
               </div>
             </div>
           )}

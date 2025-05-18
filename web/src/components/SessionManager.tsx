@@ -83,6 +83,22 @@ export function SessionManager({
       console.error('Error deleting session:', error)
     }
   }
+  
+  // Format date and time from Unix timestamp
+  const formatDateTime = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    
+    // Format date as "May 18, 2025"
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    
+    return date.toLocaleString(undefined, options);
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -100,7 +116,11 @@ export function SessionManager({
               <div className="flex items-center justify-between w-full">
                 <span>{session.id.substring(0, 8)}...</span>
                 <span className="text-xs text-muted-foreground ml-2">
-                  {new Date(session.creation_timestamp * 1000).toLocaleDateString()}
+                  {session.creation_timestamp 
+                    ? formatDateTime(session.creation_timestamp)
+                    : session.last_update_time
+                      ? formatDateTime(session.last_update_time)
+                      : 'No date'}
                 </span>
               </div>
             </SelectItem>
