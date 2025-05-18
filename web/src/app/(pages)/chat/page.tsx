@@ -16,21 +16,31 @@ import { api } from '@/lib/api'
 import Link from 'next/link'
 import { PlanetIcon } from '@/components/PlanetIcon'
 import { ModeToggle } from '@/components/ThemeToggle'
+import { cn } from '@/lib/utils'
+
+// Import Shadcn Tooltip components
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const queryClient = new QueryClient()
 
 export default function AgentDevUI() {
   const [selectedApp, setSelectedApp] = useState<string>('cosm') // Default to "cosm"
   const [currentSession, setCurrentSession] = useState<string>('')
-  const [userId, setUserId] = useState<string>('default-user')
+  const [userId, setUserId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('events')
   const [sessionEvents, setSessionEvents] = useState<any[]>([])
   const processedEventsRef = useRef<Set<string>>(new Set())
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const eventsTabRef = useRef<{ scrollToBottom: () => void }>(null)
+  const initialBusinessQuerySent = useRef<boolean>(false)
 
   const { sendMessage, events: sseEvents, isLoading } = useSSE(
-    selectedApp && currentSession
+    selectedApp && currentSession && userId
       ? `${process.env.NEXT_PUBLIC_API_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}&modalities=TEXT`
       : null
   )
@@ -42,6 +52,13 @@ export default function AgentDevUI() {
     }
   }
 
+  useEffect(() => {
+    if (!localStorage.getItem('userId')) {
+      localStorage.setItem('userId', crypto.randomUUID())
+    }
+    setUserId(localStorage.getItem('userId'))
+  }, [])
+  
   // Process SSE events
   useEffect(() => {
     if (sseEvents.length === 0) return
@@ -119,6 +136,65 @@ export default function AgentDevUI() {
     }
   }, [sessionEvents])
 
+  // Parse query parameter and create a new session if there's a query
+  useEffect(() => {
+    const checkAndHandleQueryParam = async () => {
+      // Only proceed if we have a userId and haven't handled the query yet
+      if (userId && !initialBusinessQuerySent.current) {
+        // Get query parameter from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryParam = urlParams.get('query');
+        
+        if (queryParam) {
+          initialBusinessQuerySent.current = true; // Mark as handled immediately to prevent duplicate processing
+          
+          try {
+            // Create a new session in the backend
+            const newSessionResponse = await api.post(`/apps/${selectedApp}/users/${userId}/sessions`);
+            const newSessionId = newSessionResponse.data.id;
+            
+            // Update the current session state
+            setCurrentSession(newSessionId);
+            
+            // Wait a short time for the session to be fully initialized
+            setTimeout(async () => {
+              // Create the message object
+              const message = {
+                content: {
+                  parts: [{ text: queryParam }],
+                  role: "user"
+                }
+              };
+              
+              // Add the user message to the UI immediately
+              const userMessage = {
+                id: `user-${Date.now()}`,
+                author: 'user',
+                text: queryParam,
+                timestamp: Date.now() / 1000,
+                isStreaming: false
+              };
+              
+              setSessionEvents([userMessage]);
+              
+              // The sendMessage function from useSSE will handle creating the SSE connection
+              // and get the response from the LLM
+              await sendMessage(message);
+              
+              // Remove the query parameter from URL without refreshing the page
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, newUrl);
+            }, 500);
+          } catch (error) {
+            console.error('Error creating new session for query:', error);
+          }
+        }
+      }
+    };
+    
+    checkAndHandleQueryParam();
+  }, [userId, selectedApp, sendMessage]);
+
   const handleSessionChange = async (sessionId: string) => {
     setCurrentSession(sessionId)
     setSessionEvents([])
@@ -191,6 +267,15 @@ export default function AgentDevUI() {
   // Initialize session on component mount
   useEffect(() => {
     const initializeSession = async () => {
+      // Check if we have a query parameter - if so, we'll handle session creation in the other effect
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryParam = urlParams.get('query');
+      
+      // If there's a query parameter, skip the normal initialization
+      if (queryParam) {
+        return;
+      }
+      
       try {
         const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions`)
         const sessions = response.data
@@ -208,8 +293,10 @@ export default function AgentDevUI() {
       }
     }
 
-    initializeSession()
-  }, [userId]) // Only depends on userId now, not selectedApp
+    if (userId) {
+      initializeSession()
+    }
+  }, [userId, selectedApp]) // Only depends on userId and selectedApp
 
   // Clear processed events when changing sessions
   useEffect(() => {
@@ -218,85 +305,174 @@ export default function AgentDevUI() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col h-screen bg-background overflow-hidden">
-        {/* Top Navigation Bar */}
-        <header className="bg-card border-b border-border px-3 sm:px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 sm:gap-6">
-              <Link href="/" className="flex items-center gap-2">
-                <PlanetIcon />
-                <h1 className="text-lg sm:text-[1.3rem] font-normal tracking-[0.02em] text-foreground hidden sm:block">agent cosm</h1>
-              </Link>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <SessionManager
-                appName={selectedApp}
-                userId={userId}
-                currentSession={currentSession}
-                onSessionChange={handleSessionChange}
-                onNewSession={handleNewSession}
-              />
-              <ModeToggle />
+      <TooltipProvider delayDuration={300}>
+        <div className="flex flex-col h-screen overflow-hidden">
+          {/* Gradient background */}
+          <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 pointer-events-none" />
+          
+          {/* Subtle animated particles */}
+          <div className="fixed inset-0 opacity-30 pointer-events-none">
+            <div className="particles-container">
+              {/* Particles will be rendered via CSS */}
             </div>
           </div>
-        </header>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 flex h-full">
-              {/* Left Sidebar with Tabs */}
-              <div className="w-14 md:w-16 bg-secondary/30 border-r border-border flex-shrink-0">
-                <Tabs
-                  value={activeTab}
-                  onValueChange={setActiveTab}
-                  orientation="vertical"
-                  className="h-full"
-                >
-                  <TabsList className="flex flex-col w-full bg-transparent p-2 h-auto gap-2">
-                    <TabsTrigger
-                      value="events"
-                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
-                      title="Events"
-                    >
-                      <Folder className="w-5 h-5" />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="state"
-                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
-                      title="State"
-                    >
-                      <FileText className="w-5 h-5" />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="artifacts"
-                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
-                      title="Artifacts"
-                    >
-                      <Database className="w-5 h-5" />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="sessions"
-                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
-                      title="Sessions"
-                    >
-                      <GitBranch className="w-5 h-5" />
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="eval"
-                      className="w-full justify-center p-3 text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded-lg"
-                      title="Eval"
-                    >
-                      <TestTube className="w-5 h-5" />
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+          {/* Top Navigation Bar */}
+          <header className="relative bg-background/60 backdrop-blur-md border-b border-primary/10 px-3 sm:px-6 py-3 shadow-sm z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 sm:gap-6">
+                <Link href="/" className="flex items-center gap-2 group">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-md group-hover:blur-lg transition-all duration-500 opacity-70 group-hover:opacity-100 scale-75 group-hover:scale-110"></div>
+                    <PlanetIcon className="relative z-10 transition-transform duration-500 group-hover:rotate-[15deg]" />
+                  </div>
+                  <h1 className="text-lg sm:text-[1.3rem] font-normal tracking-[0.02em] text-foreground hidden sm:block">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80 font-medium">agent</span> cosm
+                  </h1>
+                </Link>
               </div>
+              <div className="flex items-center gap-2 sm:gap-4">
+                <SessionManager
+                  appName={selectedApp}
+                  userId={userId}
+                  currentSession={currentSession}
+                  onSessionChange={handleSessionChange}
+                  onNewSession={handleNewSession}
+                />
+                <ModeToggle />
+              </div>
+            </div>
+          </header>
 
-              {/* Main Content Area */}
-              <div className="flex-1 flex flex-col bg-transparent min-h-0">
-                {activeTab === 'events' ? (
-                  <>
-                    <div className="flex-1 overflow-hidden" ref={scrollContainerRef}>
+          {/* Main Content Area */}
+          <div className="flex-1 flex overflow-hidden relative">
+            {/* Left Sidebar with Tabs */}
+            <div className="w-14 md:w-16 bg-background/40 backdrop-blur-md border-r border-primary/10 flex-shrink-0 relative z-10 shadow-sm">
+              <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-secondary/5 opacity-50 pointer-events-none"></div>
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                orientation="vertical"
+                className="h-full relative z-10"
+              >
+                <TabsList className="flex flex-col w-full bg-transparent p-2 h-auto gap-2">
+                  {/* Events Tab with Tooltip */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value="events"
+                        className={cn(
+                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
+                          "text-muted-foreground hover:text-foreground",
+                          "hover:bg-primary/10 hover:shadow-sm",
+                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
+                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                        )}
+                      >
+                        <Folder className="w-5 h-5" />
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                      Events
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* State Tab with Tooltip */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value="state"
+                        className={cn(
+                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
+                          "text-muted-foreground hover:text-foreground",
+                          "hover:bg-primary/10 hover:shadow-sm",
+                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
+                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                        )}
+                      >
+                        <FileText className="w-5 h-5" />
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                      State
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Artifacts Tab with Tooltip */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value="artifacts"
+                        className={cn(
+                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
+                          "text-muted-foreground hover:text-foreground",
+                          "hover:bg-primary/10 hover:shadow-sm",
+                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
+                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                        )}
+                      >
+                        <Database className="w-5 h-5" />
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                      Artifacts
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Sessions Tab with Tooltip */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value="sessions"
+                        className={cn(
+                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
+                          "text-muted-foreground hover:text-foreground",
+                          "hover:bg-primary/10 hover:shadow-sm",
+                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
+                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                        )}
+                      >
+                        <GitBranch className="w-5 h-5" />
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                      Sessions
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Eval Tab with Tooltip */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value="eval"
+                        className={cn(
+                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
+                          "text-muted-foreground hover:text-foreground",
+                          "hover:bg-primary/10 hover:shadow-sm",
+                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
+                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                        )}
+                      >
+                        <TestTube className="w-5 h-5" />
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                      Evaluation
+                    </TooltipContent>
+                  </Tooltip>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-h-0 relative">
+              {/* Gradient overlay for content area */}
+              <div className="absolute inset-0 bg-gradient-to-br from-background/30 via-background/10 to-background/20 pointer-events-none"></div>
+              
+              {activeTab === 'events' ? (
+                <>
+                  <div className="flex-1 overflow-hidden" ref={scrollContainerRef}>
+                    <div className="h-full custom-scrollbar pb-4">
                       <EventsTab
                         ref={eventsTabRef as any}
                         appName={selectedApp}
@@ -307,15 +483,19 @@ export default function AgentDevUI() {
                         onEditMessage={handleEditMessage}
                       />
                     </div>
-                    <div className="flex-shrink-0 bg-transparent">
-                      <MessageInput
-                        onSendMessage={handleSendMessage}
-                        disabled={false}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 overflow-hidden">
+                  </div>
+                  
+                  <div className="flex-shrink-0 bg-transparent z-10">
+                    <MessageInput
+                      onSendMessage={handleSendMessage}
+                      disabled={false}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 overflow-hidden relative">
+                  <div className="absolute inset-0 bg-background/40 backdrop-blur-sm pointer-events-none"></div>
+                  <div className="relative z-10 h-full custom-scrollbar">
                     {activeTab === 'state' && (
                       <StateTab
                         appName={selectedApp}
@@ -344,11 +524,100 @@ export default function AgentDevUI() {
                       />
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
+          </div>
         </div>
-      </div>
+        
+        {/* Global styles for animations and custom elements */}
+        <style jsx global>{`
+          /* Custom scrollbar styling */
+          .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(var(--primary-rgb), 0.3) transparent;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(var(--primary-rgb), 0.2);
+            border-radius: 10px;
+            border: 2px solid transparent;
+          }
+          
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(var(--primary-rgb), 0.4);
+          }
+          
+          /* Floating animation for message bubbles */
+          @keyframes float {
+            0% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-8px);
+            }
+            100% {
+              transform: translateY(0px);
+            }
+          }
+          
+          /* Subtle particle animation */
+          .particles-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+          }
+          
+          .particles-container::before,
+          .particles-container::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+              radial-gradient(circle at 25% 25%, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px),
+              radial-gradient(circle at 75% 75%, rgba(var(--secondary-rgb), 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: 0 0;
+            animation: particlesDrift 60s linear infinite;
+            opacity: 0.5;
+          }
+          
+          .particles-container::after {
+            background-size: 30px 30px;
+            animation-duration: 90s;
+            animation-direction: reverse;
+            opacity: 0.3;
+          }
+          
+          @keyframes particlesDrift {
+            0% {
+              background-position: 0 0;
+            }
+            100% {
+              background-position: 100px 100px;
+            }
+          }
+          
+          /* Message bubble styling enhancements */
+          /* These styles will be applied to the EventsTab component's message bubbles */
+          :root {
+            --user-message-bg: rgba(var(--primary-rgb), 0.1);
+            --user-message-border: rgba(var(--primary-rgb), 0.2);
+            --assistant-message-bg: rgba(var(--background-rgb), 0.7);
+            --assistant-message-border: rgba(var(--border-rgb), 0.3);
+          }
+        `}</style>
+      </TooltipProvider>
     </QueryClientProvider>
   )
 }

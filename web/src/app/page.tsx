@@ -1,4 +1,4 @@
-"use client";
+'use client'
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -659,17 +659,14 @@ function MiniNavbar() {
 }
 
 export const Page = ({ className }: PageProps) => {
-  const [email, setEmail] = useState("");
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [businessQuery, setBusinessQuery] = useState("");
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleBusinessQuerySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
-      setShowWelcome(true);
-      // After 3 seconds, redirect to chat
-      setTimeout(() => {
-        window.location.href = '/chat';
-      }, 3000);
+    if (businessQuery) {
+      // Pass the business query as a URL parameter instead of using localStorage
+      const encodedQuery = encodeURIComponent(businessQuery);
+      window.location.href = `/chat?query=${encodedQuery}`;
     }
   };
 
@@ -701,84 +698,50 @@ export const Page = ({ className }: PageProps) => {
         {/* Main content container */}
         <div className="flex flex-1 flex-col justify-center items-center px-4">
           <div className="w-full max-w-sm">
-            <AnimatePresence mode="wait">
-              {!showWelcome ? (
-                <motion.div 
-                  key="email-step"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                  className="space-y-6 text-center"
-                >
-                  <div className="space-y-3">
-                    <h1 className="text-[2.9rem] font-bold leading-[1.1] tracking-tight text-white">agent cosm</h1>
-                    <h1 className="text-[1.2rem] text-white/70 font-light">Discover Your Next Market Launch Your Mini-Business.</h1>
-                    {/* <p className="text-[1.2rem] text-white/70 font-light">Let AI help you find unfulfilled needs and instantly scaffold a business concept.</p> */}
+            <motion.div 
+              key="business-query-step"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="space-y-6 text-center"
+            >
+              <div className="space-y-3">
+                <h1 className="text-[2.9rem] font-bold leading-[1.1] tracking-tight text-white">agent cosm</h1>
+                <h1 className="text-[1.2rem] text-white/70 font-light">Discover Your Next Market -{'>'} Launch Your Mini-Business.</h1>
+              </div>
+              
+              <div className="space-y-4">
+                <form onSubmit={handleBusinessQuerySubmit}>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="What business are you curious about?"
+                      value={businessQuery}
+                      onChange={(e) => setBusinessQuery(e.target.value)}
+                      className="w-full backdrop-blur-[1px] text-white border-1 border-white/10 rounded-full py-3 px-4 pr-12 focus:outline-none focus:border focus:border-white/30 text-center"
+                      required
+                    />
+                    <button 
+                      type="submit"
+                      className="absolute right-1.5 top-1.5 text-white w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors group overflow-hidden"
+                    >
+                      <span className="relative w-full h-full block overflow-hidden">
+                        <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 group-hover:translate-x-full">
+                          →
+                        </span>
+                        <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 -translate-x-full group-hover:translate-x-0">
+                          →
+                        </span>
+                      </span>
+                    </button>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <form onSubmit={handleEmailSubmit}>
-                      <div className="relative">
-                        <input 
-                          type="email" 
-                          placeholder="What business area are you curious about?"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full backdrop-blur-[1px] text-white border-1 border-white/10 rounded-full py-3 px-4 pr-12 focus:outline-none focus:border focus:border-white/30 text-center"
-                          required
-                        />
-                        <button 
-                          type="submit"
-                          className="absolute right-1.5 top-1.5 text-white w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors group overflow-hidden"
-                        >
-                          <span className="relative w-full h-full block overflow-hidden">
-                            <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 group-hover:translate-x-full">
-                              →
-                            </span>
-                            <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 -translate-x-full group-hover:translate-x-0">
-                              →
-                            </span>
-                          </span>
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                  
-                  <p className="text-xs text-white/40 pt-10">
-                  Let AI help you find unfulfilled needs and instantly scaffold a business concept.
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key="welcome-step"
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                  className="space-y-6 text-center"
-                >
-                  <div className="space-y-2">
-                    <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">Welcome, Explorer</h1>
-                    <p className="text-[1.25rem] text-white/50 font-light">Your journey begins...</p>
-                  </div>
-                  
-                  <motion.div 
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.5 }}
-                    className="py-10"
-                  >
-                    <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-white to-white/70 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-black" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </motion.div>
-                  
-                  <p className="text-white/70">Redirecting to the exploration portal...</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </form>
+              </div>
+              
+              <p className="text-xs text-white/40 pt-10">
+              Let AI help you find unfulfilled needs and instantly scaffold and validate a business concept.
+              </p>
+            </motion.div>
           </div>
         </div>
 
