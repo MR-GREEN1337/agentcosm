@@ -664,7 +664,6 @@ export const Page = ({ className }: PageProps) => {
   const handleBusinessQuerySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (businessQuery) {
-      // Pass the business query as a URL parameter instead of using localStorage
       const encodedQuery = encodeURIComponent(businessQuery);
       window.location.href = `/chat?query=${encodedQuery}`;
     }

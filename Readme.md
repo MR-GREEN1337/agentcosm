@@ -31,3 +31,6 @@ The magic happens in how these agents communicate across thresholds, passing ins
 I'm working on enhancing agentcosm's ability to navigate even more complex liminal spaces—the territories between validation and scaling. This includes more sophisticated opportunity assessment and business asset generation capabilities. The ultimate goal is to make entrepreneurship more accessible by eliminating the two most challenging thresholds: discovering what to build in the gaps between markets and crossing the void between idea and implementation.
 
 Like the most successful innovations that emerge from liminal spaces—Uber finding value in the territory between taxis and private transportation, or Airbnb discovering opportunity in the gap between hotels and private homes—agentcosm helps entrepreneurs navigate the fertile void where categories blur and billion-dollar opportunities await those bold enough to explore.
+
+
+## on page chat load, set id tab

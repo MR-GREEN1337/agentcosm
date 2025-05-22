@@ -334,7 +334,7 @@ export default function AgentDevUI() {
               <div className="flex items-center gap-2 sm:gap-4">
                 <SessionManager
                   appName={selectedApp}
-                  userId={userId}
+                  userId={userId as string}
                   currentSession={currentSession}
                   onSessionChange={handleSessionChange}
                   onNewSession={handleNewSession}
@@ -476,7 +476,7 @@ export default function AgentDevUI() {
                       <EventsTab
                         ref={eventsTabRef as any}
                         appName={selectedApp}
-                        userId={userId}
+                        userId={userId as string}
                         sessionId={currentSession}
                         events={sessionEvents}
                         onResendMessage={handleResendMessage}
@@ -499,28 +499,28 @@ export default function AgentDevUI() {
                     {activeTab === 'state' && (
                       <StateTab
                         appName={selectedApp}
-                        userId={userId}
+                        userId={userId as string}
                         sessionId={currentSession}
                       />
                     )}
                     {activeTab === 'artifacts' && (
                       <ArtifactsTab
                         appName={selectedApp}
-                        userId={userId}
+                        userId={userId as string}
                         sessionId={currentSession}
                       />
                     )}
                     {activeTab === 'sessions' && (
                       <SessionsTab
                         appName={selectedApp}
-                        userId={userId}
+                        userId={userId as string}
                         currentSession={currentSession}
                       />
                     )}
                     {activeTab === 'eval' && (
                       <EvalTab
                         appName={selectedApp}
-                        userId={userId}
+                        userId={userId as string}
                       />
                     )}
                   </div>
