@@ -162,17 +162,17 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
 
   return (
     <>
-      {/* Important: Removed sticky positioning and bottom margin to prevent overlap */}
-      <div className="w-full px-2 sm:px-4 py-2 sm:py-4 bg-transparent pointer-events-none">
+      {/* Container with transparent background - only input bar is visible */}
+      <div className="w-full px-2 sm:px-4 py-2 sm:py-4 pointer-events-none">
         <div className="max-w-3xl mx-auto">
           <div 
             className={cn(
-              "relative bg-background/40 backdrop-blur-xl rounded-2xl",
-              "border border-primary/10 shadow-lg pointer-events-auto",
+              "relative bg-white/90 backdrop-blur-xl rounded-2xl",
+              "border border-gray-200/50 shadow-lg pointer-events-auto",
               "transition-all duration-300 ease-in-out",
-              "hover:bg-background/50 hover:border-primary/20",
-              "hover:shadow-xl hover:shadow-primary/5",
-              isInputFocused ? "bg-background/60 border-primary/30 shadow-xl shadow-primary/10" : "",
+              "hover:bg-white/95 hover:border-gray-300/50",
+              "hover:shadow-xl hover:shadow-black/5",
+              isInputFocused ? "bg-white/95 border-blue-500/30 shadow-xl shadow-blue-500/10" : "",
               "overflow-hidden"
             )}
             style={{
@@ -180,12 +180,12 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
               animation: "float 6s ease-in-out infinite",
             }}
           >
-            {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5 opacity-30 pointer-events-none"></div>
+            {/* Subtle glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 opacity-30 pointer-events-none"></div>
             
             {/* Attached Image Preview */}
             {attachedImage && (
-              <div className="p-3 border-b border-primary/10 bg-background/30">
+              <div className="p-3 border-b border-gray-200/30 bg-white/20">
                 <div className="relative inline-block">
                   <img 
                     src={attachedImage} 
@@ -221,10 +221,10 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                     "resize-none",
                     "bg-transparent",
                     "border-none",
-                    "text-foreground text-sm",
+                    "text-gray-900 text-sm",
                     "focus:outline-none",
                     "focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "placeholder:text-muted-foreground/70 placeholder:text-sm",
+                    "placeholder:text-gray-500 placeholder:text-sm",
                     "min-h-[44px]",
                     "transition-all duration-200"
                   )}
@@ -240,9 +240,9 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   type="button"
                   className={cn(
                     "p-2 rounded-xl transition-colors",
-                    "text-muted-foreground/70 hover:text-foreground",
-                    "hover:bg-primary/10 active:bg-primary/15",
-                    "focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    "text-gray-500 hover:text-gray-700",
+                    "hover:bg-blue-500/10 active:bg-blue-500/15",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                   )}
                   disabled={disabled || isSending}
                   aria-label="Attach file"
@@ -253,9 +253,9 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   type="button"
                   className={cn(
                     "p-2 rounded-xl transition-colors",
-                    "text-muted-foreground/70 hover:text-foreground",
-                    "hover:bg-primary/10 active:bg-primary/15",
-                    "focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    "text-gray-500 hover:text-gray-700",
+                    "hover:bg-blue-500/10 active:bg-blue-500/15",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                   )}
                   disabled={disabled || isSending}
                   aria-label="Record audio"
@@ -267,9 +267,9 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   onClick={() => setShowCamera(true)}
                   className={cn(
                     "p-2 rounded-xl transition-colors hidden sm:flex",
-                    "text-muted-foreground/70 hover:text-foreground",
-                    "hover:bg-primary/10 active:bg-primary/15",
-                    "focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    "text-gray-500 hover:text-gray-700",
+                    "hover:bg-blue-500/10 active:bg-blue-500/15",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                   )}
                   disabled={disabled || isSending}
                   aria-label="Take photo"
@@ -282,10 +282,10 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   disabled={(!message.trim() && !attachedImage) || disabled || isSending}
                   className={cn(
                     "p-2 rounded-xl transition-all flex items-center justify-center ml-1",
-                    "focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                     (message.trim() || attachedImage) && !disabled && !isSending
-                      ? "bg-gradient-to-r from-primary to-primary/90 text-white shadow-md hover:shadow-lg hover:opacity-95 active:opacity-90"
-                      : "bg-background/50 text-muted-foreground/50 cursor-not-allowed"
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md hover:shadow-lg hover:opacity-95 active:opacity-90"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
                   )}
                   aria-label="Send message"
                 >
@@ -303,9 +303,9 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
 
       {/* Camera Dialog */}
       <Dialog open={showCamera} onOpenChange={setShowCamera}>
-        <DialogContent className="sm:max-w-[600px] bg-background/95 backdrop-blur-xl border-primary/10 shadow-xl">
+        <DialogContent className="sm:max-w-[600px] bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-center text-lg font-medium">Take a Photo</DialogTitle>
+            <DialogTitle className="text-center text-lg font-medium text-gray-900">Take a Photo</DialogTitle>
           </DialogHeader>
           <div className="mt-4">
             {!capturedImage ? (
@@ -323,7 +323,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                 <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
                   <Button
                     onClick={captureImage}
-                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-primary hover:bg-primary/90 rounded-xl px-5 py-2 text-sm font-medium shadow-lg"
+                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-500 hover:bg-blue-600 rounded-xl px-5 py-2 text-sm font-medium shadow-lg"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     Capture
@@ -343,13 +343,13 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   <Button
                     onClick={retakeImage}
                     variant="outline"
-                    className="rounded-xl border-primary/20 hover:bg-primary/5 px-5"
+                    className="rounded-xl border-gray-300 hover:bg-gray-50 px-5"
                   >
                     Retake
                   </Button>
                   <Button
                     onClick={confirmImage}
-                    className="bg-primary hover:bg-primary/90 rounded-xl px-5 shadow-md"
+                    className="bg-blue-500 hover:bg-blue-600 rounded-xl px-5 shadow-md"
                   >
                     Use Photo
                   </Button>
