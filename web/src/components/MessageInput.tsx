@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Textarea } from '@/components/ui/textarea'
-import { Send, Paperclip, Mic, Camera, X } from 'lucide-react'
+import { Send, Paperclip, Mic, MicOff, Camera, X, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Webcam from 'react-webcam'
 import {
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 interface MessageInputProps {
   onSendMessage: (message: any) => void
   disabled?: boolean
+  lastAiMessage?: string
 }
 
 interface UseAutoResizeTextareaProps {
@@ -72,7 +73,7 @@ function useAutoResizeTextarea({
   return { textareaRef, adjustHeight }
 }
 
-export function MessageInput({ onSendMessage, disabled = false }: MessageInputProps) {
+export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
@@ -80,11 +81,125 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
   const [attachedImage, setAttachedImage] = useState<string | null>(null)
   const [isInputFocused, setIsInputFocused] = useState(false)
   
+  // Audio states
+  const [isListening, setIsListening] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [transcript, setTranscript] = useState('')
+  
   const webcamRef = useRef<Webcam>(null)
+  const recognitionRef = useRef<any>(null)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 44,
     maxHeight: 160,
   })
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition
+      recognitionRef.current = new SpeechRecognition()
+      
+      recognitionRef.current.continuous = false
+      recognitionRef.current.interimResults = true
+      recognitionRef.current.lang = 'en-US'
+      
+      let finalTranscriptRef = '' // Local variable to track final transcript
+      
+      recognitionRef.current.onstart = () => {
+        console.log('Speech recognition started')
+        setIsListening(true)
+        finalTranscriptRef = '' // Reset on start
+      }
+      
+      recognitionRef.current.onresult = (event: any) => {
+        let finalTranscript = ''
+        let interimTranscript = ''
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript
+          } else {
+            interimTranscript += transcript
+          }
+        }
+        
+        // Update the ref with final transcript
+        if (finalTranscript) {
+          finalTranscriptRef += finalTranscript
+        }
+        
+        // Only update transcript state for UI display
+        const fullTranscript = finalTranscriptRef + interimTranscript
+        setTranscript(fullTranscript)
+        
+        console.log('Speech result:', { finalTranscript, interimTranscript, fullTranscript, finalTranscriptRef })
+      }
+      
+      recognitionRef.current.onend = () => {
+        console.log('Speech recognition ended')
+        setIsListening(false)
+        
+        // Send the message using the ref value
+        if (finalTranscriptRef.trim()) {
+          console.log('Sending voice message:', finalTranscriptRef.trim())
+          handleSendVoiceMessage(finalTranscriptRef.trim())
+        }
+      }
+      
+      recognitionRef.current.onerror = (event: any) => {
+        // Don't log "aborted" errors as they're normal when stopping recognition
+        if (event.error !== 'aborted') {
+          console.error('Speech recognition error:', event.error)
+        }
+        setIsListening(false)
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current && isListening) {
+        recognitionRef.current.abort()
+      }
+      // Clean up speech synthesis
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel()
+      }
+    }
+  }, []) // Remove transcript dependency to avoid stale closures
+
+  // Text-to-speech for AI responses
+  useEffect(() => {
+    if (lastAiMessage && !isMuted && 'speechSynthesis' in window) {
+      console.log('Speaking AI response:', lastAiMessage)
+      
+      // Cancel any ongoing speech
+      speechSynthesis.cancel()
+      
+      const utterance = new SpeechSynthesisUtterance(lastAiMessage)
+      utterance.rate = 0.9
+      utterance.pitch = 1.0
+      utterance.volume = 0.8
+      
+      utterance.onstart = () => {
+        console.log('TTS started')
+        setIsPlaying(true)
+      }
+      utterance.onend = () => {
+        console.log('TTS ended')
+        setIsPlaying(false)
+      }
+      utterance.onerror = (event) => {
+        console.error('TTS error:', event)
+        setIsPlaying(false)
+      }
+      
+      // Small delay to ensure UI updates
+      setTimeout(() => {
+        speechSynthesis.speak(utterance)
+      }, 100)
+    }
+  }, [lastAiMessage, isMuted])
 
   const handleSend = async () => {
     if ((message.trim() || attachedImage) && !disabled && !isSending) {
@@ -100,12 +215,10 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
       }
       
       if (attachedImage) {
-        // Convert base64 to a format the backend expects
-        // Assuming backend accepts inline_data format
         parts.push({
           inline_data: {
             mime_type: "image/jpeg",
-            data: attachedImage.split(',')[1] // Remove data:image/jpeg;base64, prefix
+            data: attachedImage.split(',')[1]
           }
         })
       }
@@ -120,6 +233,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
       try {
         await onSendMessage(messagePayload)
         setMessage('')
+        setTranscript('')
         setAttachedImage(null)
         adjustHeight(true)
       } catch (error) {
@@ -130,10 +244,69 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
     }
   }
 
+  const handleSendVoiceMessage = async (voiceText: string) => {
+    if (!voiceText.trim() || disabled || isSending) {
+      console.log('Voice message not sent:', { voiceText: voiceText.trim(), disabled, isSending })
+      return
+    }
+    
+    console.log('Sending voice message:', voiceText.trim())
+    setIsSending(true)
+    
+    const messagePayload = {
+      content: {
+        parts: [{ text: voiceText.trim() }],
+        role: "user"
+      }
+    }
+    
+    try {
+      await onSendMessage(messagePayload)
+      setMessage('')
+      setTranscript('')
+      adjustHeight(true)
+    } catch (error) {
+      console.error('Error sending voice message:', error)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
+    }
+  }
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert('Speech recognition not supported in this browser')
+      return
+    }
+    
+    if (isListening) {
+      console.log('Stopping speech recognition')
+      // Use stop() instead of abort() for graceful shutdown
+      recognitionRef.current.stop()
+    } else {
+      console.log('Starting speech recognition')
+      setTranscript('')
+      setMessage('') // Clear textarea when starting to listen
+      try {
+        recognitionRef.current.start()
+      } catch (error) {
+        console.error('Failed to start speech recognition:', error)
+        setIsListening(false)
+      }
+    }
+  }
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+    if (isPlaying) {
+      speechSynthesis.cancel()
+      setIsPlaying(false)
     }
   }
 
@@ -162,30 +335,61 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
 
   return (
     <>
-      {/* Container with no background - completely transparent */}
-      <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
-        <div className="max-w-3xl mx-auto">
+      {/* Container - completely transparent, no background interference */}
+      <div className="w-full px-2 sm:px-4 py-2 sm:py-4 pointer-events-none">
+        <div className="max-w-3xl mx-auto pointer-events-none">
           <div 
             className={cn(
-              "relative bg-white/90 backdrop-blur-xl rounded-2xl",
-              "border border-gray-200/50 shadow-lg",
+              "relative backdrop-blur-xl rounded-2xl pointer-events-auto",
+              "border shadow-lg",
               "transition-all duration-300 ease-in-out",
+              "overflow-hidden",
+              // Light mode styling
+              "bg-white/90 border-gray-200/50 text-gray-900",
               "hover:bg-white/95 hover:border-gray-300/50",
               "hover:shadow-xl hover:shadow-black/5",
-              isInputFocused ? "bg-white/95 border-blue-500/30 shadow-xl shadow-blue-500/10" : "",
-              "overflow-hidden"
+              // Dark mode styling
+              "dark:bg-gray-900/90 dark:border-gray-700/50 dark:text-white",
+              "dark:hover:bg-gray-900/95 dark:hover:border-gray-600/60",
+              "dark:hover:shadow-xl dark:hover:shadow-black/20",
+              // Focus states
+              isInputFocused ? "bg-white/95 border-blue-500/30 shadow-xl shadow-blue-500/10 dark:bg-gray-900/95 dark:border-blue-500/40 dark:shadow-blue-500/20" : "",
+              // Listening states
+              isListening ? "border-red-500/50 shadow-xl shadow-red-500/20 bg-red-50/90 dark:border-red-500/60 dark:shadow-red-500/30 dark:bg-gray-800/95" : "",
             )}
             style={{
               transform: "translateY(0)",
               animation: "float 6s ease-in-out infinite",
             }}
           >
+            {/* Voice indicator */}
+            {isListening && (
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-pink-500/10 to-red-500/10 dark:from-red-500/20 dark:via-pink-500/20 dark:to-red-500/20 pointer-events-none">
+                <div className="absolute inset-0 animate-pulse bg-red-500/5 dark:bg-red-500/10"></div>
+              </div>
+            )}
+
             {/* Subtle glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 opacity-30 pointer-events-none"></div>
+            <div className={cn(
+              "absolute inset-0 pointer-events-none opacity-30",
+              isListening 
+                ? "bg-gradient-to-r from-red-500/15 via-pink-500/15 to-red-500/15 dark:from-red-500/25 dark:via-pink-500/25 dark:to-red-500/25" 
+                : "bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10"
+            )}></div>
             
+            {/* Voice transcript indicator */}
+            {isListening && transcript && (
+              <div className="p-3 border-b border-gray-200/30 bg-blue-50/20 dark:border-gray-600/30 dark:bg-gray-800/40">
+                <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+                  <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full animate-pulse"></div>
+                  <span>Listening: {transcript}</span>
+                </div>
+              </div>
+            )}
+
             {/* Attached Image Preview */}
             {attachedImage && (
-              <div className="p-3 border-b border-gray-200/30 bg-white/20">
+              <div className="p-3 border-b border-gray-200/30 bg-white/20 dark:border-gray-600/30 dark:bg-gray-800/40">
                 <div className="relative inline-block">
                   <img 
                     src={attachedImage} 
@@ -215,16 +419,16 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   onKeyDown={handleKeyDown}
                   onFocus={() => setIsInputFocused(true)}
                   onBlur={() => setIsInputFocused(false)}
-                  placeholder="Type a message..."
+                  placeholder={isListening ? "🎙️ Listening... (speak now)" : "Type a message or click mic to speak..."}
                   className={cn(
                     "w-full px-4 py-3.5",
                     "resize-none",
                     "bg-transparent",
                     "border-none",
-                    "text-gray-900 text-sm",
+                    "text-gray-900 dark:text-white text-sm",
                     "focus:outline-none",
                     "focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "placeholder:text-gray-500 placeholder:text-sm",
+                    "placeholder:text-gray-500 dark:placeholder:text-gray-400 placeholder:text-sm",
                     "min-h-[44px]",
                     "transition-all duration-200"
                   )}
@@ -240,36 +444,64 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   type="button"
                   className={cn(
                     "p-2 rounded-xl transition-colors",
-                    "text-gray-500 hover:text-gray-700",
-                    "hover:bg-blue-500/10 active:bg-blue-500/15",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                    "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
+                    "hover:bg-blue-500/10 active:bg-blue-500/15 dark:hover:bg-blue-500/20 dark:active:bg-blue-500/25",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30",
                   )}
                   disabled={disabled || isSending}
                   aria-label="Attach file"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
+
+                {/* Voice Control Button */}
                 <button
                   type="button"
+                  onClick={toggleListening}
                   className={cn(
-                    "p-2 rounded-xl transition-colors",
-                    "text-gray-500 hover:text-gray-700",
-                    "hover:bg-blue-500/10 active:bg-blue-500/15",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                    "p-2 rounded-xl transition-all transform hover:scale-105",
+                    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900",
+                    isListening 
+                      ? "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500/20 dark:focus:ring-red-500/30 animate-pulse shadow-lg shadow-red-500/25" 
+                      : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-green-500/10 active:bg-green-500/15 dark:hover:bg-green-500/20 dark:active:bg-green-500/25 focus:ring-green-500/20 dark:focus:ring-green-500/30"
                   )}
                   disabled={disabled || isSending}
-                  aria-label="Record audio"
+                  aria-label={isListening ? "Stop recording" : "Start voice input"}
                 >
-                  <Mic className="w-4 h-4" />
+                  {isListening ? (
+                    <MicOff className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
                 </button>
+
+                {/* Mute Toggle for TTS */}
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className={cn(
+                    "p-2 rounded-xl transition-colors hidden sm:flex",
+                    isMuted 
+                      ? "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-500/10 dark:hover:bg-gray-500/20" 
+                      : isPlaying
+                        ? "text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-500/10 dark:hover:bg-green-500/20 animate-pulse"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-blue-500/10 dark:hover:bg-blue-500/20",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30",
+                  )}
+                  disabled={disabled || isSending}
+                  aria-label={isMuted ? "Unmute responses" : "Mute responses"}
+                >
+                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setShowCamera(true)}
                   className={cn(
                     "p-2 rounded-xl transition-colors hidden sm:flex",
-                    "text-gray-500 hover:text-gray-700",
-                    "hover:bg-blue-500/10 active:bg-blue-500/15",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                    "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
+                    "hover:bg-blue-500/10 active:bg-blue-500/15 dark:hover:bg-blue-500/20 dark:active:bg-blue-500/25",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30",
                   )}
                   disabled={disabled || isSending}
                   aria-label="Take photo"
@@ -282,10 +514,10 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
                   disabled={(!message.trim() && !attachedImage) || disabled || isSending}
                   className={cn(
                     "p-2 rounded-xl transition-all flex items-center justify-center ml-1",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30",
                     (message.trim() || attachedImage) && !disabled && !isSending
                       ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md hover:shadow-lg hover:opacity-95 active:opacity-90"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed"
                   )}
                   aria-label="Send message"
                 >
@@ -360,7 +592,7 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
         </DialogContent>
       </Dialog>
 
-      {/* CSS for floating animation */}
+      {/* CSS for floating animation and voice indicators */}
       <style jsx global>{`
         @keyframes float {
           0% {
@@ -371,6 +603,18 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
           }
           100% {
             transform: translateY(0px);
+          }
+        }
+        
+        @keyframes voicePulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
           }
         }
       `}</style>

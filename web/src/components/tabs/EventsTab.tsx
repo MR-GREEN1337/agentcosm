@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-
 import { Textarea } from '@/components/ui/textarea'
 
 interface EventsTabProps {
@@ -20,6 +19,52 @@ interface EventsTabProps {
   events: any[]
   onResendMessage?: (text: string) => void
   onEditMessage?: (messageId: string, newText: string) => void
+}
+
+// Simple markdown parser for basic formatting
+const parseMarkdown = (text: string) => {
+  if (!text) return text;
+  
+  return text
+    // Bold text (**text** or __text__)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    
+    // Italic text (*text* or _text_)
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    
+    // Code inline (`code`)
+    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+    
+    // Headers (# ## ###)
+    .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
+    
+    // Code blocks (```code```)
+    .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2"><code class="text-sm">$1</code></pre>')
+    
+    // Lists
+    .replace(/^\* (.*$)/gim, '<li class="ml-4">• $1</li>')
+    .replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
+    .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
+    
+    // Line breaks
+    .replace(/\n\n/g, '</p><p class="mb-2">')
+    .replace(/\n/g, '<br />')
+}
+
+// Component to render markdown text
+const MarkdownText = ({ text, className }: { text: string; className?: string }) => {
+  const parsedText = parseMarkdown(text)
+  
+  return (
+    <div 
+      className={className}
+      dangerouslySetInnerHTML={{ __html: `<p class="mb-2">${parsedText}</p>` }}
+    />
+  )
 }
 
 export function EventsTab({ 
@@ -208,12 +253,15 @@ export function EventsTab({
                     ) : (
                       <>
                         {messageText && (
-                          <p className="whitespace-pre-wrap break-words">
-                            {messageText}
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            <MarkdownText 
+                              text={messageText}
+                              className="whitespace-pre-wrap break-words"
+                            />
                             {event.isStreaming && (
                               <span className="inline-block w-1 h-4 bg-current opacity-70 animate-pulse ml-1 align-middle" />
                             )}
-                          </p>
+                          </div>
                         )}
                         
                         {/* Display attached images */}

@@ -38,6 +38,7 @@ export default function AgentDevUI() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const eventsTabRef = useRef<{ scrollToBottom: () => void }>(null)
   const initialBusinessQuerySent = useRef<boolean>(false)
+  const [lastAiResponse, setLastAiResponse] = useState('');
 
   const { sendMessage, events: sseEvents, isLoading } = useSSE(
     selectedApp && currentSession && userId
@@ -136,6 +137,15 @@ export default function AgentDevUI() {
     }
   }, [sessionEvents])
 
+  useEffect(() => {
+    if (sessionEvents.length > 0) {
+      const lastEvent = sessionEvents[sessionEvents.length - 1];
+      if (lastEvent.author !== 'user' && lastEvent.text && !lastEvent.isStreaming) {
+        setLastAiResponse(lastEvent.text);
+      }
+    }
+  }, [sessionEvents]);
+
   // Parse query parameter and create a new session if there's a query
   useEffect(() => {
     const checkAndHandleQueryParam = async () => {
@@ -177,9 +187,11 @@ export default function AgentDevUI() {
               
               setSessionEvents([userMessage]);
               
-              // The sendMessage function from useSSE will handle creating the SSE connection
-              // and get the response from the LLM
-              await sendMessage(message);
+              // IMPORTANT: Call the actual sendMessage function to trigger AI response
+              // This is what was missing - you need to call sendMessage from useSSE
+              if (sendMessage) {
+                await sendMessage(message);
+              }
               
               // Remove the query parameter from URL without refreshing the page
               const newUrl = window.location.pathname;
@@ -193,8 +205,8 @@ export default function AgentDevUI() {
     };
     
     checkAndHandleQueryParam();
-  }, [userId, selectedApp, sendMessage]);
-
+  }, [userId, selectedApp, sendMessage]); // Add sendMessage to dependencies
+  
   const handleSessionChange = async (sessionId: string) => {
     setCurrentSession(sessionId)
     setSessionEvents([])
@@ -489,6 +501,7 @@ export default function AgentDevUI() {
                     <MessageInput
                       onSendMessage={handleSendMessage}
                       disabled={false}
+                      lastAiMessage={lastAiResponse}
                     />
                   </div>
                 </>
