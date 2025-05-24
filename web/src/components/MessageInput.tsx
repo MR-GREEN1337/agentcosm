@@ -162,13 +162,13 @@ export function MessageInput({ onSendMessage, disabled = false }: MessageInputPr
 
   return (
     <>
-      {/* Container with transparent background - only input bar is visible */}
-      <div className="w-full px-2 sm:px-4 py-2 sm:py-4 pointer-events-none">
+      {/* Container with no background - completely transparent */}
+      <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
         <div className="max-w-3xl mx-auto">
           <div 
             className={cn(
               "relative bg-white/90 backdrop-blur-xl rounded-2xl",
-              "border border-gray-200/50 shadow-lg pointer-events-auto",
+              "border border-gray-200/50 shadow-lg",
               "transition-all duration-300 ease-in-out",
               "hover:bg-white/95 hover:border-gray-300/50",
               "hover:shadow-xl hover:shadow-black/5",
