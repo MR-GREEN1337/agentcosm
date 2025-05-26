@@ -8,6 +8,7 @@ dependencies = [
     "annotated-types==0.7.0",
     "anyio==4.9.0",
     "authlib==1.5.2",
+    "bs4>=0.0.2",
     "cachetools==5.5.2",
     "certifi==2025.4.26",
     "cffi==1.17.1",
