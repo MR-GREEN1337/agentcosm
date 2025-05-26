@@ -17,7 +17,7 @@ from ..tools.trend_tracker import (
     analyze_search_trends, track_industry_momentum,
     identify_growth_patterns
 )
-from ..prompts.analysis_prompts import MARKET_ANALYZER_PROMPT
+from ..prompts import MARKET_ANALYZER_PROMPT
 
 def comprehensive_market_validation(opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
     """

@@ -1,0 +1,3 @@
+BRAND_CREATOR_PROMPT="""hello"""
+COPY_WRITER_PROMPT="""hello"""
+LANDING_BUILDER_PROMPT="""hello"""
