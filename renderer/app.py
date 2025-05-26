@@ -13,6 +13,7 @@ import json
 from datetime import datetime
 from jinja2 import Template, Environment, BaseLoader
 import re
+from settings import settings
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -24,7 +25,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
