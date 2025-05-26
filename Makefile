@@ -1,10 +1,14 @@
 .PHONY: backend
 backend:
-	cd backend && adk api_server --allow_origins "http://localhost:3000" --allow_origins "ws://localhost:3000"
+	cd backend && adk api_server --allow_origins "http://localhost:3000"
 
 .PHONY: web
 web:
 	cd web && npm run dev
+
+.PHONY: renderer
+renderer:
+	cd renderer && uvicorn app.main:app --host 0.0.0.0 --port 8001 --allow_origins "http://localhost:8000" --reload
 
 .PHONY: deploy
 deploy:
@@ -23,6 +27,8 @@ stop:
 	@echo "Stopping all services"
 	@echo "Stopping backend"
 	-pkill -f 'uvicorn.*8000'
+	@echo "Stopping renderer"
+	-pkill -f 'uvicorn.*8001'
 
 	@echo "Stopping web"
 	-pkill -f 'node.*web'
