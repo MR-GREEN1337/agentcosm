@@ -94,6 +94,9 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
     maxHeight: 160,
   })
 
+  // Store the final transcript in a ref to avoid stale closures
+  const finalTranscriptRef = useRef('')
+
   // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -104,12 +107,10 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
       recognitionRef.current.interimResults = true
       recognitionRef.current.lang = 'en-US'
       
-      let finalTranscriptRef = '' // Local variable to track final transcript
-      
       recognitionRef.current.onstart = () => {
         console.log('Speech recognition started')
         setIsListening(true)
-        finalTranscriptRef = '' // Reset on start
+        finalTranscriptRef.current = '' // Reset on start
       }
       
       recognitionRef.current.onresult = (event: any) => {
@@ -127,24 +128,31 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
         
         // Update the ref with final transcript
         if (finalTranscript) {
-          finalTranscriptRef += finalTranscript
+          finalTranscriptRef.current += finalTranscript
         }
         
         // Only update transcript state for UI display
-        const fullTranscript = finalTranscriptRef + interimTranscript
+        const fullTranscript = finalTranscriptRef.current + interimTranscript
         setTranscript(fullTranscript)
         
-        console.log('Speech result:', { finalTranscript, interimTranscript, fullTranscript, finalTranscriptRef })
+        console.log('Speech result:', { finalTranscript, interimTranscript, fullTranscript, finalFromRef: finalTranscriptRef.current })
       }
       
       recognitionRef.current.onend = () => {
-        console.log('Speech recognition ended')
+        console.log('Speech recognition ended, final transcript:', finalTranscriptRef.current)
         setIsListening(false)
         
-        // Send the message using the ref value
-        if (finalTranscriptRef.trim()) {
-          console.log('Sending voice message:', finalTranscriptRef.trim())
-          handleSendVoiceMessage(finalTranscriptRef.trim())
+        // Clear the transcript display
+        setTranscript('')
+        
+        // Send the message using the ref value - do this after state updates
+        const voiceText = finalTranscriptRef.current.trim()
+        if (voiceText) {
+          console.log('Triggering voice message send:', voiceText)
+          // Call handleSend directly with the voice text
+          setTimeout(() => {
+            handleSend(voiceText)
+          }, 100) // Small delay to ensure state updates are complete
         }
       }
       
@@ -154,6 +162,8 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
           console.error('Speech recognition error:', event.error)
         }
         setIsListening(false)
+        setTranscript('')
+        finalTranscriptRef.current = ''
       }
     }
 
@@ -166,7 +176,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
         speechSynthesis.cancel()
       }
     }
-  }, []) // Remove transcript dependency to avoid stale closures
+  }, []) // Keep empty dependency array
 
   // Text-to-speech for AI responses
   useEffect(() => {
@@ -201,16 +211,18 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
     }
   }, [lastAiMessage, isMuted])
 
-  const handleSend = async () => {
-    if ((message.trim() || attachedImage) && !disabled && !isSending) {
+  const handleSend = async (textToSend?: string) => {
+    const messageText = textToSend || message.trim()
+    
+    if ((messageText || attachedImage) && !disabled && !isSending) {
       setIsSending(true)
       
       // Create content structure that matches backend format
       const parts: any[] = []
       
-      if (message.trim()) {
+      if (messageText) {
         parts.push({
-          text: message.trim()
+          text: messageText
         })
       }
       
@@ -232,10 +244,13 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
       
       try {
         await onSendMessage(messagePayload)
-        setMessage('')
-        setTranscript('')
+        
+        // Only clear the manual message input, not voice transcript
+        if (!textToSend) {
+          setMessage('')
+          adjustHeight(true)
+        }
         setAttachedImage(null)
-        adjustHeight(true)
       } catch (error) {
         console.error('Error sending message:', error)
       } finally {
@@ -244,32 +259,16 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
     }
   }
 
+  // Separate function for voice messages that uses the main handleSend
   const handleSendVoiceMessage = async (voiceText: string) => {
     if (!voiceText.trim() || disabled || isSending) {
       console.log('Voice message not sent:', { voiceText: voiceText.trim(), disabled, isSending })
       return
     }
     
-    console.log('Sending voice message:', voiceText.trim())
-    setIsSending(true)
-    
-    const messagePayload = {
-      content: {
-        parts: [{ text: voiceText.trim() }],
-        role: "user"
-      }
-    }
-    
-    try {
-      await onSendMessage(messagePayload)
-      setMessage('')
-      setTranscript('')
-      adjustHeight(true)
-    } catch (error) {
-      console.error('Error sending voice message:', error)
-    } finally {
-      setIsSending(false)
-    }
+    console.log('Processing voice message through main send handler:', voiceText.trim())
+    // Use the main handleSend function to ensure consistent behavior
+    await handleSend(voiceText.trim())
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -510,7 +509,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
                 </button>
                 <button
                   type="button"
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={(!message.trim() && !attachedImage) || disabled || isSending}
                   className={cn(
                     "p-2 rounded-xl transition-all flex items-center justify-center ml-1",
