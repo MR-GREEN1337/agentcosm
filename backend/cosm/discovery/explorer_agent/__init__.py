@@ -5,12 +5,10 @@ Market Explorer Agent - Discovers real market signals from social platforms and 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, load_web_page
 from typing import Dict, List, Any
-import json
-import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from ...tools.web_scraper import scrape_reddit_discussions, scrape_twitter_complaints, extract_pain_points
-from ...tools.data_processor import process_social_signals, identify_patterns, monitor_social_sentiment
+from ...tools.data_processor import process_social_signals, identify_patterns
 
 EXPLORER_AGENT_PROMPT = """
 You are a Market Signal Explorer specializing in discovering genuine pain points and unmet needs in liminal market spaces.

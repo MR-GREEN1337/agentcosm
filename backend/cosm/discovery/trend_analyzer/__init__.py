@@ -5,9 +5,7 @@ Trend Analyzer Agent - Identifies emerging market trends and patterns
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, load_web_page
 from typing import Dict, List, Any
-import json
 import re
-from datetime import datetime, timedelta
 
 TREND_ANALYZER_PROMPT = """
 You are an expert trend analyst specializing in identifying emerging market opportunities and patterns.

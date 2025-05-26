@@ -4,10 +4,9 @@ Provides social media monitoring and signal processing capabilities
 """
 
 import re
-from typing import List, Dict, Any, Optional, Set
-from datetime import datetime, timedelta
+from typing import List, Dict, Any
+from datetime import datetime
 from collections import defaultdict, Counter
-from urllib.parse import urlparse
 
 # =============================================================================
 # SOCIAL MONITOR TOOLS

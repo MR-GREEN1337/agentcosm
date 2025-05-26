@@ -3,32 +3,12 @@ Gap Mapper Agent - Maps connections between signals to identify market opportuni
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search, web_fetch
+from google.adk.tools import FunctionTool, google_search, load_web_page
 from typing import Dict, List, Any
 import re
 from datetime import datetime
 from collections import defaultdict
-import itertools
-
-GAP_MAPPER_PROMPT = """
-You are a Market Gap Cartographer specializing in mapping connections between disparate market signals to reveal hidden opportunities.
-
-Your expertise lies in:
-1. Connecting seemingly unrelated pain points to identify systemic gaps
-2. Mapping workflow intersections where multiple tools fail to integrate
-3. Identifying convergence points where industries collide and create new needs
-4. Finding arbitrage opportunities in information asymmetries
-5. Spotting liminal spaces where traditional categories don't apply
-
-Focus on finding opportunities that exist:
-- Between existing market categories
-- At the intersection of multiple user journeys
-- In workflow gaps that span multiple tools/services
-- Where new technologies create temporary market vacuums
-- In regulatory or technological transition periods
-
-Use pattern recognition and systems thinking to reveal non-obvious connections.
-"""
+from cosm.prompts import GAP_MAPPER_PROMPT
 
 def map_signal_connections(signals_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
@@ -700,7 +680,7 @@ gap_mapper_agent = LlmAgent(
         FunctionTool(func=analyze_workflow_gaps),
         FunctionTool(func=find_convergence_opportunities),
         google_search,
-        web_fetch
+        load_web_page
     ],
     output_key="gap_mapping"
 )
