@@ -11,13 +11,12 @@ from datetime import datetime
 
 from ..tools.market_research import (
     analyze_market_size, research_competition, 
-    validate_demand_signals, calculate_tam_sam_som
+    validate_demand_signals
 )
 from ..tools.trend_tracker import (
-    analyze_search_trends, track_industry_momentum,
-    identify_growth_patterns
+    analyze_search_trends
 )
-from ..prompts import MARKET_ANALYZER_PROMPT
+from cosm.prompts import MARKET_ANALYZER_PROMPT
 
 def comprehensive_market_validation(opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
     """

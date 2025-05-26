@@ -10,8 +10,7 @@ import re
 from datetime import datetime, timedelta
 
 from ...tools.web_scraper import scrape_reddit_discussions, scrape_twitter_complaints, extract_pain_points
-from ...tools.social_monitor import monitor_social_sentiment
-from ...tools.data_processor import process_social_signals, identify_patterns
+from ...tools.data_processor import process_social_signals, identify_patterns, monitor_social_sentiment
 
 EXPLORER_AGENT_PROMPT = """
 You are a Market Signal Explorer specializing in discovering genuine pain points and unmet needs in liminal market spaces.

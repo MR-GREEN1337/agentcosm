@@ -11,7 +11,7 @@ import re
 from datetime import datetime
 import requests
 
-from .prompts import BRAND_CREATOR_PROMPT, COPY_WRITER_PROMPT, LANDING_BUILDER_PROMPT
+from cosm.prompts import BRAND_CREATOR_PROMPT, COPY_WRITER_PROMPT, LANDING_BUILDER_PROMPT
 
 client = Client()
 
