@@ -13,8 +13,14 @@ COPY /src/ ./src/
 
 ENV PYTHONPATH=/app
 ENV PORT=8000
-ENV $(cat .env | xargs)
+
+# Expose envs
+RUN export $(cat .env | xargs)
 
 EXPOSE 8000
 
-CMD ["adk", "api_server", "--allow_origins", "http://localhost:3000"] # Change depending on env
+# Create an entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+CMD ["/app/entrypoint.sh"]
