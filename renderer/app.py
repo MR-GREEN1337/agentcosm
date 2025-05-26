@@ -151,7 +151,7 @@ async def deploy_website(deployment: DeploymentRequest):
         
         # Add some default values if missing
         content_dict.setdefault("current_year", datetime.now().year)
-        content_dict.setdefault("site_url", f"http://localhost:8000/site/{site_id}")
+        content_dict.setdefault("site_url", f"http://localhost:8001/site/{site_id}")
         
         # Create complete HTML
         complete_html = create_complete_html(
@@ -177,7 +177,7 @@ async def deploy_website(deployment: DeploymentRequest):
         SITE_ANALYTICS[site_id] = []
         
         # Generate URLs
-        base_url = "http://localhost:8000"  # Configure as needed
+        base_url = "http://localhost:8001"  # Configure as needed
         live_url = f"{base_url}/site/{site_id}"
         admin_url = f"{base_url}/admin/{site_id}"
         analytics_url = f"{base_url}/analytics/{site_id}"
@@ -447,7 +447,7 @@ async def list_sites():
                 "site_name": data["site_name"],
                 "created_at": data["created_at"],
                 "view_count": data["view_count"],
-                "live_url": f"http://localhost:8000/site/{site_id}"
+                "live_url": f"http://localhost:8001/site/{site_id}"
             }
             for site_id, data in DEPLOYED_SITES.items()
         ]
@@ -578,6 +578,6 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting In-Memory Landing Page Renderer...")
-    print("📊 Admin Dashboard: http://localhost:8000/admin")
-    print("🔧 API Docs: http://localhost:8000/docs")
+    print("📊 Admin Dashboard: http://localhost:8001/admin")
+    print("🔧 API Docs: http://localhost:8001/docs")
     uvicorn.run(app, host="0.0.0.0", port=8001, reload=True)

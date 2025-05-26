@@ -3,7 +3,7 @@ Trend Analyzer Agent - Identifies emerging market trends and patterns
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search, web_fetch
+from google.adk.tools import FunctionTool, google_search, load_web_page
 from typing import Dict, List, Any
 import json
 import re
@@ -62,7 +62,7 @@ def analyze_search_trends(keywords: List[str]) -> Dict[str, Any]:
                     if results and hasattr(results, 'results'):
                         for result in results.results[:3]:
                             try:
-                                content = web_fetch(result.url)
+                                content = load_web_page(result.url)
                                 trend_insights = extract_trend_insights(content, keyword)
                                 
                                 if trend_insights:
@@ -130,7 +130,7 @@ def track_industry_momentum(industry: str, keywords: List[str]) -> Dict[str, Any
                 if results and hasattr(results, 'results'):
                     for result in results.results[:3]:
                         try:
-                            content = web_fetch(result.url)
+                            content = load_web_page(result.url)
                             momentum_insights = extract_momentum_insights(content, industry)
                             
                             if momentum_insights:
@@ -661,7 +661,7 @@ trend_analyzer_agent = LlmAgent(
         FunctionTool(func=track_industry_momentum),
         FunctionTool(func=identify_growth_patterns),
         google_search,
-        web_fetch
+        load_web_page
     ],
     output_key="trend_analysis"
 )

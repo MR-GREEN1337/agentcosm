@@ -3,7 +3,7 @@ Market Explorer Agent - Discovers real market signals from social platforms and 
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search, web_fetch
+from google.adk.tools import FunctionTool, google_search, load_web_page
 from typing import Dict, List, Any
 import json
 import re
@@ -69,7 +69,7 @@ def discover_market_signals(query_context: str) -> Dict[str, Any]:
                 if results and hasattr(results, 'results'):
                     for result in results.results[:3]:  # Top 3 results per query
                         try:
-                            content = web_fetch(result.url)
+                            content = load_web_page(result.url)
                             reddit_signals = scrape_reddit_discussions(content, query_context)
                             signals["reddit_signals"].extend(reddit_signals)
                         except Exception as e:
@@ -91,7 +91,7 @@ def discover_market_signals(query_context: str) -> Dict[str, Any]:
                 if results and hasattr(results, 'results'):
                     for result in results.results[:2]:  # Top 2 per query
                         try:
-                            content = web_fetch(result.url)
+                            content = load_web_page(result.url)
                             twitter_signals = scrape_twitter_complaints(content, query_context)
                             signals["twitter_signals"].extend(twitter_signals)
                         except Exception as e:
@@ -114,7 +114,7 @@ def discover_market_signals(query_context: str) -> Dict[str, Any]:
                 if results and hasattr(results, 'results'):
                     for result in results.results[:2]:
                         try:
-                            content = web_fetch(result.url)
+                            content = load_web_page(result.url)
                             forum_signals = extract_pain_points(content, query_context)
                             signals["forum_signals"].extend(forum_signals)
                         except Exception as e:
@@ -321,7 +321,7 @@ market_explorer_agent = LlmAgent(
         FunctionTool(func=discover_market_signals),
         FunctionTool(func=analyze_competitive_gaps),
         google_search,
-        web_fetch
+        load_web_page
     ],
     output_key="market_signals"
 )

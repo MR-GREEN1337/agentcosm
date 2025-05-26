@@ -4,13 +4,10 @@ Provides social media monitoring and signal processing capabilities
 """
 
 import re
-import json
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
-import requests
 from urllib.parse import urlparse
-import hashlib
 
 # =============================================================================
 # SOCIAL MONITOR TOOLS

@@ -4,8 +4,7 @@ Gap Mapper Agent - Maps connections between signals to identify market opportuni
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, web_fetch
-from typing import Dict, List, Any, Set, Tuple
-import json
+from typing import Dict, List, Any
 import re
 from datetime import datetime
 from collections import defaultdict

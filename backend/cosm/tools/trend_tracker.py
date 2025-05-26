@@ -2,17 +2,11 @@
 Trend Analyzer Agent - Identifies emerging market trends and patterns
 """
 
-from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool
 from google.genai import Client, types
 from typing import Dict, List, Any
 import json
-import re
-from datetime import datetime, timedelta
-import requests
-from bs4 import BeautifulSoup
 
-from ..tools.web_scraper import search_web_real, extract_snippet_from_url
+from ..tools.market_research import search_web_real
 
 client = Client()
 

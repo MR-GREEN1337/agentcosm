@@ -3,7 +3,7 @@ Market Analyzer Agent - Validates market opportunities with real data
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search, web_fetch
+from google.adk.tools import FunctionTool, google_search, load_web_page
 from typing import Dict, List, Any, Optional
 import json
 import re
@@ -11,7 +11,8 @@ from datetime import datetime
 
 from ..tools.market_research import (
     analyze_market_size, research_competition, 
-    validate_demand_signals
+    validate_demand_signals, assess_market_risks,
+    calculate_opportunity_score, generate_recommendation
 )
 from ..tools.trend_tracker import (
     analyze_search_trends
@@ -258,7 +259,7 @@ def research_market_demographics(target_market: str, geography: str = "global") 
             if results and hasattr(results, 'results'):
                 for result in results.results[:3]:
                     try:
-                        content = web_fetch(result.url)
+                        content = load_web_page(result.url)
                         # Extract demographic insights from content
                         insights = extract_demographic_insights(content, target_market)
                         demographics.update(insights)
@@ -322,7 +323,7 @@ market_analyzer_agent = LlmAgent(
         FunctionTool(func=comprehensive_market_validation),
         FunctionTool(func=research_market_demographics),
         google_search,
-        web_fetch
+        load_web_page
     ],
     output_key="market_validation"
 )

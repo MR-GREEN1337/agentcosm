@@ -5,14 +5,13 @@ Uses web search and structured output for comprehensive market analysis
 
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Any, Optional
-from google.adk.tools import ToolContext
 from google.genai import Client, types
 import requests
 from bs4 import BeautifulSoup
 import time
-import random
+from collections import Counter
 
 # Initialize Gemini client
 client = Client()
@@ -582,3 +581,715 @@ def check_domain_availability(domain_name: str) -> Dict[str, Any]:
             "error": str(e),
             "checked_at": datetime.now().isoformat()
         }
+
+# Additional Market Research Functions
+
+def analyze_market_size(keywords: List[str], target_audience: str = "") -> Dict[str, Any]:
+    """
+    Analyzes market size for given keywords and target audience
+    
+    Args:
+        keywords: List of market keywords to analyze
+        target_audience: Target audience description
+        
+    Returns:
+        Market size analysis with TAM, SAM, SOM estimates
+    """
+    market_size_data = {
+        "keywords": keywords,
+        "target_audience": target_audience,
+        "analysis_timestamp": datetime.now().isoformat(),
+        "tam_estimate": 0,  # Total Addressable Market
+        "sam_estimate": 0,  # Serviceable Addressable Market  
+        "som_estimate": 0,  # Serviceable Obtainable Market
+        "market_segments": [],
+        "growth_rate": 0.0,
+        "geographic_distribution": {},
+        "size_confidence": "medium",
+        "data_sources": [],
+        "methodology": "web_research_analysis"
+    }
+    
+    try:
+        # Search for market size data
+        for keyword in keywords[:3]:  # Limit to prevent rate limiting
+            market_queries = [
+                f"{keyword} market size 2024 billion",
+                f"{keyword} industry size statistics global",
+                f"{keyword} TAM total addressable market",
+                f"{keyword} market research report value"
+            ]
+            
+            market_data_points = []
+            
+            for query in market_queries:
+                try:
+                    search_results = search_web_real(query, max_results=3)
+                    size_data = extract_market_size_with_gemini(search_results, keyword)
+                    if size_data:
+                        market_data_points.extend(size_data)
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"Error searching market size for {query}: {e}")
+                    continue
+            
+            # Process market data points
+            if market_data_points:
+                market_size_data["data_sources"].extend(market_data_points)
+        
+        # Calculate TAM, SAM, SOM from collected data
+        tam_sam_som = calculate_tam_sam_som(market_size_data["data_sources"], target_audience)
+        market_size_data.update(tam_sam_som)
+        
+        # Analyze market segments
+        market_size_data["market_segments"] = identify_market_segments(
+            market_size_data["data_sources"], keywords
+        )
+        
+        # Calculate growth rate
+        market_size_data["growth_rate"] = calculate_growth_rate(market_size_data["data_sources"])
+        
+        # Determine confidence level
+        market_size_data["size_confidence"] = assess_size_confidence(market_size_data)
+        
+        return market_size_data
+        
+    except Exception as e:
+        print(f"Error in analyze_market_size: {e}")
+        market_size_data["error"] = str(e)
+        return market_size_data
+
+def research_competition(keywords: List[str], solution_type: str = "") -> Dict[str, Any]:
+    """
+    Researches competition in the market space
+    
+    Args:
+        keywords: Market keywords to research
+        solution_type: Type of solution being analyzed
+        
+    Returns:
+        Comprehensive competition analysis
+    """
+    competition_data = {
+        "keywords": keywords,
+        "solution_type": solution_type,
+        "analysis_timestamp": datetime.now().isoformat(),
+        "direct_competitors": [],
+        "indirect_competitors": [],
+        "market_leaders": [],
+        "emerging_players": [],
+        "competition_level": "unknown",
+        "market_concentration": "unknown",
+        "competitive_advantages": [],
+        "market_gaps": [],
+        "pricing_analysis": {},
+        "feature_comparison": {},
+        "market_positioning": {}
+    }
+    
+    try:
+        # Research direct competitors
+        for keyword in keywords[:2]:
+            competitor_queries = [
+                f"{keyword} {solution_type} competitors top companies",
+                f"best {keyword} {solution_type} alternatives market leaders",
+                f"{keyword} {solution_type} pricing comparison review",
+                f"{keyword} {solution_type} market share leaders"
+            ]
+            
+            all_competitors = []
+            
+            for query in competitor_queries:
+                try:
+                    search_results = search_web_real(query, max_results=3)
+                    competitors = extract_competitors_with_gemini(search_results, keyword)
+                    all_competitors.extend(competitors)
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"Error researching competition for {query}: {e}")
+                    continue
+            
+            # Categorize competitors
+            direct_comps, indirect_comps, leaders = categorize_competitors(all_competitors)
+            competition_data["direct_competitors"].extend(direct_comps)
+            competition_data["indirect_competitors"].extend(indirect_comps)
+            competition_data["market_leaders"].extend(leaders)
+        
+        # Determine competition level
+        competition_data["competition_level"] = assess_competition_level(competition_data)
+        
+        # Analyze market concentration
+        competition_data["market_concentration"] = analyze_market_concentration(competition_data)
+        
+        # Identify market gaps
+        competition_data["market_gaps"] = identify_competition_gaps(competition_data, keywords)
+        
+        # Analyze pricing if data available
+        competition_data["pricing_analysis"] = analyze_competitor_pricing(competition_data)
+        
+        return competition_data
+        
+    except Exception as e:
+        print(f"Error in research_competition: {e}")
+        competition_data["error"] = str(e)
+        return competition_data
+
+def validate_demand_signals(keywords: List[str], pain_points: List[str]) -> Dict[str, Any]:
+    """
+    Validates demand signals for the market opportunity
+    
+    Args:
+        keywords: Market keywords to validate
+        pain_points: List of pain points to validate
+        
+    Returns:
+        Demand validation analysis
+    """
+    demand_data = {
+        "keywords": keywords,
+        "pain_points": pain_points,
+        "validation_timestamp": datetime.now().isoformat(),
+        "signal_strength": 0.0,  # 0-100 scale
+        "search_volume": 0,
+        "social_mentions": 0,
+        "forum_discussions": 0,
+        "job_postings": 0,
+        "patent_filings": 0,
+        "funding_rounds": 0,
+        "growth_indicators": [],
+        "demand_sources": [],
+        "validation_confidence": "medium",
+        "market_readiness": "unknown"
+    }
+    
+    try:
+        # Validate demand through multiple signals
+        for keyword in keywords[:3]:
+            demand_queries = [
+                f"{keyword} search volume trends statistics",
+                f"{keyword} job market demand hiring trends",
+                f"{keyword} startup funding investment 2024",
+                f"{keyword} patent applications innovation",
+                f"{keyword} social media mentions discussions"
+            ]
+            
+            demand_indicators = []
+            
+            for query in demand_queries:
+                try:
+                    search_results = search_web_real(query, max_results=2)
+                    signals = extract_demand_signals_with_gemini(search_results, keyword)
+                    if signals:
+                        demand_indicators.extend(signals)
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"Error validating demand for {query}: {e}")
+                    continue
+            
+            demand_data["demand_sources"].extend(demand_indicators)
+        
+        # Validate pain points specifically
+        for pain_point in pain_points[:3]:
+            pain_queries = [
+                f'"{pain_point}" problem frustration discussions',
+                f'"{pain_point}" solution need market demand',
+                f'"{pain_point}" reddit twitter complaints'
+            ]
+            
+            for query in pain_queries:
+                try:
+                    search_results = search_web_real(query, max_results=2)
+                    pain_validation = extract_pain_validation_with_gemini(search_results, pain_point)
+                    if pain_validation:
+                        demand_data["demand_sources"].extend(pain_validation)
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"Error validating pain point {pain_point}: {e}")
+                    continue
+        
+        # Calculate overall signal strength
+        demand_data["signal_strength"] = calculate_signal_strength_score(demand_data["demand_sources"])
+        
+        # Extract specific metrics
+        demand_data.update(extract_demand_metrics(demand_data["demand_sources"]))
+        
+        # Assess validation confidence
+        demand_data["validation_confidence"] = assess_validation_confidence(demand_data)
+        
+        # Determine market readiness
+        demand_data["market_readiness"] = assess_market_readiness(demand_data)
+        
+        return demand_data
+        
+    except Exception as e:
+        print(f"Error in validate_demand_signals: {e}")
+        demand_data["error"] = str(e)
+        return demand_data
+
+def calculate_tam_sam_som(market_data_points: List[Dict[str, Any]], target_audience: str = "") -> Dict[str, Any]:
+    """
+    Calculates TAM, SAM, and SOM from market data points
+    
+    Args:
+        market_data_points: List of market size data points
+        target_audience: Target audience description
+        
+    Returns:
+        TAM, SAM, SOM calculations with methodology
+    """
+    tam_sam_som = {
+        "tam_estimate": 0,
+        "sam_estimate": 0, 
+        "som_estimate": 0,
+        "tam_methodology": "aggregated_sources",
+        "sam_methodology": "target_segment_analysis",
+        "som_methodology": "realistic_capture_rate",
+        "calculation_confidence": "medium",
+        "data_points_used": len(market_data_points),
+        "geographic_scope": "global",
+        "time_horizon": "current_year",
+        "assumptions": []
+    }
+    
+    try:
+        if not market_data_points:
+            return tam_sam_som
+        
+        # Extract TAM estimates from data points
+        tam_values = []
+        for data_point in market_data_points:
+            if data_point.get("market_size_value"):
+                try:
+                    # Convert various formats to numbers
+                    value = parse_market_size_value(data_point["market_size_value"])
+                    if value > 0:
+                        tam_values.append(value)
+                except:
+                    continue
+        
+        # Calculate TAM
+        if tam_values:
+            # Use median to avoid outliers
+            tam_values.sort()
+            tam_estimate = tam_values[len(tam_values) // 2]
+            tam_sam_som["tam_estimate"] = int(tam_estimate)
+            
+            # Calculate SAM (typically 10-30% of TAM for focused markets)
+            if target_audience:
+                sam_multiplier = 0.25  # 25% of TAM for specific audience
+            else:
+                sam_multiplier = 0.15  # 15% of TAM for general market
+            
+            tam_sam_som["sam_estimate"] = int(tam_estimate * sam_multiplier)
+            
+            # Calculate SOM (typically 1-5% of SAM for new entrants)
+            som_multiplier = 0.03  # 3% of SAM - realistic for new market entrant
+            tam_sam_som["som_estimate"] = int(tam_sam_som["sam_estimate"] * som_multiplier)
+            
+            # Set confidence based on data quality
+            if len(tam_values) >= 3:
+                tam_sam_som["calculation_confidence"] = "high"
+            elif len(tam_values) >= 2:
+                tam_sam_som["calculation_confidence"] = "medium"
+            else:
+                tam_sam_som["calculation_confidence"] = "low"
+        
+        # Add assumptions
+        tam_sam_som["assumptions"] = [
+            f"TAM calculated from {len(tam_values)} market size data points",
+            f"SAM estimated as {int(sam_multiplier*100)}% of TAM based on target focus",
+            f"SOM estimated as {int(som_multiplier*100)}% of SAM for new market entrant",
+            "Calculations assume current market conditions and growth rates"
+        ]
+        
+        return tam_sam_som
+        
+    except Exception as e:
+        print(f"Error calculating TAM/SAM/SOM: {e}")
+        tam_sam_som["error"] = str(e)
+        return tam_sam_som
+
+# Helper functions for new market research functions
+
+def extract_market_size_with_gemini(search_results: List[Dict[str, str]], keyword: str) -> List[Dict[str, Any]]:
+    """Extract market size data using Gemini"""
+    market_data = []
+    
+    for result in search_results:
+        try:
+            prompt = f"""
+            Analyze this search result about "{keyword}" market size and extract any market size data, statistics, or valuations.
+            
+            Title: {result.get('title', '')}
+            Content: {result.get('snippet', '')}
+            
+            Extract and return a JSON array of market size data points, each with:
+            - market_size_value: The numerical value (e.g., "5.2 billion", "150M")
+            - market_size_unit: The unit (billion, million, USD, etc.)
+            - timeframe: Year or period this applies to
+            - geographic_scope: Geographic area (global, US, Europe, etc.)
+            - market_segment: Specific segment if mentioned
+            - source_credibility: How credible this source seems (high/medium/low)
+            
+            Only return the JSON array, no other text.
+            """
+            
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3
+                )
+            )
+            
+            if response and response.text:
+                data_points = json.loads(response.text)
+                market_data.extend(data_points)
+                
+        except Exception as e:
+            print(f"Error extracting market size data: {e}")
+            continue
+    
+    return market_data
+
+def extract_demand_signals_with_gemini(search_results: List[Dict[str, str]], keyword: str) -> List[Dict[str, Any]]:
+    """Extract demand signals using Gemini"""
+    demand_signals = []
+    
+    for result in search_results:
+        try:
+            prompt = f"""
+            Analyze this search result about "{keyword}" and extract any demand indicators, market signals, or growth metrics.
+            
+            Title: {result.get('title', '')}
+            Content: {result.get('snippet', '')}
+            
+            Extract and return a JSON array of demand signals, each with:
+            - signal_type: Type of signal (search_volume, job_postings, funding, social_mentions, etc.)
+            - signal_value: Numerical value if available
+            - signal_trend: Trend direction (increasing/decreasing/stable)
+            - timeframe: Time period this covers
+            - strength: Signal strength (high/medium/low)
+            - source_credibility: How credible this source seems (high/medium/low)
+            
+            Only return the JSON array, no other text.
+            """
+            
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3
+                )
+            )
+            
+            if response and response.text:
+                signals = json.loads(response.text)
+                demand_signals.extend(signals)
+                
+        except Exception as e:
+            print(f"Error extracting demand signals: {e}")
+            continue
+    
+    return demand_signals
+
+def extract_pain_validation_with_gemini(search_results: List[Dict[str, str]], pain_point: str) -> List[Dict[str, Any]]:
+    """Extract pain point validation using Gemini"""
+    validations = []
+    
+    for result in search_results:
+        try:
+            prompt = f"""
+            Analyze this search result for validation of the pain point: "{pain_point}"
+            
+            Title: {result.get('title', '')}
+            Content: {result.get('snippet', '')}
+            
+            Extract and return a JSON array of validation points, each with:
+            - validation_type: Type of validation (user_complaint, discussion, review, etc.)
+            - validation_strength: How strongly this validates the pain point (high/medium/low)
+            - user_segment: What type of users are affected
+            - frequency_indicator: How often this pain occurs (daily/weekly/monthly/rare)
+            - impact_level: Impact level on users (critical/major/minor)
+            - evidence_quote: Brief quote showing the pain point (max 50 words)
+            
+            Only return the JSON array, no other text.
+            """
+            
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3
+                )
+            )
+            
+            if response and response.text:
+                validation_points = json.loads(response.text)
+                validations.extend(validation_points)
+                
+        except Exception as e:
+            print(f"Error extracting pain validation: {e}")
+            continue
+    
+    return validations
+
+def parse_market_size_value(value_str: str) -> float:
+    """Parse market size value string to float"""
+    if not value_str:
+        return 0.0
+    
+    # Clean the string
+    value_str = value_str.lower().replace(',', '').replace('$', '').strip()
+    
+    # Extract number and multiplier
+    number_match = re.search(r'(\d+\.?\d*)', value_str)
+    if not number_match:
+        return 0.0
+    
+    number = float(number_match.group(1))
+    
+    # Apply multipliers
+    if 'trillion' in value_str or 't' in value_str:
+        return number * 1_000_000_000_000
+    elif 'billion' in value_str or 'b' in value_str:
+        return number * 1_000_000_000
+    elif 'million' in value_str or 'm' in value_str:
+        return number * 1_000_000
+    elif 'thousand' in value_str or 'k' in value_str:
+        return number * 1_000
+    else:
+        return number
+
+def categorize_competitors(competitors: List[Dict[str, Any]]) -> tuple:
+    """Categorize competitors into direct, indirect, and leaders"""
+    direct_competitors = []
+    indirect_competitors = []
+    market_leaders = []
+    
+    for competitor in competitors:
+        comp_type = competitor.get('type', '').lower()
+        market_position = competitor.get('market_position', '').lower()
+        
+        # Categorize as market leader
+        if 'leader' in market_position or 'dominant' in market_position:
+            market_leaders.append(competitor)
+        
+        # Categorize by competition type
+        if 'direct' in comp_type or 'software' in comp_type or 'platform' in comp_type:
+            direct_competitors.append(competitor)
+        else:
+            indirect_competitors.append(competitor)
+    
+    return direct_competitors[:10], indirect_competitors[:10], market_leaders[:5]
+
+def assess_competition_level(competition_data: Dict[str, Any]) -> str:
+    """Assess the level of competition"""
+    direct_count = len(competition_data.get('direct_competitors', []))
+    total_count = direct_count + len(competition_data.get('indirect_competitors', []))
+    
+    if direct_count <= 2 and total_count <= 5:
+        return "low"
+    elif direct_count <= 5 and total_count <= 15:
+        return "medium"
+    else:
+        return "high"
+
+def analyze_market_concentration(competition_data: Dict[str, Any]) -> str:
+    """Analyze market concentration"""
+    leaders_count = len(competition_data.get('market_leaders', []))
+    total_competitors = len(competition_data.get('direct_competitors', []))
+    
+    if leaders_count <= 1 and total_competitors >= 8:
+        return "fragmented"
+    elif leaders_count <= 3 and total_competitors >= 5:
+        return "competitive"
+    else:
+        return "concentrated"
+
+def identify_competition_gaps(competition_data: Dict[str, Any], keywords: List[str]) -> List[str]:
+    """Identify gaps in competitive landscape"""
+    gaps = []
+    
+    # Check for common gap patterns
+    competitors = competition_data.get('direct_competitors', [])
+    
+    # Feature gaps
+    common_weaknesses = []
+    for competitor in competitors:
+        weaknesses = competitor.get('weaknesses', [])
+        common_weaknesses.extend(weaknesses)
+    
+    # If multiple competitors have same weakness, it's a market gap
+    weakness_counts = Counter(common_weaknesses)
+    
+    for weakness, count in weakness_counts.items():
+        if count >= 2:  # Multiple competitors have this weakness
+            gaps.append(f"Market gap: {weakness}")
+    
+    # Add keyword-based gaps
+    for keyword in keywords:
+        if keyword.lower() in ['integration', 'automation', 'workflow']:
+            gaps.append(f"Potential {keyword} solution gap")
+    
+    return gaps[:5]
+
+def analyze_competitor_pricing(competition_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Analyze competitor pricing if available"""
+    pricing_analysis = {
+        "pricing_models": [],
+        "price_ranges": {},
+        "pricing_gaps": [],
+        "pricing_strategy_insights": []
+    }
+    
+    # This would be enhanced with actual pricing data extraction
+    # For now, provide general analysis framework
+    
+    competitors = competition_data.get('direct_competitors', [])
+    if competitors:
+        pricing_analysis["pricing_strategy_insights"] = [
+            "Analyze competitor pricing pages for detailed pricing data",
+            "Look for freemium vs. premium pricing models",
+            "Identify pricing gaps in the market",
+            "Consider value-based pricing opportunities"
+        ]
+    
+    return pricing_analysis
+
+def identify_market_segments(market_data: List[Dict[str, Any]], keywords: List[str]) -> List[Dict[str, str]]:
+    """Identify market segments from data"""
+    segments = []
+    
+    # Extract segments mentioned in market data
+    for data_point in market_data:
+        segment = data_point.get('market_segment', '')
+        if segment and segment not in [s.get('name') for s in segments]:
+            segments.append({
+                "name": segment,
+                "description": f"Market segment focused on {segment}",
+                "size_estimate": "TBD"
+            })
+    
+    # Add keyword-based segments
+    for keyword in keywords:
+        if keyword.lower() in ['enterprise', 'small business', 'startup']:
+            segments.append({
+                "name": f"{keyword.title()} Market",
+                "description": f"Market segment serving {keyword} customers",
+                "size_estimate": "TBD"
+            })
+    
+    return segments[:5]
+
+def calculate_growth_rate(market_data: List[Dict[str, Any]]) -> float:
+    """Calculate market growth rate from data"""
+    growth_indicators = []
+    
+    for data_point in market_data:
+        if 'growth' in str(data_point).lower():
+            # Try to extract growth percentage
+            text = str(data_point).lower()
+            growth_match = re.search(r'(\d+(?:\.\d+)?)\s*%\s*growth', text)
+            if growth_match:
+                growth_indicators.append(float(growth_match.group(1)))
+    
+    if growth_indicators:
+        return sum(growth_indicators) / len(growth_indicators)
+    else:
+        return 5.0  # Default assumption
+
+def assess_size_confidence(market_size_data: Dict[str, Any]) -> str:
+    """Assess confidence in market size calculations"""
+    data_points = len(market_size_data.get('data_sources', []))
+    tam_estimate = market_size_data.get('tam_estimate', 0)
+    
+    if data_points >= 3 and tam_estimate > 0:
+        return "high"
+    elif data_points >= 2 and tam_estimate > 0:
+        return "medium"
+    else:
+        return "low"
+
+def calculate_signal_strength_score(demand_sources: List[Dict[str, Any]]) -> float:
+    """Calculate overall signal strength score (0-100)"""
+    if not demand_sources:
+        return 0.0
+    
+    total_score = 0.0
+    weights = {
+        'high': 1.0,
+        'medium': 0.6,
+        'low': 0.3
+    }
+    
+    for source in demand_sources:
+        strength = source.get('strength', 'low')
+        signal_type = source.get('signal_type', '')
+        
+        # Base score from strength
+        score = weights.get(strength, 0.3) * 20
+        
+        # Bonus for high-value signal types
+        if signal_type in ['funding', 'job_postings', 'patent_filings']:
+            score *= 1.5
+        elif signal_type in ['search_volume', 'social_mentions']:
+            score *= 1.2
+        
+        total_score += score
+    
+    # Normalize to 0-100 scale
+    return min(total_score / len(demand_sources), 100.0)
+
+def extract_demand_metrics(demand_sources: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Extract specific demand metrics from sources"""
+    metrics = {
+        "search_volume": 0,
+        "social_mentions": 0,
+        "forum_discussions": 0,
+        "job_postings": 0,
+        "patent_filings": 0,
+        "funding_rounds": 0
+    }
+    
+    for source in demand_sources:
+        signal_type = source.get('signal_type', '')
+        signal_value = source.get('signal_value', 0)
+        
+        try:
+            value = int(float(str(signal_value).replace(',', '').replace('k', '000').replace('m', '000000')))
+            if signal_type in metrics:
+                metrics[signal_type] += value
+        except:
+            # If no numeric value, count as 1 occurrence
+            if signal_type in metrics:
+                metrics[signal_type] += 1
+    
+    return metrics
+
+def assess_validation_confidence(demand_data: Dict[str, Any]) -> str:
+    """Assess confidence in demand validation"""
+    signal_strength = demand_data.get('signal_strength', 0)
+    source_count = len(demand_data.get('demand_sources', []))
+    
+    if signal_strength >= 70 and source_count >= 5:
+        return "high"
+    elif signal_strength >= 40 and source_count >= 3:
+        return "medium"
+    else:
+        return "low"
+
+def assess_market_readiness(demand_data: Dict[str, Any]) -> str:
+    """Assess market readiness for the opportunity"""
+    signal_strength = demand_data.get('signal_strength', 0)
+    validation_confidence = demand_data.get('validation_confidence', 'low')
+    
+    if signal_strength >= 60 and validation_confidence == 'high':
+        return "ready"
+    elif signal_strength >= 40 and validation_confidence in ['medium', 'high']:
+        return "emerging"
+    else:
+        return "early"
