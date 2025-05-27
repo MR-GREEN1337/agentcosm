@@ -145,7 +145,7 @@ export function EventsTab({
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <img src="/face.png" className="w-16 h-16 text-gray-300 dark:text-[#3a3a40] mx-auto mb-4" />
+          <img src="/duck.gif" className="w-16 h-16 text-gray-300 dark:text-[#3a3a40] mx-auto mb-4" />
           <p className="text-gray-600 dark:text-[#a0a0a8] text-lg">Start a conversation</p>
           <p className="text-gray-500 dark:text-[#6a6a70] text-sm mt-2">Type a message below</p>
         </div>

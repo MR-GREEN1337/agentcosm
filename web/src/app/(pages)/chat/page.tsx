@@ -40,6 +40,7 @@ export default function AgentDevUI() {
   const initialBusinessQuerySent = useRef<boolean>(false)
   const [lastAiResponse, setLastAiResponse] = useState('');
 
+
   const { sendMessage, events: sseEvents, isLoading } = useSSE(
     selectedApp && currentSession && userId
       ? `${process.env.NEXT_PUBLIC_API_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}&modalities=TEXT`
@@ -336,6 +337,7 @@ export default function AgentDevUI() {
                 <Link href="/" className="flex items-center gap-2 group">
                   <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full blur-md group-hover:blur-lg transition-all duration-500 opacity-70 group-hover:opacity-100 scale-75 group-hover:scale-110"></div>
+                    {/*@ts-ignore*/}
                     <PlanetIcon className="relative z-10 transition-transform duration-500 group-hover:rotate-[15deg]" />
                   </div>
                   <h1 className="text-lg sm:text-[1.3rem] font-normal tracking-[0.02em] text-foreground hidden sm:block">
