@@ -1,33 +1,284 @@
 """
-Gap Mapper Agent - Maps connections between signals to identify market opportunities
+Enhanced Gap Mapper Agent with Gemini-powered extraction
 """
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, load_web_page
+from google.genai import Client, types
 from typing import Dict, List, Any
-import re
+import json
 from datetime import datetime
 from collections import defaultdict
-from cosm.prompts import GAP_MAPPER_PROMPT
 
-def map_signal_connections(signals_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Maps connections between different market signals to identify opportunities
-    
-    Args:
-        signals_data: List of market signals from various sources
+# Initialize Gemini client
+client = Client()
+
+def extract_signal_themes_with_gemini(signals: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Extract themes and patterns using Gemini analysis"""
+    try:
+        # Prepare signal content for analysis
+        signal_content = []
+        for signal in signals[:20]:  # Limit to prevent token overflow
+            signal_content.append({
+                "content": signal.get("content", "")[:500],  # Limit content length
+                "source": signal.get("source", "unknown"),
+                "type": signal.get("type", "unknown")
+            })
         
-    Returns:
-        Dictionary containing mapped connections and identified opportunities
+        prompt = f"""
+        Analyze these market signals and extract key themes, patterns, and opportunities.
+        
+        Signals: {json.dumps(signal_content, indent=2)}
+        
+        Extract and return a JSON object with:
+        - workflow_gaps: Array of specific workflow problems mentioned
+        - technology_needs: Array of missing technologies or capabilities
+        - integration_points: Array of systems/tools that need to connect
+        - pain_point_clusters: Array of related pain points grouped by theme
+        - opportunity_areas: Array of potential business opportunities
+        - market_segments: Array of specific user groups affected
+        - urgency_indicators: Array of signals showing urgent need
+        
+        Focus on finding patterns that indicate liminal market opportunities.
+        Only return the JSON object, no other text.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+            
+    except Exception as e:
+        print(f"Error in Gemini theme extraction: {e}")
+    
+    return {
+        "workflow_gaps": [],
+        "technology_needs": [],
+        "integration_points": [],
+        "pain_point_clusters": [],
+        "opportunity_areas": [],
+        "market_segments": [],
+        "urgency_indicators": []
+    }
+
+def identify_workflow_intersections_with_gemini(signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Identify workflow intersection points using Gemini"""
+    try:
+        # Prepare content focusing on workflow mentions
+        workflow_signals = []
+        for signal in signals[:15]:
+            content = signal.get("content", "").lower()
+            if any(keyword in content for keyword in ["workflow", "process", "integration", "switch", "between"]):
+                workflow_signals.append({
+                    "content": signal.get("content", "")[:300],
+                    "source": signal.get("source", "unknown")
+                })
+        
+        if not workflow_signals:
+            return []
+        
+        prompt = f"""
+        Analyze these workflow-related signals to identify intersection points where multiple tools, systems, or processes need to work together.
+        
+        Workflow Signals: {json.dumps(workflow_signals, indent=2)}
+        
+        Extract and return a JSON array of workflow intersections, each with:
+        - intersection_type: Type of intersection (tool_integration, process_handoff, data_transfer, etc.)
+        - tools_involved: Array of tools/systems mentioned
+        - friction_points: Specific problems at the intersection
+        - frequency_indicator: How often this intersection problem appears (high/medium/low)
+        - automation_potential: Potential for automation (high/medium/low)
+        - business_impact: Potential business impact of solving this intersection
+        
+        Only return the JSON array, no other text.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+            
+    except Exception as e:
+        print(f"Error in Gemini workflow intersection analysis: {e}")
+    
+    return []
+
+def find_technology_gaps_with_gemini(signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Find technology gaps using Gemini analysis"""
+    try:
+        # Filter for signals mentioning missing technology or capabilities
+        tech_signals = []
+        for signal in signals[:15]:
+            content = signal.get("content", "").lower()
+            if any(keyword in content for keyword in ["missing", "doesn't exist", "no solution", "need", "lacking", "wish there was"]):
+                tech_signals.append({
+                    "content": signal.get("content", "")[:300],
+                    "source": signal.get("source", "unknown")
+                })
+        
+        if not tech_signals:
+            return []
+        
+        prompt = f"""
+        Analyze these signals to identify technology gaps - missing capabilities, tools, or solutions that users need.
+        
+        Signals: {json.dumps(tech_signals, indent=2)}
+        
+        Extract and return a JSON array of technology gaps, each with:
+        - gap_category: Category of the gap (integration, automation, analytics, UI/UX, etc.)
+        - missing_capability: Specific capability that's missing
+        - affected_users: Type of users affected by this gap
+        - current_workarounds: How users currently work around this gap
+        - market_size_indicator: Estimated market size (large/medium/small)
+        - technical_complexity: Complexity to build solution (high/medium/low)
+        - competitive_landscape: Existing solutions (none/few/many)
+        
+        Only return the JSON array, no other text.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+            
+    except Exception as e:
+        print(f"Error in Gemini technology gap analysis: {e}")
+    
+    return []
+
+def identify_liminal_spaces_with_gemini(connection_map: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Identify liminal market spaces using Gemini analysis"""
+    try:
+        prompt = f"""
+        Analyze this market connection data to identify liminal spaces - opportunities that exist between established market categories.
+        
+        Connection Data: {json.dumps(connection_map, indent=2)}
+        
+        A liminal space is characterized by:
+        - Existing between two or more established categories
+        - Having unmet needs that don't fit traditional solutions
+        - Representing transformation opportunities
+        - Having users who are underserved by current options
+        
+        Extract and return a JSON array of liminal spaces, each with:
+        - space_description: Clear description of the liminal space
+        - adjacent_categories: Established categories this space sits between
+        - unmet_needs: Specific needs not addressed by current solutions
+        - target_users: Who would benefit from solutions in this space
+        - opportunity_size: Estimated opportunity size (large/medium/small)
+        - market_readiness: How ready the market is (high/medium/low)
+        - solution_complexity: Complexity of building solutions (high/medium/low)
+        - differentiation_potential: Potential for differentiation (high/medium/low)
+        
+        Only return the JSON array, no other text.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.4
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+            
+    except Exception as e:
+        print(f"Error in Gemini liminal space identification: {e}")
+    
+    return []
+
+def analyze_convergence_opportunities_with_gemini(signals: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Analyze industry/domain convergence using Gemini"""
+    try:
+        # Extract signals that mention multiple domains or industries
+        convergence_signals = []
+        for signal in signals[:20]:
+            convergence_signals.append({
+                "content": signal.get("content", "")[:400],
+                "source": signal.get("source", "unknown")
+            })
+        
+        prompt = f"""
+        Analyze these signals to identify convergence opportunities where different industries, technologies, or domains are coming together.
+        
+        Signals: {json.dumps(convergence_signals, indent=2)}
+        
+        Look for patterns indicating:
+        - Cross-industry technology adoption
+        - Hybrid solutions combining multiple domains
+        - New use cases at industry intersections
+        - Technology transfer opportunities
+        
+        Extract and return a JSON object with:
+        - convergence_trends: Array of convergence trends identified
+        - cross_pollination_opportunities: Array of technology transfer opportunities
+        - hybrid_solutions: Array of potential hybrid solution opportunities
+        - timing_indicators: Array of signals showing timing for convergence
+        - barrier_analysis: Common barriers to convergence mentioned
+        - success_factors: Factors that enable successful convergence
+        
+        Only return the JSON object, no other text.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+            
+    except Exception as e:
+        print(f"Error in Gemini convergence analysis: {e}")
+    
+    return {
+        "convergence_trends": [],
+        "cross_pollination_opportunities": [],
+        "hybrid_solutions": [],
+        "timing_indicators": [],
+        "barrier_analysis": [],
+        "success_factors": []
+    }
+
+def map_signal_connections_enhanced(signals_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Enhanced signal mapping using Gemini for sophisticated analysis
     """
     connection_map = {
         "timestamp": datetime.now().isoformat(),
         "signal_count": len(signals_data),
-        "connection_clusters": [],
+        "gemini_analysis": {},
         "workflow_intersections": [],
         "technology_gaps": [],
-        "integration_opportunities": [],
-        "convergence_points": [],
+        "convergence_analysis": {},
         "liminal_spaces": [],
         "opportunity_score": 0.0
     }
@@ -36,651 +287,106 @@ def map_signal_connections(signals_data: List[Dict[str, Any]]) -> Dict[str, Any]
         if not signals_data:
             return connection_map
         
-        # Extract keywords and themes from all signals
-        signal_themes = extract_signal_themes(signals_data)
+        print("🧠 Running Gemini-powered signal analysis...")
         
-        # Find clusters of related signals
-        connection_map["connection_clusters"] = find_signal_clusters(signals_data, signal_themes)
+        # Extract themes using Gemini
+        connection_map["gemini_analysis"] = extract_signal_themes_with_gemini(signals_data)
         
         # Identify workflow intersections
-        connection_map["workflow_intersections"] = identify_workflow_intersections(signals_data)
+        connection_map["workflow_intersections"] = identify_workflow_intersections_with_gemini(signals_data)
         
         # Find technology gaps
-        connection_map["technology_gaps"] = find_technology_gaps(signals_data)
+        connection_map["technology_gaps"] = find_technology_gaps_with_gemini(signals_data)
         
-        # Identify integration opportunities
-        connection_map["integration_opportunities"] = find_integration_opportunities(signals_data)
-        
-        # Find convergence points
-        connection_map["convergence_points"] = find_convergence_points(signals_data)
+        # Analyze convergence opportunities
+        connection_map["convergence_analysis"] = analyze_convergence_opportunities_with_gemini(signals_data)
         
         # Identify liminal spaces
-        connection_map["liminal_spaces"] = identify_liminal_spaces(connection_map)
+        connection_map["liminal_spaces"] = identify_liminal_spaces_with_gemini(connection_map)
         
-        # Calculate opportunity score
-        connection_map["opportunity_score"] = calculate_connection_opportunity_score(connection_map)
+        # Calculate enhanced opportunity score
+        connection_map["opportunity_score"] = calculate_enhanced_opportunity_score(connection_map)
+        
+        print(f"✅ Identified {len(connection_map['liminal_spaces'])} liminal spaces")
+        print(f"🎯 Opportunity score: {connection_map['opportunity_score']:.2f}")
         
         return connection_map
         
     except Exception as e:
-        print(f"Error in map_signal_connections: {e}")
+        print(f"Error in enhanced signal mapping: {e}")
         connection_map["error"] = str(e)
         return connection_map
 
-def analyze_workflow_gaps(user_journeys: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Analyzes user workflows to identify gaps and friction points
-    """
-    workflow_analysis = {
-        "journey_count": len(user_journeys),
-        "common_friction_points": [],
-        "tool_switching_patterns": [],
-        "manual_processes": [],
-        "integration_failures": [],
-        "opportunity_areas": [],
-        "workflow_efficiency_score": 0.0
-    }
-    
-    try:
-        # Analyze each user journey for common patterns
-        all_friction_points = []
-        tool_switches = []
-        manual_tasks = []
-        
-        for journey in user_journeys:
-            journey_content = str(journey).lower()
-            
-            # Find friction indicators
-            friction_keywords = [
-                "switch between", "copy paste", "manual", "export import",
-                "download upload", "no integration", "doesn't connect",
-                "separate tool", "different platform"
-            ]
-            
-            for keyword in friction_keywords:
-                if keyword in journey_content:
-                    all_friction_points.append({
-                        "friction_type": keyword,
-                        "context": journey.get("content", "")[:200],
-                        "source": journey.get("source", "unknown")
-                    })
-            
-            # Find tool switching patterns
-            tool_indicators = ["use", "switch to", "open", "login to", "go to"]
-            for indicator in tool_indicators:
-                if indicator in journey_content:
-                    tool_switches.append({
-                        "switch_pattern": indicator,
-                        "context": journey.get("content", "")[:150]
-                    })
-            
-            # Find manual processes
-            manual_indicators = ["manually", "by hand", "copy", "type", "enter"]
-            for indicator in manual_indicators:
-                if indicator in journey_content:
-                    manual_tasks.append({
-                        "manual_task": indicator,
-                        "context": journey.get("content", "")[:150]
-                    })
-        
-        # Group and analyze patterns
-        workflow_analysis["common_friction_points"] = group_friction_points(all_friction_points)
-        workflow_analysis["tool_switching_patterns"] = analyze_tool_patterns(tool_switches)
-        workflow_analysis["manual_processes"] = group_manual_processes(manual_tasks)
-        workflow_analysis["opportunity_areas"] = identify_automation_opportunities(workflow_analysis)
-        workflow_analysis["workflow_efficiency_score"] = calculate_workflow_efficiency(workflow_analysis)
-        
-        return workflow_analysis
-        
-    except Exception as e:
-        print(f"Error in analyze_workflow_gaps: {e}")
-        workflow_analysis["error"] = str(e)
-        return workflow_analysis
-
-def find_convergence_opportunities(industry_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Finds opportunities at the convergence of different industries or technologies
-    """
-    convergence_analysis = {
-        "industry_count": len(industry_data),
-        "convergence_points": [],
-        "cross_pollination_opportunities": [],
-        "technology_transfers": [],
-        "regulatory_arbitrage": [],
-        "market_timing_windows": [],
-        "convergence_score": 0.0
-    }
-    
-    try:
-        # Extract industry themes and technologies
-        industry_themes = {}
-        for data in industry_data:
-            industry = data.get("industry", "unknown")
-            content = str(data).lower()
-            
-            # Extract key technologies mentioned
-            tech_keywords = [
-                "ai", "machine learning", "blockchain", "iot", "automation",
-                "cloud", "mobile", "api", "integration", "analytics"
-            ]
-            
-            industry_tech = []
-            for tech in tech_keywords:
-                if tech in content:
-                    industry_tech.append(tech)
-            
-            industry_themes[industry] = {
-                "technologies": industry_tech,
-                "content": content,
-                "data": data
-            }
-        
-        # Find convergence points between industries
-        convergence_analysis["convergence_points"] = find_industry_convergence(industry_themes)
-        
-        # Identify cross-pollination opportunities
-        convergence_analysis["cross_pollination_opportunities"] = find_cross_pollination(industry_themes)
-        
-        # Find technology transfer opportunities
-        convergence_analysis["technology_transfers"] = find_tech_transfers(industry_themes)
-        
-        # Calculate convergence score
-        convergence_analysis["convergence_score"] = calculate_convergence_score(convergence_analysis)
-        
-        return convergence_analysis
-        
-    except Exception as e:
-        print(f"Error in find_convergence_opportunities: {e}")
-        convergence_analysis["error"] = str(e)
-        return convergence_analysis
-
-def extract_signal_themes(signals: List[Dict[str, Any]]) -> Dict[str, List[str]]:
-    """Extract themes and keywords from signals"""
-    themes = defaultdict(list)
-    
-    for signal in signals:
-        content = str(signal.get("content", "")).lower()
-        signal_type = signal.get("type", "unknown")
-        
-        # Extract key phrases (2-3 words)
-        words = re.findall(r'\b\w+\b', content)
-        for i in range(len(words) - 1):
-            phrase = f"{words[i]} {words[i+1]}"
-            if len(phrase) > 5:  # Skip very short phrases
-                themes[signal_type].append(phrase)
-    
-    return dict(themes)
-
-def find_signal_clusters(signals: List[Dict[str, Any]], themes: Dict[str, List[str]]) -> List[Dict[str, Any]]:
-    """Find clusters of related signals"""
-    clusters = []
-    
-    # Group signals by common keywords
-    keyword_groups = defaultdict(list)
-    
-    for signal in signals:
-        content = str(signal.get("content", "")).lower()
-        
-        # Common clustering keywords
-        cluster_keywords = [
-            "integration", "workflow", "automation", "api", "data",
-            "user experience", "platform", "tool", "process", "efficiency"
-        ]
-        
-        for keyword in cluster_keywords:
-            if keyword in content:
-                keyword_groups[keyword].append(signal)
-    
-    # Create clusters from groups with multiple signals
-    for keyword, signal_group in keyword_groups.items():
-        if len(signal_group) >= 2:
-            clusters.append({
-                "cluster_theme": keyword,
-                "signal_count": len(signal_group),
-                "signals": signal_group[:5],  # Limit for readability
-                "opportunity_strength": min(len(signal_group) / 3.0, 1.0)
-            })
-    
-    return clusters
-
-def identify_workflow_intersections(signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Identify points where multiple workflows intersect"""
-    intersections = []
-    
-    # Look for signals mentioning multiple tools or processes
-    for signal in signals:
-        content = str(signal.get("content", "")).lower()
-        
-        # Common workflow intersection indicators
-        intersection_patterns = [
-            r'between\s+(\w+)\s+and\s+(\w+)',
-            r'from\s+(\w+)\s+to\s+(\w+)',
-            r'(\w+)\s+and\s+(\w+)\s+integration',
-            r'switch\s+from\s+(\w+)\s+to\s+(\w+)'
-        ]
-        
-        for pattern in intersection_patterns:
-            matches = re.findall(pattern, content)
-            for match in matches:
-                if len(match) == 2:
-                    intersections.append({
-                        "intersection_type": "tool_workflow",
-                        "tools": list(match),
-                        "evidence": signal.get("content", "")[:200],
-                        "source": signal.get("source", "unknown")
-                    })
-    
-    return intersections[:10]  # Limit results
-
-def find_technology_gaps(signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Find technology gaps mentioned in signals"""
-    tech_gaps = []
-    
-    for signal in signals:
-        content = str(signal.get("content", "")).lower()
-        
-        # Technology gap indicators
-        gap_patterns = [
-            r'no\s+(\w+)\s+for\s+(\w+)',
-            r'missing\s+(\w+)\s+functionality',
-            r'need\s+better\s+(\w+)',
-            r'lack\s+of\s+(\w+)',
-            r'doesn\'t\s+support\s+(\w+)'
-        ]
-        
-        for pattern in gap_patterns:
-            matches = re.findall(pattern, content)
-            for match in matches:
-                tech_gaps.append({
-                    "gap_type": "technology",
-                    "missing_capability": match if isinstance(match, str) else match[0],
-                    "context": signal.get("content", "")[:200],
-                    "severity": assess_gap_severity(signal)
-                })
-    
-    return tech_gaps[:8]
-
-def find_integration_opportunities(signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Find integration opportunities from signals"""
-    integration_ops = []
-    
-    for signal in signals:
-        content = str(signal.get("content", "")).lower()
-        
-        integration_indicators = [
-            "integration", "connect", "sync", "api", "webhook",
-            "export", "import", "bridge", "link", "interface"
-        ]
-        
-        for indicator in integration_indicators:
-            if indicator in content:
-                integration_ops.append({
-                    "opportunity_type": "integration",
-                    "integration_need": indicator,
-                    "evidence": signal.get("content", "")[:200],
-                    "market_size_indicator": estimate_market_size(signal),
-                    "implementation_complexity": assess_complexity(signal)
-                })
-    
-    return integration_ops[:6]
-
-def find_convergence_points(signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Find points where different domains converge"""
-    convergence_points = []
-    
-    # Domain keywords to track
-    domains = {
-        "productivity": ["task", "project", "workflow", "productivity"],
-        "communication": ["chat", "email", "message", "communication"],
-        "data": ["data", "analytics", "report", "dashboard"],
-        "sales": ["sales", "crm", "lead", "customer"],
-        "marketing": ["marketing", "campaign", "social", "content"],
-        "finance": ["finance", "accounting", "invoice", "payment"]
-    }
-    
-    # Find signals that mention multiple domains
-    for signal in signals:
-        content = str(signal.get("content", "")).lower()
-        mentioned_domains = []
-        
-        for domain, keywords in domains.items():
-            if any(keyword in content for keyword in keywords):
-                mentioned_domains.append(domain)
-        
-        if len(mentioned_domains) >= 2:
-            convergence_points.append({
-                "convergence_type": "domain_intersection",
-                "domains": mentioned_domains,
-                "evidence": signal.get("content", "")[:200],
-                "opportunity_potential": len(mentioned_domains) * 0.2
-            })
-    
-    return convergence_points[:5]
-
-def identify_liminal_spaces(connection_map: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Identify liminal spaces where opportunities exist"""
-    liminal_spaces = []
-    
-    # Analyze connection patterns to find liminal spaces
-    clusters = connection_map.get("connection_clusters", [])
-    intersections = connection_map.get("workflow_intersections", [])
-    
-    # Spaces between established categories
-    for cluster in clusters:
-        theme = cluster.get("cluster_theme", "")
-        signal_count = cluster.get("signal_count", 0)
-        
-        if signal_count >= 3:  # Strong signal
-            liminal_spaces.append({
-                "space_type": "between_categories",
-                "description": f"Gap in {theme} solutions",
-                "evidence_strength": signal_count,
-                "market_readiness": calculate_market_readiness(cluster)
-            })
-    
-    # Workflow intersection spaces
-    for intersection in intersections:
-        tools = intersection.get("tools", [])
-        if len(tools) == 2:
-            liminal_spaces.append({
-                "space_type": "workflow_intersection",
-                "description": f"Gap between {tools[0]} and {tools[1]}",
-                "evidence_strength": 2,
-                "market_readiness": 0.7
-            })
-    
-    return liminal_spaces[:5]
-
-def calculate_connection_opportunity_score(connection_map: Dict[str, Any]) -> float:
-    """Calculate overall opportunity score from connections"""
+def calculate_enhanced_opportunity_score(connection_map: Dict[str, Any]) -> float:
+    """Calculate enhanced opportunity score using Gemini analysis results"""
     score = 0.0
     
-    # Cluster contribution
-    clusters = connection_map.get("connection_clusters", [])
-    cluster_score = sum(c.get("opportunity_strength", 0) for c in clusters)
-    score += min(cluster_score * 0.2, 0.3)
-    
-    # Intersection contribution
-    intersections = connection_map.get("workflow_intersections", [])
-    score += min(len(intersections) * 0.1, 0.2)
-    
-    # Technology gaps contribution
-    tech_gaps = connection_map.get("technology_gaps", [])
-    gap_score = sum(g.get("severity", 0.5) for g in tech_gaps)
-    score += min(gap_score * 0.1, 0.2)
-    
-    # Convergence points contribution
-    convergence = connection_map.get("convergence_points", [])
-    conv_score = sum(c.get("opportunity_potential", 0) for c in convergence)
-    score += min(conv_score, 0.2)
-    
-    # Liminal spaces contribution
-    liminal = connection_map.get("liminal_spaces", [])
-    liminal_score = sum(l.get("market_readiness", 0) for l in liminal)
-    score += min(liminal_score * 0.1, 0.1)
-    
-    return min(score, 1.0)
-
-def group_friction_points(friction_points: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Group similar friction points"""
-    grouped = defaultdict(list)
-    
-    for point in friction_points:
-        friction_type = point.get("friction_type", "unknown")
-        grouped[friction_type].append(point)
-    
-    return [
-        {
-            "friction_type": ftype,
-            "occurrence_count": len(points),
-            "examples": points[:3]
-        }
-        for ftype, points in grouped.items()
-        if len(points) >= 2
-    ]
-
-def analyze_tool_patterns(tool_switches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Analyze tool switching patterns"""
-    patterns = defaultdict(int)
-    
-    for switch in tool_switches:
-        pattern = switch.get("switch_pattern", "unknown")
-        patterns[pattern] += 1
-    
-    return [
-        {
-            "pattern": pattern,
-            "frequency": count,
-            "automation_potential": min(count / 5.0, 1.0)
-        }
-        for pattern, count in patterns.items()
-        if count >= 2
-    ]
-
-def group_manual_processes(manual_tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Group and analyze manual processes"""
-    grouped = defaultdict(list)
-    
-    for task in manual_tasks:
-        task_type = task.get("manual_task", "unknown")
-        grouped[task_type].append(task)
-    
-    return [
-        {
-            "process_type": ptype,
-            "frequency": len(tasks),
-            "automation_opportunity": len(tasks) * 0.2,
-            "examples": tasks[:2]
-        }
-        for ptype, tasks in grouped.items()
-        if len(tasks) >= 2
-    ]
-
-def identify_automation_opportunities(workflow_analysis: Dict[str, Any]) -> List[str]:
-    """Identify top automation opportunities"""
-    opportunities = []
-    
-    # High-frequency manual processes
-    manual_processes = workflow_analysis.get("manual_processes", [])
-    for process in manual_processes:
-        if process.get("frequency", 0) >= 3:
-            opportunities.append(f"Automate {process.get('process_type')} processes")
-    
-    # Common friction points
-    friction_points = workflow_analysis.get("common_friction_points", [])
-    for friction in friction_points:
-        if friction.get("occurrence_count", 0) >= 3:
-            opportunities.append(f"Eliminate {friction.get('friction_type')} friction")
-    
-    return opportunities[:5]
-
-def calculate_workflow_efficiency(workflow_analysis: Dict[str, Any]) -> float:
-    """Calculate workflow efficiency score"""
-    # Lower friction = higher efficiency
-    friction_count = len(workflow_analysis.get("common_friction_points", []))
-    manual_count = len(workflow_analysis.get("manual_processes", []))
-    
-    # Base score reduced by inefficiencies
-    efficiency = 1.0 - (friction_count * 0.1) - (manual_count * 0.1)
-    return max(efficiency, 0.0)
-
-def find_industry_convergence(industry_themes: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Find convergence between industries"""
-    convergences = []
-    
-    industries = list(industry_themes.keys())
-    
-    # Compare each pair of industries
-    for i, industry1 in enumerate(industries):
-        for industry2 in industries[i+1:]:
-            theme1 = industry_themes[industry1]
-            theme2 = industry_themes[industry2]
-            
-            # Find common technologies
-            common_tech = set(theme1["technologies"]) & set(theme2["technologies"])
-            
-            if common_tech:
-                convergences.append({
-                    "industries": [industry1, industry2],
-                    "common_technologies": list(common_tech),
-                    "convergence_strength": len(common_tech),
-                    "opportunity_type": "technology_convergence"
-                })
-    
-    return convergences
-
-def find_cross_pollination(industry_themes: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Find cross-pollination opportunities between industries"""
-    opportunities = []
-    
-    # Look for technologies that are strong in one industry but weak in another
-    all_technologies = set()
-    for theme in industry_themes.values():
-        all_technologies.update(theme["technologies"])
-    
-    for tech in all_technologies:
-        industries_with_tech = []
-        industries_without_tech = []
+    try:
+        # Gemini analysis contribution (0-0.4)
+        gemini_analysis = connection_map.get("gemini_analysis", {})
+        opportunity_areas = len(gemini_analysis.get("opportunity_areas", []))
+        urgency_indicators = len(gemini_analysis.get("urgency_indicators", []))
         
-        for industry, theme in industry_themes.items():
-            if tech in theme["technologies"]:
-                industries_with_tech.append(industry)
-            else:
-                industries_without_tech.append(industry)
+        score += min(opportunity_areas * 0.05, 0.2)
+        score += min(urgency_indicators * 0.04, 0.2)
         
-        # If technology is strong in some industries but missing in others
-        if len(industries_with_tech) >= 1 and len(industries_without_tech) >= 1:
-            opportunities.append({
-                "technology": tech,
-                "source_industries": industries_with_tech,
-                "target_industries": industries_without_tech[:3],
-                "transfer_potential": len(industries_without_tech) * 0.2
-            })
-    
-    return opportunities[:5]
+        # Workflow intersections (0-0.2)
+        intersections = connection_map.get("workflow_intersections", [])
+        high_impact_intersections = len([i for i in intersections if i.get("business_impact") == "high"])
+        score += min(high_impact_intersections * 0.1, 0.2)
+        
+        # Technology gaps (0-0.2)
+        tech_gaps = connection_map.get("technology_gaps", [])
+        large_market_gaps = len([g for g in tech_gaps if g.get("market_size_indicator") == "large"])
+        score += min(large_market_gaps * 0.1, 0.2)
+        
+        # Liminal spaces (0-0.2)
+        liminal_spaces = connection_map.get("liminal_spaces", [])
+        high_readiness_spaces = len([l for l in liminal_spaces if l.get("market_readiness") == "high"])
+        score += min(high_readiness_spaces * 0.1, 0.2)
+        
+        return min(score, 1.0)
+        
+    except Exception as e:
+        print(f"Error calculating enhanced opportunity score: {e}")
+        return 0.0
 
-def find_tech_transfers(industry_themes: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Find technology transfer opportunities"""
-    transfers = []
-    
-    # This would be more sophisticated in production
-    # For now, identify obvious transfer opportunities
-    
-    high_tech_industries = []
-    low_tech_industries = []
-    
-    for industry, theme in industry_themes.items():
-        tech_count = len(theme["technologies"])
-        if tech_count >= 3:
-            high_tech_industries.append(industry)
-        elif tech_count <= 1:
-            low_tech_industries.append(industry)
-    
-    for high_tech in high_tech_industries:
-        for low_tech in low_tech_industries:
-            transfers.append({
-                "from_industry": high_tech,
-                "to_industry": low_tech,
-                "transfer_type": "digitization_opportunity",
-                "potential": 0.6
-            })
-    
-    return transfers[:3]
-
-def calculate_convergence_score(convergence_analysis: Dict[str, Any]) -> float:
-    """Calculate convergence opportunity score"""
-    score = 0.0
-    
-    # Convergence points
-    points = convergence_analysis.get("convergence_points", [])
-    score += min(len(points) * 0.2, 0.4)
-    
-    # Cross-pollination opportunities
-    cross_poll = convergence_analysis.get("cross_pollination_opportunities", [])
-    poll_score = sum(op.get("transfer_potential", 0) for op in cross_poll)
-    score += min(poll_score, 0.3)
-    
-    # Technology transfers
-    transfers = convergence_analysis.get("technology_transfers", [])
-    transfer_score = sum(t.get("potential", 0) for t in transfers)
-    score += min(transfer_score, 0.3)
-    
-    return min(score, 1.0)
-
-def assess_gap_severity(signal: Dict[str, Any]) -> float:
-    """Assess the severity of a technology gap"""
-    content = str(signal.get("content", "")).lower()
-    
-    # High severity indicators
-    high_severity_words = ["critical", "urgent", "blocker", "impossible", "broken"]
-    medium_severity_words = ["difficult", "challenging", "slow", "inefficient"]
-    
-    if any(word in content for word in high_severity_words):
-        return 0.9
-    elif any(word in content for word in medium_severity_words):
-        return 0.6
-    else:
-        return 0.4
-
-def estimate_market_size(signal: Dict[str, Any]) -> str:
-    """Estimate market size based on signal characteristics"""
-    content = str(signal.get("content", "")).lower()
-    source = signal.get("source", "")
-    
-    # Large market indicators
-    if any(word in content for word in ["everyone", "all", "every", "universal"]):
-        return "large"
-    elif any(word in content for word in ["many", "most", "common", "popular"]):
-        return "medium"
-    elif "reddit" in source and signal.get("engagement", 0) > 100:
-        return "medium"
-    else:
-        return "small"
-
-def assess_complexity(signal: Dict[str, Any]) -> str:
-    """Assess implementation complexity"""
-    content = str(signal.get("content", "")).lower()
-    
-    # Complexity indicators
-    if any(word in content for word in ["simple", "easy", "basic", "straightforward"]):
-        return "low"
-    elif any(word in content for word in ["integration", "api", "sync", "connect"]):
-        return "medium"
-    elif any(word in content for word in ["complex", "difficult", "enterprise", "custom"]):
-        return "high"
-    else:
-        return "medium"
-
-def calculate_market_readiness(cluster: Dict[str, Any]) -> float:
-    """Calculate how ready the market is for a solution"""
-    signal_count = cluster.get("signal_count", 0)
-    theme = cluster.get("cluster_theme", "")
-    
-    # More signals = more market readiness
-    readiness = min(signal_count / 5.0, 0.8)
-    
-    # Some themes indicate higher readiness
-    high_readiness_themes = ["integration", "automation", "workflow", "efficiency"]
-    if theme in high_readiness_themes:
-        readiness += 0.2
-    
-    return min(readiness, 1.0)
-
-# Create the gap mapper agent
-gap_mapper_agent = LlmAgent(
-    name="gap_mapper_agent",
+# Enhanced Gap Mapper Agent with Gemini
+gap_mapper_agent_enhanced = LlmAgent(
+    name="gap_mapper_agent_enhanced",
     model="gemini-2.0-flash",
-    instruction=GAP_MAPPER_PROMPT,
+    instruction="""
+    You are an advanced Gap Mapper Agent specializing in identifying liminal market opportunities using AI-powered analysis.
+    
+    Your enhanced capabilities include:
+    - Sophisticated pattern recognition using Gemini analysis
+    - Deep workflow intersection identification
+    - Technology gap analysis with market sizing
+    - Liminal space identification between market categories
+    - Cross-industry convergence opportunity detection
+    
+    Use your tools to map connections between market signals and identify hidden opportunities in the spaces between established categories.
+    
+    Focus on finding genuine liminal opportunities that represent:
+    - Gaps between existing tool categories
+    - Workflow intersection points that create friction
+    - Technology needs not met by current solutions
+    - Convergence opportunities across industries
+    - Underserved market segments between established categories
+    """,
     description=(
-        "Maps connections between market signals to identify hidden opportunities "
-        "in liminal spaces where traditional market categories don't apply."
+        "Advanced gap mapper that uses Gemini-powered analysis to identify "
+        "sophisticated patterns and liminal opportunities in market signals."
     ),
     tools=[
-        FunctionTool(func=map_signal_connections),
-        FunctionTool(func=analyze_workflow_gaps),
-        FunctionTool(func=find_convergence_opportunities),
+        FunctionTool(func=map_signal_connections_enhanced),
+        FunctionTool(func=extract_signal_themes_with_gemini),
+        FunctionTool(func=identify_workflow_intersections_with_gemini),
+        FunctionTool(func=find_technology_gaps_with_gemini),
+        FunctionTool(func=identify_liminal_spaces_with_gemini),
+        FunctionTool(func=analyze_convergence_opportunities_with_gemini),
         google_search,
         load_web_page
     ],
-    output_key="gap_mapping"
+    output_key="enhanced_gap_mapping"
 )

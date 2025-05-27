@@ -1,5 +1,5 @@
 """
-Opportunity Scorer Agent - Scores and ranks market opportunities
+Gemini-Powered Opportunity Scorer Agent - Intelligent market opportunity evaluation
 """
 
 from google.adk.agents import LlmAgent
@@ -7,623 +7,577 @@ from google.adk.tools import FunctionTool
 from google.genai import Client, types
 from typing import Dict, List, Any, Optional
 import json
-import math
 from datetime import datetime
 
 client = Client()
 
 OPPORTUNITY_SCORER_PROMPT = """
-You are an expert market opportunity scoring agent. Your role is to:
+You are an expert market opportunity scoring agent powered by advanced AI analysis. Your role is to:
 
-1. Analyze market opportunity data objectively
-2. Apply scoring frameworks to evaluate potential
-3. Rank opportunities based on multiple criteria
-4. Provide clear recommendations with reasoning
-5. Identify risks and mitigation strategies
+1. Analyze market opportunity data with nuanced understanding
+2. Apply sophisticated scoring frameworks using AI-driven insights
+3. Rank opportunities based on multi-dimensional analysis
+4. Provide strategic recommendations with deep reasoning
+5. Identify subtle patterns and emerging opportunities
 
-Use data-driven approaches to score opportunities across dimensions like:
-- Market size and growth potential
-- Competition levels and barriers to entry
-- Demand validation and trend analysis
-- Technical feasibility and resource requirements
-- Risk factors and market timing
+Use AI-powered analysis to evaluate opportunities across:
+- Market dynamics and growth vectors
+- Competitive positioning and strategic moats
+- Demand validation through sentiment and behavior analysis
+- Technical feasibility and execution complexity
+- Risk assessment with scenario modeling
 
-Always provide transparent scoring methodology and actionable insights.
+Always provide transparent AI-driven methodology and strategic insights.
 """
 
-def calculate_opportunity_score(
-    market_size_data: Dict[str, Any],
-    competition_data: Dict[str, Any], 
-    demand_data: Dict[str, Any],
-    trend_data: Dict[str, Any],
-    risk_data: Dict[str, Any]
-) -> Dict[str, Any]:
+def analyze_market_dynamics_with_gemini(market_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Calculate comprehensive opportunity score based on multiple factors
-    
-    Args:
-        market_size_data: Market size and TAM/SAM data
-        competition_data: Competitive landscape analysis
-        demand_data: Demand validation signals
-        trend_data: Market trend analysis
-        risk_data: Risk assessment data
-        
-    Returns:
-        Comprehensive scoring results with breakdown
-    """
-    try:
-        scoring_result = {
-            "timestamp": datetime.now().isoformat(),
-            "overall_score": 0.0,
-            "component_scores": {},
-            "score_breakdown": {},
-            "recommendation": "",
-            "confidence_level": "medium",
-            "key_strengths": [],
-            "key_weaknesses": [],
-            "risk_factors": [],
-            "next_steps": []
-        }
-        
-        # 1. Market Size Score (0-25 points)
-        market_score = _calculate_market_size_score(market_size_data)
-        scoring_result["component_scores"]["market_size"] = market_score
-        
-        # 2. Competition Score (0-20 points)
-        competition_score = _calculate_competition_score(competition_data)
-        scoring_result["component_scores"]["competition"] = competition_score
-        
-        # 3. Demand Score (0-25 points)
-        demand_score = _calculate_demand_score(demand_data)
-        scoring_result["component_scores"]["demand"] = demand_score
-        
-        # 4. Trend Score (0-15 points)
-        trend_score = _calculate_trend_score(trend_data)
-        scoring_result["component_scores"]["trends"] = trend_score
-        
-        # 5. Risk Score (0-15 points penalty reduction)
-        risk_score = _calculate_risk_score(risk_data)
-        scoring_result["component_scores"]["risk_mitigation"] = risk_score
-        
-        # Calculate overall score
-        total_score = market_score + competition_score + demand_score + trend_score + risk_score
-        scoring_result["overall_score"] = min(total_score / 100.0, 1.0)  # Normalize to 0-1
-        
-        # Generate detailed breakdown
-        scoring_result["score_breakdown"] = {
-            "market_size": {"score": market_score, "weight": "25%", "rationale": _get_market_size_rationale(market_size_data)},
-            "competition": {"score": competition_score, "weight": "20%", "rationale": _get_competition_rationale(competition_data)},
-            "demand": {"score": demand_score, "weight": "25%", "rationale": _get_demand_rationale(demand_data)},
-            "trends": {"score": trend_score, "weight": "15%", "rationale": _get_trend_rationale(trend_data)},
-            "risk_mitigation": {"score": risk_score, "weight": "15%", "rationale": _get_risk_rationale(risk_data)}
-        }
-        
-        # Generate recommendation
-        scoring_result["recommendation"] = _generate_recommendation(scoring_result["overall_score"])
-        
-        # Determine confidence level
-        scoring_result["confidence_level"] = _calculate_confidence_level(
-            market_size_data, competition_data, demand_data, trend_data, risk_data
-        )
-        
-        # Extract key insights
-        scoring_result["key_strengths"] = _extract_strengths(market_size_data, competition_data, demand_data, trend_data)
-        scoring_result["key_weaknesses"] = _extract_weaknesses(market_size_data, competition_data, demand_data, trend_data)
-        scoring_result["risk_factors"] = _extract_risk_factors(risk_data)
-        scoring_result["next_steps"] = _generate_next_steps(scoring_result["overall_score"], scoring_result["key_weaknesses"])
-        
-        return scoring_result
-        
-    except Exception as e:
-        return {
-            "error": f"Scoring calculation failed: {str(e)}",
-            "timestamp": datetime.now().isoformat()
-        }
-
-def _calculate_market_size_score(market_data: Dict[str, Any]) -> float:
-    """Calculate market size component score (0-25 points)"""
-    try:
-        tam = market_data.get("tam_estimate", 0)
-        growth_rate = market_data.get("growth_rate", 0)
-        addressable_percentage = market_data.get("addressable_percentage", 10)
-        
-        # TAM scoring (0-15 points)
-        if tam >= 1000000000:  # $1B+
-            tam_score = 15
-        elif tam >= 100000000:  # $100M+
-            tam_score = 12
-        elif tam >= 10000000:   # $10M+
-            tam_score = 8
-        elif tam >= 1000000:    # $1M+
-            tam_score = 4
-        else:
-            tam_score = 1
-        
-        # Growth rate scoring (0-5 points)
-        growth_score = min(growth_rate / 20.0 * 5, 5)  # 20% growth = full points
-        
-        # Addressable market scoring (0-5 points)
-        addressable_score = min(addressable_percentage / 20.0 * 5, 5)  # 20% addressable = full points
-        
-        return tam_score + growth_score + addressable_score
-        
-    except Exception:
-        return 0.0
-
-def _calculate_competition_score(competition_data: Dict[str, Any]) -> float:
-    """Calculate competition component score (0-20 points)"""
-    try:
-        competition_level = competition_data.get("competition_level", "high")
-        direct_competitors = len(competition_data.get("direct_competitors", []))
-        market_gaps = len(competition_data.get("market_gaps", []))
-        
-        # Competition level scoring (0-12 points)
-        if competition_level == "low":
-            comp_score = 12
-        elif competition_level == "medium":
-            comp_score = 8
-        else:  # high competition
-            comp_score = 3
-        
-        # Number of competitors penalty (0-4 points deduction)
-        if direct_competitors <= 2:
-            competitor_penalty = 0
-        elif direct_competitors <= 5:
-            competitor_penalty = 2
-        else:
-            competitor_penalty = 4
-        
-        # Market gaps bonus (0-4 points)
-        gap_bonus = min(market_gaps * 1.5, 4)
-        
-        return max(comp_score - competitor_penalty + gap_bonus, 0)
-        
-    except Exception:
-        return 0.0
-
-def _calculate_demand_score(demand_data: Dict[str, Any]) -> float:
-    """Calculate demand component score (0-25 points)"""
-    try:
-        signal_strength = demand_data.get("signal_strength", 0)
-        search_volume = demand_data.get("search_volume", 0)
-        growth_indicators = len(demand_data.get("growth_indicators", []))
-        validation_sources = len(demand_data.get("validation_sources", []))
-        
-        # Signal strength scoring (0-10 points)
-        signal_score = min(signal_strength / 100.0 * 10, 10)
-        
-        # Search volume scoring (0-8 points)
-        if search_volume >= 100000:
-            volume_score = 8
-        elif search_volume >= 10000:
-            volume_score = 6
-        elif search_volume >= 1000:
-            volume_score = 4
-        else:
-            volume_score = 1
-        
-        # Growth indicators (0-4 points)
-        growth_score = min(growth_indicators * 1.5, 4)
-        
-        # Validation sources (0-3 points)
-        validation_score = min(validation_sources, 3)
-        
-        return signal_score + volume_score + growth_score + validation_score
-        
-    except Exception:
-        return 0.0
-
-def _calculate_trend_score(trend_data: Dict[str, Any]) -> float:
-    """Calculate trend component score (0-15 points)"""
-    try:
-        trend_direction = trend_data.get("trend_direction", "stable")
-        momentum_score = trend_data.get("momentum_score", 0.5)
-        emerging_tech = len(trend_data.get("emerging_technologies", []))
-        
-        # Trend direction scoring (0-8 points)
-        if trend_direction == "growing":
-            direction_score = 8
-        elif trend_direction == "stable":
-            direction_score = 5
-        else:  # declining
-            direction_score = 1
-        
-        # Momentum scoring (0-4 points)
-        momentum_points = momentum_score * 4
-        
-        # Emerging tech bonus (0-3 points)
-        tech_bonus = min(emerging_tech * 1.5, 3)
-        
-        return direction_score + momentum_points + tech_bonus
-        
-    except Exception:
-        return 0.0
-
-def _calculate_risk_score(risk_data: Dict[str, Any]) -> float:
-    """Calculate risk mitigation score (0-15 points)"""
-    try:
-        overall_risk = risk_data.get("overall_risk", "medium")
-        risk_factors = len(risk_data.get("risk_factors", []))
-        mitigation_strategies = len(risk_data.get("mitigation_strategies", []))
-        
-        # Base risk scoring (0-10 points)
-        if overall_risk == "low":
-            base_score = 10
-        elif overall_risk == "medium":
-            base_score = 6
-        else:  # high risk
-            base_score = 2
-        
-        # Risk factor penalty
-        risk_penalty = min(risk_factors * 1.5, 5)
-        
-        # Mitigation bonus
-        mitigation_bonus = min(mitigation_strategies * 2, 5)
-        
-        return max(base_score - risk_penalty + mitigation_bonus, 0)
-        
-    except Exception:
-        return 0.0
-
-def _get_market_size_rationale(market_data: Dict[str, Any]) -> str:
-    """Generate rationale for market size scoring"""
-    tam = market_data.get("tam_estimate", 0)
-    if tam >= 1000000000:
-        return "Large addressable market ($1B+) with significant revenue potential"
-    elif tam >= 100000000:
-        return "Substantial market size ($100M+) supporting viable business case"
-    elif tam >= 10000000:
-        return "Moderate market size ($10M+) requiring focused execution"
-    else:
-        return "Limited market size requiring niche positioning and efficiency"
-
-def _get_competition_rationale(competition_data: Dict[str, Any]) -> str:
-    """Generate rationale for competition scoring"""
-    level = competition_data.get("competition_level", "high")
-    competitors = len(competition_data.get("direct_competitors", []))
-    
-    if level == "low" and competitors <= 2:
-        return "Low competition provides clear market entry opportunity"
-    elif level == "medium":
-        return "Moderate competition requires differentiation strategy"
-    else:
-        return "High competition demands strong value proposition and execution"
-
-def _get_demand_rationale(demand_data: Dict[str, Any]) -> str:
-    """Generate rationale for demand scoring"""
-    strength = demand_data.get("signal_strength", 0)
-    if strength >= 80:
-        return "Strong demand signals indicate clear market need"
-    elif strength >= 50:
-        return "Moderate demand signals suggest viable market opportunity"
-    else:
-        return "Weak demand signals require additional validation"
-
-def _get_trend_rationale(trend_data: Dict[str, Any]) -> str:
-    """Generate rationale for trend scoring"""
-    direction = trend_data.get("trend_direction", "stable")
-    if direction == "growing":
-        return "Positive market trends support opportunity timing"
-    elif direction == "stable":
-        return "Stable market trends provide predictable environment"
-    else:
-        return "Declining trends present timing and adoption challenges"
-
-def _get_risk_rationale(risk_data: Dict[str, Any]) -> str:
-    """Generate rationale for risk scoring"""
-    risk_level = risk_data.get("overall_risk", "medium")
-    strategies = len(risk_data.get("mitigation_strategies", []))
-    
-    if risk_level == "low" and strategies >= 3:
-        return "Low risk profile with strong mitigation strategies"
-    elif risk_level == "medium":
-        return "Moderate risk requiring careful planning and execution"
-    else:
-        return "High risk necessitates comprehensive risk management approach"
-
-def _generate_recommendation(score: float) -> str:
-    """Generate recommendation based on overall score"""
-    if score >= 0.8:
-        return "STRONG PURSUE: Exceptional opportunity with high success potential"
-    elif score >= 0.6:
-        return "PURSUE: Strong opportunity worth investment and development"
-    elif score >= 0.4:
-        return "CAUTIOUS PURSUE: Moderate opportunity requiring careful validation"
-    elif score >= 0.2:
-        return "INVESTIGATE: Weak opportunity needing significant improvements"
-    else:
-        return "AVOID: Poor opportunity with high failure risk"
-
-def _calculate_confidence_level(market_data, competition_data, demand_data, trend_data, risk_data) -> str:
-    """Calculate confidence level based on data quality and completeness"""
-    data_quality_score = 0
-    
-    # Check data completeness and quality
-    if market_data.get("tam_estimate", 0) > 0:
-        data_quality_score += 1
-    if competition_data.get("direct_competitors"):
-        data_quality_score += 1
-    if demand_data.get("signal_strength", 0) > 0:
-        data_quality_score += 1
-    if trend_data.get("trend_direction"):
-        data_quality_score += 1
-    if risk_data.get("risk_factors"):
-        data_quality_score += 1
-    
-    if data_quality_score >= 4:
-        return "high"
-    elif data_quality_score >= 2:
-        return "medium"
-    else:
-        return "low"
-
-def _extract_strengths(market_data, competition_data, demand_data, trend_data) -> List[str]:
-    """Extract key strengths from the opportunity analysis"""
-    strengths = []
-    
-    if market_data.get("tam_estimate", 0) >= 100000000:
-        strengths.append("Large addressable market with significant revenue potential")
-    
-    if competition_data.get("competition_level") == "low":
-        strengths.append("Low competitive pressure enables market capture")
-    
-    if demand_data.get("signal_strength", 0) >= 70:
-        strengths.append("Strong demand signals validate market need")
-    
-    if trend_data.get("trend_direction") == "growing":
-        strengths.append("Positive market trends support growth opportunity")
-    
-    if len(competition_data.get("market_gaps", [])) >= 2:
-        strengths.append("Multiple market gaps provide differentiation opportunities")
-    
-    return strengths
-
-def _extract_weaknesses(market_data, competition_data, demand_data, trend_data) -> List[str]:
-    """Extract key weaknesses from the opportunity analysis"""
-    weaknesses = []
-    
-    if market_data.get("tam_estimate", 0) < 10000000:
-        weaknesses.append("Limited market size constrains revenue potential")
-    
-    if competition_data.get("competition_level") == "high":
-        weaknesses.append("High competition increases market entry difficulty")
-    
-    if demand_data.get("signal_strength", 0) < 40:
-        weaknesses.append("Weak demand signals indicate uncertain market need")
-    
-    if trend_data.get("trend_direction") == "declining":
-        weaknesses.append("Declining market trends present adoption challenges")
-    
-    if len(competition_data.get("direct_competitors", [])) > 10:
-        weaknesses.append("Saturated competitive landscape limits differentiation")
-    
-    return weaknesses
-
-def _extract_risk_factors(risk_data: Dict[str, Any]) -> List[str]:
-    """Extract main risk factors"""
-    risk_factors = risk_data.get("risk_factors", [])
-    if isinstance(risk_factors, list):
-        return risk_factors[:5]  # Top 5 risks
-    return []
-
-def _generate_next_steps(score: float, weaknesses: List[str]) -> List[str]:
-    """Generate recommended next steps based on score and weaknesses"""
-    next_steps = []
-    
-    if score >= 0.6:
-        next_steps.append("Develop detailed business plan and go-to-market strategy")
-        next_steps.append("Secure initial funding or resource allocation")
-        next_steps.append("Build minimum viable product for market testing")
-    elif score >= 0.4:
-        next_steps.append("Conduct additional market validation research")
-        next_steps.append("Analyze competitive positioning in detail")
-        next_steps.append("Develop risk mitigation strategies")
-    else:
-        next_steps.append("Reassess market opportunity and consider pivoting")
-        next_steps.append("Strengthen value proposition and differentiation")
-        next_steps.append("Gather more comprehensive market data")
-    
-    # Add specific steps based on weaknesses
-    for weakness in weaknesses[:3]:  # Address top 3 weaknesses
-        if "market size" in weakness.lower():
-            next_steps.append("Explore adjacent markets or expand target segments")
-        elif "competition" in weakness.lower():
-            next_steps.append("Develop unique competitive advantages and barriers")
-        elif "demand" in weakness.lower():
-            next_steps.append("Conduct customer interviews and demand validation studies")
-    
-    return next_steps
-
-def rank_opportunities(opportunities: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Rank multiple opportunities by their calculated scores
-    
-    Args:
-        opportunities: List of opportunity data dictionaries
-        
-    Returns:
-        Ranked opportunities with comparative analysis
-    """
-    try:
-        ranked_results = {
-            "timestamp": datetime.now().isoformat(),
-            "total_opportunities": len(opportunities),
-            "ranked_opportunities": [],
-            "top_opportunity": None,
-            "comparative_analysis": {},
-            "portfolio_recommendations": []
-        }
-        
-        scored_opportunities = []
-        
-        # Score each opportunity
-        for i, opp in enumerate(opportunities):
-            try:
-                # Extract scoring components
-                market_data = opp.get("market_size", {})
-                competition_data = opp.get("competition_analysis", {})
-                demand_data = opp.get("demand_validation", {})
-                trend_data = opp.get("trend_analysis", {})
-                risk_data = opp.get("risk_assessment", {})
-                
-                # Calculate score
-                scoring_result = calculate_opportunity_score(
-                    market_data, competition_data, demand_data, trend_data, risk_data
-                )
-                
-                scored_opp = {
-                    "opportunity_id": opp.get("id", f"opportunity_{i+1}"),
-                    "name": opp.get("name", f"Opportunity {i+1}"),
-                    "overall_score": scoring_result["overall_score"],
-                    "recommendation": scoring_result["recommendation"],
-                    "key_strengths": scoring_result["key_strengths"],
-                    "key_weaknesses": scoring_result["key_weaknesses"],
-                    "risk_factors": scoring_result["risk_factors"],
-                    "confidence_level": scoring_result["confidence_level"],
-                    "component_scores": scoring_result["component_scores"],
-                    "original_data": opp
-                }
-                
-                scored_opportunities.append(scored_opp)
-                
-            except Exception as e:
-                print(f"Error scoring opportunity {i}: {e}")
-                continue
-        
-        # Sort by score (highest first)
-        scored_opportunities.sort(key=lambda x: x["overall_score"], reverse=True)
-        
-        ranked_results["ranked_opportunities"] = scored_opportunities
-        
-        if scored_opportunities:
-            ranked_results["top_opportunity"] = scored_opportunities[0]
-            
-            # Generate comparative analysis
-            ranked_results["comparative_analysis"] = _generate_comparative_analysis(scored_opportunities)
-            
-            # Generate portfolio recommendations
-            ranked_results["portfolio_recommendations"] = _generate_portfolio_recommendations(scored_opportunities)
-        
-        return ranked_results
-        
-    except Exception as e:
-        return {
-            "error": f"Ranking failed: {str(e)}",
-            "timestamp": datetime.now().isoformat()
-        }
-
-def _generate_comparative_analysis(scored_opportunities: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Generate comparative analysis between opportunities"""
-    if len(scored_opportunities) < 2:
-        return {"note": "Need at least 2 opportunities for comparison"}
-    
-    analysis = {
-        "score_range": {
-            "highest": scored_opportunities[0]["overall_score"],
-            "lowest": scored_opportunities[-1]["overall_score"],
-            "spread": scored_opportunities[0]["overall_score"] - scored_opportunities[-1]["overall_score"]
-        },
-        "strength_patterns": {},
-        "common_weaknesses": {},
-        "risk_distribution": {}
-    }
-    
-    # Analyze common patterns
-    all_strengths = []
-    all_weaknesses = []
-    all_risks = []
-    
-    for opp in scored_opportunities:
-        all_strengths.extend(opp.get("key_strengths", []))
-        all_weaknesses.extend(opp.get("key_weaknesses", []))
-        all_risks.extend(opp.get("risk_factors", []))
-    
-    # Count frequency of strengths/weaknesses/risks
-    from collections import Counter
-    
-    analysis["strength_patterns"] = dict(Counter(all_strengths).most_common(5))
-    analysis["common_weaknesses"] = dict(Counter(all_weaknesses).most_common(5))
-    analysis["risk_distribution"] = dict(Counter(all_risks).most_common(5))
-    
-    return analysis
-
-def _generate_portfolio_recommendations(scored_opportunities: List[Dict[str, Any]]) -> List[str]:
-    """Generate portfolio-level recommendations"""
-    recommendations = []
-    
-    high_score_count = len([opp for opp in scored_opportunities if opp["overall_score"] >= 0.6])
-    medium_score_count = len([opp for opp in scored_opportunities if 0.4 <= opp["overall_score"] < 0.6])
-    
-    if high_score_count >= 2:
-        recommendations.append("Focus resources on top 2-3 high-scoring opportunities")
-        recommendations.append("Consider parallel development of strongest opportunities")
-    elif high_score_count == 1:
-        recommendations.append("Prioritize single high-scoring opportunity while improving others")
-    
-    if medium_score_count >= 3:
-        recommendations.append("Investigate medium-scoring opportunities for improvement potential")
-    
-    if len(scored_opportunities) > 5:
-        recommendations.append("Consider portfolio pruning to focus on top performers")
-    
-    return recommendations
-
-def generate_scoring_report(opportunity_data: Dict[str, Any]) -> str:
-    """
-    Generate a comprehensive scoring report using AI
-    
-    Args:
-        opportunity_data: Complete opportunity analysis data
-        
-    Returns:
-        Formatted scoring report as string
+    Use Gemini to analyze market dynamics and size potential
     """
     try:
         prompt = f"""
-        Generate a comprehensive market opportunity scoring report based on this data:
+        Analyze this market data and provide comprehensive scoring insights:
         
-        {json.dumps(opportunity_data, indent=2)}
+        Market Data: {json.dumps(market_data, indent=2)}
         
-        Include:
-        1. Executive Summary with key findings
-        2. Detailed scoring breakdown by component
-        3. Strengths and opportunities analysis
-        4. Risk assessment and mitigation recommendations
-        5. Next steps and action items
-        6. Investment recommendation with rationale
+        Evaluate and return JSON with:
+        {{
+            "market_attractiveness_score": 0-25,
+            "growth_potential_score": 0-15,
+            "addressability_score": 0-10,
+            "market_maturity": "emerging/growth/mature/declining",
+            "size_category": "niche/mid-market/large/mega",
+            "growth_drivers": ["driver1", "driver2", "driver3"],
+            "market_constraints": ["constraint1", "constraint2"],
+            "revenue_potential": "low/medium/high/exceptional",
+            "timing_score": 0-10,
+            "strategic_rationale": "detailed explanation of market opportunity",
+            "red_flags": ["potential issue1", "potential issue2"],
+            "confidence_level": "low/medium/high"
+        }}
         
-        Make the report professional, data-driven, and actionable.
+        Consider:
+        - TAM/SAM/SOM relationships and realism
+        - Market growth sustainability
+        - Customer willingness to pay
+        - Market timing and adoption curves
+        - Economic and regulatory tailwinds/headwinds
+        
+        Be analytical and realistic in scoring.
         """
         
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+        
+    except Exception as e:
+        print(f"Error in Gemini market analysis: {e}")
+    
+    return {"error": "Analysis failed", "market_attractiveness_score": 0}
+
+def analyze_competitive_landscape_with_gemini(competition_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Use Gemini to analyze competitive dynamics and positioning opportunities
+    """
+    try:
+        prompt = f"""
+        Analyze this competitive landscape data and provide strategic scoring:
+        
+        Competition Data: {json.dumps(competition_data, indent=2)}
+        
+        Evaluate and return JSON with:
+        {{
+            "competitive_advantage_score": 0-20,
+            "market_entry_difficulty": "easy/moderate/hard/extremely_hard",
+            "competitive_moats": ["moat1", "moat2"],
+            "differentiation_opportunities": ["opportunity1", "opportunity2"],
+            "competitive_threats": ["threat1", "threat2"],
+            "market_consolidation_risk": "low/medium/high",
+            "winner_take_all_potential": "low/medium/high",
+            "switching_costs": "low/medium/high",
+            "network_effects": "none/weak/moderate/strong",
+            "strategic_positioning": "detailed analysis of positioning opportunity",
+            "execution_requirements": ["requirement1", "requirement2"],
+            "time_to_competitive_response": "immediate/months/years",
+            "sustainable_advantage_potential": "low/medium/high"
+        }}
+        
+        Consider:
+        - Direct and indirect competition intensity
+        - Barriers to entry and competitive responses
+        - Market concentration and power dynamics
+        - Innovation pace and disruption potential
+        - Customer loyalty and switching patterns
+        
+        Focus on strategic implications rather than just counting competitors.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
                 temperature=0.3
             )
         )
         
         if response and response.text:
-            return response.text
-        else:
-            return "Failed to generate scoring report"
-            
+            return json.loads(response.text)
+        
     except Exception as e:
-        return f"Report generation failed: {str(e)}"
+        print(f"Error in Gemini competitive analysis: {e}")
+    
+    return {"error": "Analysis failed", "competitive_advantage_score": 0}
 
-# Create the opportunity scorer agent
+def analyze_demand_signals_with_gemini(demand_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Use Gemini to analyze demand validation and market readiness
+    """
+    try:
+        prompt = f"""
+        Analyze these demand signals and provide comprehensive demand assessment:
+        
+        Demand Data: {json.dumps(demand_data, indent=2)}
+        
+        Evaluate and return JSON with:
+        {{
+            "demand_strength_score": 0-25,
+            "market_readiness": "early/emerging/ready/mature",
+            "customer_urgency": "low/moderate/high/critical",
+            "willingness_to_pay": "low/moderate/high",
+            "demand_sustainability": "temporary/cyclical/structural/transformational",
+            "adoption_barriers": ["barrier1", "barrier2"],
+            "demand_catalysts": ["catalyst1", "catalyst2"],
+            "customer_segments": ["segment1", "segment2"],
+            "demand_patterns": "growing/stable/declining/volatile",
+            "market_education_required": "minimal/moderate/extensive",
+            "pain_point_severity": "nice_to_have/important/critical/existential",
+            "solution_urgency": "eventually/soon/now/yesterday",
+            "budget_availability": "constrained/moderate/available/abundant",
+            "demand_validation_confidence": "low/medium/high"
+        }}
+        
+        Look for:
+        - Authentic vs artificial demand signals
+        - Pain point intensity and frequency
+        - Customer behavior patterns and trends
+        - Market timing and readiness indicators
+        - Economic drivers and constraints
+        
+        Distinguish between expressed interest and actual purchase intent.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+        
+    except Exception as e:
+        print(f"Error in Gemini demand analysis: {e}")
+    
+    return {"error": "Analysis failed", "demand_strength_score": 0}
+
+def analyze_market_trends_with_gemini(trend_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Use Gemini to analyze market trends and momentum
+    """
+    try:
+        prompt = f"""
+        Analyze these market trends and provide forward-looking assessment:
+        
+        Trend Data: {json.dumps(trend_data, indent=2)}
+        
+        Evaluate and return JSON with:
+        {{
+            "trend_momentum_score": 0-15,
+            "trend_direction": "accelerating_positive/growing/stable/declining/accelerating_negative",
+            "trend_sustainability": "temporary/short_term/medium_term/long_term/permanent",
+            "macro_trend_alignment": ["aligned_trend1", "aligned_trend2"],
+            "counter_trends": ["counter_trend1", "counter_trend2"],
+            "technology_enablers": ["tech1", "tech2"],
+            "regulatory_trends": ["positive_reg1", "concerning_reg2"],
+            "social_behavioral_shifts": ["shift1", "shift2"],
+            "economic_tailwinds": ["tailwind1", "tailwind2"],
+            "economic_headwinds": ["headwind1", "headwind2"],
+            "trend_inflection_points": ["inflection1", "inflection2"],
+            "momentum_sustainability": "fading/stable/building/accelerating",
+            "timing_advantage": "early/optimal/late/missed"
+        }}
+        
+        Consider:
+        - Macro and micro trend convergence
+        - Technology adoption curves
+        - Generational and behavioral shifts
+        - Economic cycle positioning
+        - Regulatory and policy trends
+        
+        Focus on trend durability and strategic implications.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+        
+    except Exception as e:
+        print(f"Error in Gemini trend analysis: {e}")
+    
+    return {"error": "Analysis failed", "trend_momentum_score": 0}
+
+def analyze_execution_risks_with_gemini(
+    opportunity_data: Dict[str, Any], 
+    market_analysis: Dict[str, Any],
+    competition_analysis: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Use Gemini to analyze execution risks and mitigation strategies
+    """
+    try:
+        prompt = f"""
+        Analyze execution risks for this market opportunity:
+        
+        Opportunity: {json.dumps(opportunity_data, indent=2)}
+        Market Analysis: {json.dumps(market_analysis, indent=2)}
+        Competition Analysis: {json.dumps(competition_analysis, indent=2)}
+        
+        Evaluate and return JSON with:
+        {{
+            "execution_risk_score": 0-15,
+            "overall_risk_level": "low/medium/high/extreme",
+            "technical_risks": ["risk1", "risk2"],
+            "market_risks": ["risk1", "risk2"],
+            "competitive_risks": ["risk1", "risk2"],
+            "regulatory_risks": ["risk1", "risk2"],
+            "financial_risks": ["risk1", "risk2"],
+            "operational_risks": ["risk1", "risk2"],
+            "timing_risks": ["risk1", "risk2"],
+            "mitigation_strategies": {{
+                "technical": ["strategy1", "strategy2"],
+                "market": ["strategy1", "strategy2"],
+                "competitive": ["strategy1", "strategy2"]
+            }},
+            "critical_success_factors": ["factor1", "factor2"],
+            "failure_modes": ["mode1", "mode2"],
+            "risk_monitoring_metrics": ["metric1", "metric2"],
+            "risk_tolerance_required": "low/medium/high"
+        }}
+        
+        Consider:
+        - Technical execution complexity
+        - Market timing and adoption risks
+        - Competitive response scenarios
+        - Resource requirement risks
+        - Regulatory and compliance risks
+        
+        Provide actionable risk mitigation strategies.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+        
+    except Exception as e:
+        print(f"Error in Gemini risk analysis: {e}")
+    
+    return {"error": "Analysis failed", "execution_risk_score": 0}
+
+def generate_strategic_recommendation_with_gemini(
+    opportunity_data: Dict[str, Any],
+    scoring_components: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Use Gemini to generate comprehensive strategic recommendations
+    """
+    try:
+        prompt = f"""
+        Generate strategic recommendations for this market opportunity:
+        
+        Opportunity Data: {json.dumps(opportunity_data, indent=2)}
+        Scoring Analysis: {json.dumps(scoring_components, indent=2)}
+        
+        Provide comprehensive strategic guidance in JSON format:
+        {{
+            "overall_recommendation": "strong_pursue/pursue/cautious_pursue/investigate/avoid",
+            "confidence_level": "low/medium/high",
+            "investment_thesis": "detailed 2-3 sentence investment rationale",
+            "strategic_approach": "blitzscale/measured_growth/niche_focus/wait_and_see",
+            "resource_requirements": {{
+                "initial_investment": "low/medium/high/very_high",
+                "team_size": "small/medium/large",
+                "technical_complexity": "low/medium/high",
+                "time_to_market": "fast/medium/slow"
+            }},
+            "go_to_market_strategy": "direct_sales/product_led/partnership/viral",
+            "key_success_metrics": ["metric1", "metric2", "metric3"],
+            "milestone_timeline": {{
+                "mvp": "months",
+                "initial_traction": "months", 
+                "market_validation": "months",
+                "scale_inflection": "months"
+            }},
+            "strategic_priorities": ["priority1", "priority2", "priority3"],
+            "competitive_moats_to_build": ["moat1", "moat2"],
+            "partnership_opportunities": ["partner_type1", "partner_type2"],
+            "potential_pivots": ["pivot1", "pivot2"],
+            "exit_strategy_options": ["option1", "option2"],
+            "next_immediate_actions": ["action1", "action2", "action3"]
+        }}
+        
+        Be specific and actionable in recommendations.
+        Consider the full strategic context and execution realities.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+        
+    except Exception as e:
+        print(f"Error in Gemini strategic recommendation: {e}")
+    
+    return {"error": "Analysis failed"}
+
+def calculate_ai_powered_opportunity_score(
+    market_size_data: Dict[str, Any],
+    competition_data: Dict[str, Any], 
+    demand_data: Dict[str, Any],
+    trend_data: Dict[str, Any],
+    opportunity_context: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    Calculate comprehensive opportunity score using Gemini-powered analysis
+    """
+    try:
+        scoring_result = {
+            "timestamp": datetime.now().isoformat(),
+            "overall_score": 0.0,
+            "ai_analysis": {},
+            "component_scores": {},
+            "strategic_insights": {},
+            "recommendation": "",
+            "confidence_level": "medium",
+            "next_actions": []
+        }
+        
+        # 1. AI-Powered Market Analysis
+        print("Analyzing market dynamics with Gemini...")
+        market_analysis = analyze_market_dynamics_with_gemini(market_size_data)
+        scoring_result["ai_analysis"]["market"] = market_analysis
+        
+        # 2. AI-Powered Competitive Analysis
+        print("Analyzing competitive landscape with Gemini...")
+        competition_analysis = analyze_competitive_landscape_with_gemini(competition_data)
+        scoring_result["ai_analysis"]["competition"] = competition_analysis
+        
+        # 3. AI-Powered Demand Analysis
+        print("Analyzing demand signals with Gemini...")
+        demand_analysis = analyze_demand_signals_with_gemini(demand_data)
+        scoring_result["ai_analysis"]["demand"] = demand_analysis
+        
+        # 4. AI-Powered Trend Analysis
+        print("Analyzing market trends with Gemini...")
+        trend_analysis = analyze_market_trends_with_gemini(trend_data)
+        scoring_result["ai_analysis"]["trends"] = trend_analysis
+        
+        # 5. AI-Powered Risk Analysis
+        print("Analyzing execution risks with Gemini...")
+        risk_analysis = analyze_execution_risks_with_gemini(
+            opportunity_context or {}, market_analysis, competition_analysis
+        )
+        scoring_result["ai_analysis"]["risks"] = risk_analysis
+        
+        # 6. Extract component scores from AI analysis
+        scoring_result["component_scores"] = {
+            "market_attractiveness": market_analysis.get("market_attractiveness_score", 0),
+            "competitive_advantage": competition_analysis.get("competitive_advantage_score", 0),
+            "demand_strength": demand_analysis.get("demand_strength_score", 0),
+            "trend_momentum": trend_analysis.get("trend_momentum_score", 0),
+            "execution_risk": risk_analysis.get("execution_risk_score", 0)
+        }
+        
+        # 7. Calculate overall score
+        total_score = sum(scoring_result["component_scores"].values())
+        scoring_result["overall_score"] = min(total_score / 100.0, 1.0)
+        
+        # 8. Generate strategic recommendations
+        print("Generating strategic recommendations with Gemini...")
+        strategic_rec = generate_strategic_recommendation_with_gemini(
+            opportunity_context or {}, scoring_result
+        )
+        scoring_result["strategic_insights"] = strategic_rec
+        scoring_result["recommendation"] = strategic_rec.get("overall_recommendation", "investigate")
+        scoring_result["confidence_level"] = strategic_rec.get("confidence_level", "medium")
+        scoring_result["next_actions"] = strategic_rec.get("next_immediate_actions", [])
+        
+        return scoring_result
+        
+    except Exception as e:
+        return {
+            "error": f"AI-powered scoring failed: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }
+
+def rank_opportunities_with_ai(opportunities: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Rank multiple opportunities using AI-powered analysis
+    """
+    try:
+        ranked_results = {
+            "timestamp": datetime.now().isoformat(),
+            "total_opportunities": len(opportunities),
+            "ranked_opportunities": [],
+            "ai_portfolio_analysis": {},
+            "strategic_recommendations": []
+        }
+        
+        scored_opportunities = []
+        
+        # Score each opportunity with AI
+        for i, opp in enumerate(opportunities):
+            print(f"AI-scoring opportunity {i+1}/{len(opportunities)}...")
+            
+            market_data = opp.get("market_size", {})
+            competition_data = opp.get("competition_analysis", {})
+            demand_data = opp.get("demand_validation", {})
+            trend_data = opp.get("trend_analysis", {})
+            
+            scoring_result = calculate_ai_powered_opportunity_score(
+                market_data, competition_data, demand_data, trend_data, opp
+            )
+            
+            scored_opp = {
+                "opportunity_id": opp.get("id", f"opportunity_{i+1}"),
+                "name": opp.get("name", f"Opportunity {i+1}"),
+                "overall_score": scoring_result["overall_score"],
+                "ai_analysis": scoring_result["ai_analysis"],
+                "strategic_insights": scoring_result["strategic_insights"],
+                "recommendation": scoring_result["recommendation"],
+                "confidence_level": scoring_result["confidence_level"],
+                "next_actions": scoring_result["next_actions"]
+            }
+            
+            scored_opportunities.append(scored_opp)
+        
+        # Sort by score
+        scored_opportunities.sort(key=lambda x: x["overall_score"], reverse=True)
+        ranked_results["ranked_opportunities"] = scored_opportunities
+        
+        # Generate AI-powered portfolio analysis
+        if scored_opportunities:
+            ranked_results["ai_portfolio_analysis"] = _generate_ai_portfolio_analysis(scored_opportunities)
+        
+        return ranked_results
+        
+    except Exception as e:
+        return {
+            "error": f"AI ranking failed: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }
+
+def _generate_ai_portfolio_analysis(scored_opportunities: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Generate AI-powered portfolio analysis and recommendations
+    """
+    try:
+        prompt = f"""
+        Analyze this portfolio of scored opportunities and provide strategic portfolio guidance:
+        
+        Opportunities: {json.dumps([
+            {
+                "name": opp["name"],
+                "score": opp["overall_score"],
+                "recommendation": opp["recommendation"],
+                "market_analysis": opp["ai_analysis"].get("market", {}),
+                "strategic_insights": opp["strategic_insights"]
+            } for opp in scored_opportunities
+        ], indent=2)}
+        
+        Provide portfolio analysis in JSON format:
+        {{
+            "portfolio_theme": "description of overall portfolio characteristics",
+            "diversification_analysis": "assessment of portfolio diversification",
+            "resource_allocation_strategy": "how to allocate resources across opportunities",
+            "portfolio_risks": ["risk1", "risk2"],
+            "portfolio_synergies": ["synergy1", "synergy2"],
+            "recommended_portfolio_approach": "focus/diversify/staged/opportunistic",
+            "timing_strategy": "parallel/sequential/conditional",
+            "portfolio_priorities": ["priority1", "priority2", "priority3"],
+            "cross_opportunity_insights": ["insight1", "insight2"],
+            "portfolio_optimization_suggestions": ["suggestion1", "suggestion2"]
+        }}
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.3
+            )
+        )
+        
+        if response and response.text:
+            return json.loads(response.text)
+        
+    except Exception as e:
+        print(f"Error in AI portfolio analysis: {e}")
+    
+    return {"error": "Portfolio analysis failed"}
+
+# Create the enhanced AI-powered opportunity scorer agent
 opportunity_scorer_agent = LlmAgent(
-    name="opportunity_scorer_agent", 
+    name="ai_opportunity_scorer_agent", 
     model="gemini-2.0-flash",
     instruction=OPPORTUNITY_SCORER_PROMPT,
     description=(
-        "Analyzes and scores market opportunities using comprehensive "
-        "multi-factor evaluation frameworks and provides actionable recommendations."
+        "Advanced AI-powered market opportunity scorer that uses Gemini's intelligence "
+        "for nuanced analysis, strategic insights, and comprehensive recommendations."
     ),
     tools=[
-        FunctionTool(func=calculate_opportunity_score),
-        FunctionTool(func=rank_opportunities),
-        FunctionTool(func=generate_scoring_report)
+        FunctionTool(func=calculate_ai_powered_opportunity_score),
+        FunctionTool(func=rank_opportunities_with_ai),
+        FunctionTool(func=analyze_market_dynamics_with_gemini),
+        FunctionTool(func=analyze_competitive_landscape_with_gemini),
+        FunctionTool(func=analyze_demand_signals_with_gemini),
+        FunctionTool(func=analyze_market_trends_with_gemini),
+        FunctionTool(func=generate_strategic_recommendation_with_gemini)
     ],
-    output_key="opportunity_scoring"
+    output_key="ai_opportunity_scoring"
 )
