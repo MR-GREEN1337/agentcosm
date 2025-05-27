@@ -4,8 +4,11 @@ Finds genuine liminal market spaces and builds testable business assets
 """
 
 from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
+from google.adk.agents.callback_context import CallbackContext
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool
+from google.genai import types
+from datetime import datetime
 
 from .discovery.explorer_agent import market_explorer_agent
 from .discovery.trend_analyzer import trend_analyzer_agent  
@@ -17,6 +20,27 @@ from .builder import brand_creator_agent, landing_builder_agent, copy_writer_age
 from .tools.market_research import comprehensive_market_research, analyze_competitive_landscape, check_domain_availability
 from .prompts import ROOT_AGENT_PROMPT
 from .config import MODEL_CONFIG
+from .schemas import MarketValidation
+
+def setup_market_context(callback_context: CallbackContext):
+    """Setup market research context and shared state"""
+    if "market_context" not in callback_context.state:
+        callback_context.state["market_context"] = {
+            "research_timestamp": datetime.now().isoformat(),
+            "data_sources": [],
+            "validation_criteria": {},
+            "research_pipeline": {}
+        }
+    
+    if "research_results" not in callback_context.state:
+        callback_context.state["research_results"] = {
+            "market_signals": [],
+            "trend_analysis": {},
+            "gap_analysis": {},
+            "validation_data": {},
+            "opportunity_scores": {},
+            "business_assets": {}
+        }
 
 class MarketOpportunityAgent:
     """
@@ -54,7 +78,7 @@ class MarketOpportunityAgent:
             ]
         )
         
-        # Root orchestrator agent
+        # Root orchestrator agent with enhanced ADK features
         self.root_agent = LlmAgent(
             name="market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
@@ -64,6 +88,15 @@ class MarketOpportunityAgent:
                 "real-world signals, validates them through data analysis, "
                 "and creates testable business assets for rapid validation."
             ),
+            # ADK Enhanced Features
+            before_agent_callback=setup_market_context,
+            generate_content_config=types.GenerateContentConfig(
+                temperature=0.3,
+                top_p=0.8,
+                response_mime_type="application/json"
+            ),
+            output_key="market_opportunity_analysis",
+            output_schema=MarketValidation,
             tools=[
                 # Core research tools
                 FunctionTool(func=comprehensive_market_research),

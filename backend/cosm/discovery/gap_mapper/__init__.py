@@ -352,8 +352,8 @@ def calculate_enhanced_opportunity_score(connection_map: Dict[str, Any]) -> floa
         return 0.0
 
 # Enhanced Gap Mapper Agent with Gemini
-gap_mapper_agent_enhanced = LlmAgent(
-    name="gap_mapper_agent_enhanced",
+gap_mapper_agent = LlmAgent(
+    name="gap_mapper_agent",
     model="gemini-2.0-flash",
     instruction="""
     You are an advanced Gap Mapper Agent specializing in identifying liminal market opportunities using AI-powered analysis.
