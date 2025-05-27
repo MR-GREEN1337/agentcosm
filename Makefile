@@ -8,7 +8,7 @@ web:
 
 .PHONY: renderer
 renderer:
-	cd renderer && uvicorn app.main:app --host 0.0.0.0 --port 8001 --allow_origins "http://localhost:8000" --reload
+	cd renderer && uvicorn app:app --host 0.0.0.0 --port 8001 --reload
 	
 .PHONY: stop
 stop:
