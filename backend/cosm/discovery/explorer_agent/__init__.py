@@ -593,8 +593,8 @@ market_explorer_agent = LlmAgent(
         FunctionTool(func=discover_market_signals),
         FunctionTool(func=analyze_competitive_gaps),
         FunctionTool(func=validate_signals_cross_platform),
-        google_search,
-        load_web_page,  # Fixed: Now properly imported as a function
+        # google_search,
+        # load_web_page,  # Fixed: Now properly imported as a function
     ],
     output_key="market_signals",
 )

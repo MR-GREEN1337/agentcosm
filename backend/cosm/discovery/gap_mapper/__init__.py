@@ -3,8 +3,8 @@ Enhanced Gap Mapper Agent with Gemini-powered extraction
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search
-from google.adk.tools.load_web_page import load_web_page
+from google.adk.tools import FunctionTool, google_search  # noqa: F401
+from google.adk.tools.load_web_page import load_web_page  # noqa: F401
 from google.genai import Client, types
 from typing import Dict, List, Any
 import json
@@ -447,8 +447,8 @@ gap_mapper_agent = LlmAgent(
         FunctionTool(func=find_technology_gaps_with_gemini),
         FunctionTool(func=identify_liminal_spaces_with_gemini),
         FunctionTool(func=analyze_convergence_opportunities_with_gemini),
-        google_search,
-        load_web_page,
+        # google_search,
+        # load_web_page,
     ],
     output_key="enhanced_gap_mapping",
 )

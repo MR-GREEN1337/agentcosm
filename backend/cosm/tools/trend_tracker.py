@@ -209,7 +209,7 @@ def extract_trend_insights_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -254,7 +254,7 @@ def extract_momentum_insights_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3

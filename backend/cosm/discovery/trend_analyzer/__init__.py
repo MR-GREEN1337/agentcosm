@@ -513,8 +513,8 @@ trend_analyzer_agent = LlmAgent(
         FunctionTool(func=analyze_search_trends_with_ai),
         FunctionTool(func=track_industry_momentum_with_ai),
         FunctionTool(func=identify_convergence_opportunities),
-        google_search,
-        load_web_page,
+        # google_search,
+        # load_web_page,
     ],
     output_key="trend_analysis",
 )

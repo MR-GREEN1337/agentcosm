@@ -192,8 +192,8 @@ market_analyzer_agent = LlmAgent(
     tools=[
         FunctionTool(func=comprehensive_market_validation),
         FunctionTool(func=research_market_demographics),
-        google_search,
-        load_web_page,
+        # google_search,
+        # load_web_page,
     ],
     output_key="market_validation",
 )

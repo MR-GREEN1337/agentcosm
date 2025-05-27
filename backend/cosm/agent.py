@@ -3,7 +3,7 @@ Market Opportunity Discovery Agent - Root Coordinator (Fixed)
 Finds genuine liminal market spaces and builds testable business assets
 """
 
-from google.adk.agents import LlmAgent, SequentialAgent, ParallelAgent
+from google.adk.agents import LlmAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool
@@ -25,7 +25,6 @@ from .tools.market_research import (
 )
 from .prompts import ROOT_AGENT_PROMPT
 from .config import MODEL_CONFIG
-from .schemas import MarketValidation
 
 
 def setup_market_context(callback_context: CallbackContext):
@@ -56,8 +55,10 @@ class MarketOpportunityAgent:
 
     def __init__(self):
         # Phase 1: Market Signal Discovery (Parallel)
-        self.discovery_phase = ParallelAgent(
+        self.discovery_phase = LlmAgent(
             name="market_discovery_phase",
+            model=MODEL_CONFIG["primary_model"],
+            description="Discovers market signals from multiple sources in parallel",
             sub_agents=[
                 market_explorer_agent,  # Scrapes social media, forums, reviews
                 trend_analyzer_agent,  # Analyzes search trends, industry reports
@@ -68,6 +69,7 @@ class MarketOpportunityAgent:
         # Phase 2: Deep Analysis & Validation (Sequential)
         self.analysis_phase = SequentialAgent(
             name="market_analysis_phase",
+            description="Performs deep analysis and validation of discovered opportunities",
             sub_agents=[
                 market_analyzer_agent,  # Market sizing and competitive analysis
                 code_executor_agent,  # Data analysis and visualization
@@ -76,8 +78,10 @@ class MarketOpportunityAgent:
         )
 
         # Phase 3: Business Asset Creation (Parallel)
-        self.builder_phase = ParallelAgent(
+        self.builder_phase = LlmAgent(
             name="business_builder_phase",
+            model=MODEL_CONFIG["primary_model"],
+            description="Creates business assets for rapid market validation",
             sub_agents=[
                 brand_creator_agent,  # Creates brand identity and positioning
                 copy_writer_agent,  # Generates marketing copy
@@ -86,6 +90,7 @@ class MarketOpportunityAgent:
         )
 
         # Root orchestrator agent with enhanced ADK features
+        # FIXED: Removed output_schema and related configs that conflict with sub_agents
         self.root_agent = LlmAgent(
             name="market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
@@ -98,10 +103,11 @@ class MarketOpportunityAgent:
             # ADK Enhanced Features
             before_agent_callback=setup_market_context,
             generate_content_config=types.GenerateContentConfig(
-                temperature=0.3, top_p=0.8, response_mime_type="application/json"
+                temperature=0.3,
+                top_p=0.8,
+                # Removed response_mime_type="application/json" since no output_schema
             ),
-            output_key="market_opportunity_analysis",
-            output_schema=MarketValidation,
+            # Removed output_key and output_schema to allow sub_agents
             tools=[
                 # Core research tools
                 FunctionTool(func=comprehensive_market_research),

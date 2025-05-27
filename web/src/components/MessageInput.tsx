@@ -15,6 +15,8 @@ interface MessageInputProps {
   onSendMessage: (message: any) => void
   disabled?: boolean
   lastAiMessage?: string
+  ttsEndpoint?: string
+  voiceId?: string
 }
 
 interface UseAutoResizeTextareaProps {
@@ -73,7 +75,13 @@ function useAutoResizeTextarea({
   return { textareaRef, adjustHeight }
 }
 
-export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }: MessageInputProps) {
+export function MessageInput({
+  onSendMessage,
+  disabled = false,
+  lastAiMessage,
+  ttsEndpoint = '/api/tts',
+  voiceId = 'JBFqnCBsd6RMkjVDRZzb'
+}: MessageInputProps) {
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
@@ -89,6 +97,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
 
   const webcamRef = useRef<Webcam>(null)
   const recognitionRef = useRef<any>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 44,
     maxHeight: 160,
@@ -171,45 +180,81 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
       if (recognitionRef.current && isListening) {
         recognitionRef.current.abort()
       }
-      // Clean up speech synthesis
-      if ('speechSynthesis' in window) {
-        speechSynthesis.cancel()
+      // Clean up audio
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
       }
     }
   }, []) // Keep empty dependency array
 
-  // Text-to-speech for AI responses
+  // Text-to-speech for AI responses using backend endpoint
   useEffect(() => {
-    if (lastAiMessage && !isMuted && 'speechSynthesis' in window) {
-      console.log('Speaking AI response:', lastAiMessage)
+    if (false && lastAiMessage && !isMuted) {
+      console.log('Generating speech for AI response:', lastAiMessage)
 
-      // Cancel any ongoing speech
-      speechSynthesis.cancel()
-
-      const utterance = new SpeechSynthesisUtterance(lastAiMessage)
-      utterance.rate = 0.9
-      utterance.pitch = 1.0
-      utterance.volume = 0.8
-
-      utterance.onstart = () => {
-        console.log('TTS started')
-        setIsPlaying(true)
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
       }
-      utterance.onend = () => {
-        console.log('TTS ended')
-        setIsPlaying(false)
-      }
-      utterance.onerror = (event) => {
-        console.error('TTS error:', event)
-        setIsPlaying(false)
+
+      const speakWithTTS = async () => {
+        try {
+          setIsPlaying(true)
+
+          // Call your backend TTS endpoint
+          const response = await fetch(ttsEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: lastAiMessage,
+              voiceId: voiceId
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`TTS API error: ${response.status}`)
+          }
+
+          // Get audio blob from response
+          const audioBlob = await response.blob()
+          const audioUrl = URL.createObjectURL(audioBlob)
+
+          // Create and play audio
+          const audio = new Audio(audioUrl)
+          audioRef.current = audio
+
+          audio.onended = () => {
+            console.log('TTS playback ended')
+            setIsPlaying(false)
+            URL.revokeObjectURL(audioUrl)
+            audioRef.current = null
+          }
+
+          audio.onerror = (event) => {
+            console.error('TTS playback error:', event)
+            setIsPlaying(false)
+            URL.revokeObjectURL(audioUrl)
+            audioRef.current = null
+          }
+
+          await audio.play()
+
+        } catch (error) {
+          console.error('TTS generation error:', error)
+          setIsPlaying(false)
+        }
       }
 
       // Small delay to ensure UI updates
       setTimeout(() => {
-        speechSynthesis.speak(utterance)
+        speakWithTTS()
       }, 100)
     }
-  }, [lastAiMessage, isMuted])
+  }, [lastAiMessage, isMuted, ttsEndpoint, voiceId])
 
   const handleSend = async (textToSend?: string) => {
     const messageText = textToSend || message.trim()
@@ -259,18 +304,6 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
     }
   }
 
-  // Separate function for voice messages that uses the main handleSend
-  const handleSendVoiceMessage = async (voiceText: string) => {
-    if (!voiceText.trim() || disabled || isSending) {
-      console.log('Voice message not sent:', { voiceText: voiceText.trim(), disabled, isSending })
-      return
-    }
-
-    console.log('Processing voice message through main send handler:', voiceText.trim())
-    // Use the main handleSend function to ensure consistent behavior
-    await handleSend(voiceText.trim())
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -303,8 +336,8 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
 
   const toggleMute = () => {
     setIsMuted(!isMuted)
-    if (isPlaying) {
-      speechSynthesis.cancel()
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause()
       setIsPlaying(false)
     }
   }

@@ -1,6 +1,6 @@
 # Model Configuration
 MODEL_CONFIG = {
-    "primary_model": "gemini-2.0-flash",
+    "primary_model": "gemini-2.5-flash-preview-05-20",
     "backup_model": "gemini-1.5-pro",
     "temperature": 0.3,
     "max_tokens": 4096,
