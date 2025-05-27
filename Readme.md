@@ -1,10 +1,8 @@
 # agentcosm
 
-**Navigating Liminal Market Spaces to Launch Your Mini-Business**
+Navigating Liminal Market Spaces to Launch Your Mini-Business
 
 ![App](App.png)
-
----
 
 ## Overview
 
