@@ -7,6 +7,7 @@ from typing import Dict, List, Any
 import json
 
 from ..tools.market_research import search_web_real
+from cosm.config import MODEL_CONFIG as CONFIG
 
 client = Client()
 
@@ -209,7 +210,7 @@ def extract_trend_insights_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -254,7 +255,7 @@ def extract_momentum_insights_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3

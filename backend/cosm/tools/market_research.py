@@ -12,6 +12,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 from collections import Counter
+from cosm.config import MODEL_CONFIG as CONFIG
 
 # Initialize Gemini client
 client = Client()
@@ -334,7 +335,7 @@ def extract_pain_signals_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -378,7 +379,7 @@ def extract_competitors_with_gemini(
             """
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=CONFIG["primary_model"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -421,7 +422,7 @@ def extract_demand_with_gemini(
             """
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=CONFIG["primary_model"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -464,7 +465,7 @@ def extract_trends_with_gemini(
             """
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=CONFIG["primary_model"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -560,7 +561,7 @@ def generate_insights_with_gemini(research_data: Dict[str, Any]) -> List[str]:
         """
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.4
@@ -1023,7 +1024,7 @@ def extract_market_size_with_gemini(
             """
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=CONFIG["primary_model"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -1067,7 +1068,7 @@ def extract_demand_signals_with_gemini(
             """
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=CONFIG["primary_model"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -1111,7 +1112,7 @@ def extract_pain_validation_with_gemini(
             """
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=CONFIG["primary_model"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -1555,7 +1556,7 @@ def assess_market_risks(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -1711,7 +1712,7 @@ def generate_recommendation(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.4

@@ -1,16 +1,25 @@
 """
-Market Explorer Agent - Fixed import issue
+Market Explorer Agent - Updated with Tavily search integration
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search
-
-# Fix: Import the actual function, not the module
-from google.adk.tools.load_web_page import load_web_page
+from google.adk.tools import FunctionTool
 from google.genai import Client, types
 from typing import Dict, List, Any
 from datetime import datetime
 import json
+
+# Import Tavily search tools
+from ...tools.tavily import (
+    tavily_search,
+    tavily_market_research,
+    tavily_pain_point_discovery,
+    tavily_competitive_intelligence,
+    tavily_market_research_tool,
+    tavily_pain_point_discovery_tool,
+    tavily_competitive_intelligence_tool,
+    tavily_trend_analysis_tool,
+)
 
 # Initialize Gemini client
 client = Client()
@@ -19,18 +28,19 @@ EXPLORER_AGENT_PROMPT = """
 You are a Market Signal Explorer specializing in discovering genuine pain points and unmet needs in liminal market spaces.
 
 Your mission is to discover opportunities that exist between established market categories by:
-1. Collecting authentic user frustrations from social platforms and forums
+1. Collecting authentic user frustrations from social platforms and forums using Tavily search
 2. Using AI to identify subtle patterns and connections in user complaints
 3. Mapping workflow gaps and integration problems users experience
 4. Finding underserved niches where mainstream solutions fail
 
 Focus on liminal spaces where users fall through the cracks of existing solutions.
+Use the Tavily search tools to gather real-time data from web sources.
 """
 
 
 def discover_market_signals(query_context: str) -> Dict[str, Any]:
     """
-    Hybrid approach: Web scraping + AI analysis for market signal discovery
+    Enhanced approach: Tavily search + AI analysis for market signal discovery
 
     Args:
         query_context: The market domain or problem space to explore
@@ -51,21 +61,81 @@ def discover_market_signals(query_context: str) -> Dict[str, Any]:
     }
 
     try:
-        # Phase 1: Collect raw content from multiple sources
+        # Phase 1: Collect raw content using Tavily search
         print(f"🔍 Collecting market signals for: {query_context}")
         collected_content = []
 
-        # Reddit discussions
-        reddit_content = collect_reddit_signals(query_context)
-        collected_content.extend(reddit_content)
+        # Use Tavily for pain point discovery
+        pain_point_results = tavily_pain_point_discovery(
+            market_keywords=[query_context],
+            user_segments=["small business", "enterprise", "individual users"],
+        )
 
-        # Twitter/X complaints
-        twitter_content = collect_twitter_signals(query_context)
-        collected_content.extend(twitter_content)
+        if not pain_point_results.get("error"):
+            for signal in pain_point_results.get("pain_point_signals", []):
+                for result in signal.get("results", []):
+                    collected_content.append(
+                        {
+                            "source": "tavily_pain_discovery",
+                            "url": result.get("url", ""),
+                            "title": result.get("title", ""),
+                            "content": result.get("content", "")[:2000],
+                            "query_context": signal.get("query", ""),
+                            "platform_type": "web_search",
+                            "score": result.get("score", 0.0),
+                        }
+                    )
 
-        # Forum discussions
-        forum_content = collect_forum_signals(query_context)
-        collected_content.extend(forum_content)
+        # Use Tavily for market research
+        market_research_results = tavily_market_research(
+            keywords=[query_context], research_type="pain_points"
+        )
+
+        if not market_research_results.get("error"):
+            for search_result in market_research_results.get("search_results", []):
+                for result in search_result.get("results", []):
+                    collected_content.append(
+                        {
+                            "source": "tavily_market_research",
+                            "url": result.get("url", ""),
+                            "title": result.get("title", ""),
+                            "content": result.get("content", "")[:2000],
+                            "query_context": search_result.get("query", ""),
+                            "platform_type": "market_research",
+                            "score": result.get("score", 0.0),
+                        }
+                    )
+
+        # Additional targeted searches for specific pain points
+        pain_point_queries = [
+            f"{query_context} problems frustrated users",
+            f"{query_context} doesn't work complaints",
+            f"alternatives to {query_context} needed",
+            f"{query_context} workflow integration issues",
+        ]
+
+        for query in pain_point_queries:
+            search_result = tavily_search(
+                query=query,
+                max_results=3,
+                search_depth="basic",
+                include_answer=True,
+                topic="general",
+            )
+
+            if not search_result.get("error"):
+                for result in search_result.get("results", []):
+                    collected_content.append(
+                        {
+                            "source": "tavily_direct_search",
+                            "url": result.get("url", ""),
+                            "title": result.get("title", ""),
+                            "content": result.get("content", "")[:2000],
+                            "query_context": query,
+                            "platform_type": "direct_search",
+                            "score": result.get("score", 0.0),
+                        }
+                    )
 
         signals["raw_content_collected"] = len(collected_content)
 
@@ -82,115 +152,111 @@ def discover_market_signals(query_context: str) -> Dict[str, Any]:
         return signals
 
 
-def collect_reddit_signals(query_context: str) -> List[Dict[str, Any]]:
-    """Collect content from Reddit discussions"""
-    reddit_content = []
+def analyze_competitive_gaps(market_domain: str) -> Dict[str, Any]:
+    """
+    Enhanced competitive analysis using Tavily search + AI gap identification
+    """
+    gaps = {
+        "market_domain": market_domain,
+        "analysis_timestamp": datetime.now().isoformat(),
+        "raw_data_collected": 0,
+        "competitive_landscape": {},
+        "identified_gaps": [],
+        "market_opportunities": [],
+        "positioning_strategies": [],
+    }
 
-    reddit_queries = [
-        f"{query_context} problems frustrated site:reddit.com",
-        f"{query_context} alternatives needed site:reddit.com",
-        f"why doesn't {query_context} work site:reddit.com",
-        f"{query_context} workflow integration issues site:reddit.com",
-    ]
+    try:
+        print(f"🔍 Analyzing competitive landscape for: {market_domain}")
 
-    for query in reddit_queries:
-        try:
-            results = google_search(query)
-            if results and hasattr(results, "results"):
-                for result in results.results[:3]:  # Top 3 per query
-                    try:
-                        content = load_web_page(result.url)
-                        if content and len(content) > 200:
-                            reddit_content.append(
-                                {
-                                    "source": "reddit",
-                                    "url": result.url,
-                                    "title": result.title,
-                                    "content": content[:2000],  # Limit content length
-                                    "query_context": query,
-                                    "platform_type": "discussion_forum",
-                                }
-                            )
-                    except Exception as e:
-                        print(f"Error loading Reddit page: {e}")
-        except Exception as e:
-            print(f"Error with Reddit query: {e}")
+        # Use Tavily for competitive intelligence
+        competitive_data = tavily_competitive_intelligence(
+            company_names=[],  # Will discover companies through search
+            market_context=market_domain,
+        )
 
-    return reddit_content
+        # Use Tavily for market research focused on competition
+        market_data = tavily_market_research(
+            keywords=[market_domain], research_type="competition"
+        )
 
+        # Direct searches for competitive gaps
+        gap_queries = [
+            f"{market_domain} market gaps opportunities",
+            f"{market_domain} competitors limitations weaknesses",
+            f"{market_domain} unserved market segments",
+            f"why isn't there good {market_domain} solution",
+        ]
 
-def collect_twitter_signals(query_context: str) -> List[Dict[str, Any]]:
-    """Collect content from Twitter/X complaints"""
-    twitter_content = []
+        all_content = []
 
-    twitter_queries = [
-        f"{query_context} frustrated annoying site:twitter.com",
-        f"{query_context} someone should build site:twitter.com",
-        f"{query_context} doesn't integrate work site:twitter.com",
-        f"{query_context} why is there no site:twitter.com",
-    ]
+        # Collect competitive intelligence data
+        if not competitive_data.get("error"):
+            for profile in competitive_data.get("competitor_profiles", []):
+                for search_result in profile.get("search_results", []):
+                    for result in search_result.get("results", []):
+                        all_content.append(
+                            {
+                                "type": "competitive_intelligence",
+                                "title": result.get("title", ""),
+                                "url": result.get("url", ""),
+                                "content": result.get("content", "")[:2000],
+                                "company": profile.get("name", ""),
+                                "score": result.get("score", 0.0),
+                            }
+                        )
 
-    for query in twitter_queries:
-        try:
-            results = google_search(query)
-            if results and hasattr(results, "results"):
-                for result in results.results[:2]:  # Top 2 per query
-                    try:
-                        content = load_web_page(result.url)
-                        if content and len(content) > 100:
-                            twitter_content.append(
-                                {
-                                    "source": "twitter",
-                                    "url": result.url,
-                                    "title": result.title,
-                                    "content": content[:1000],
-                                    "query_context": query,
-                                    "platform_type": "social_media",
-                                }
-                            )
-                    except Exception as e:
-                        print(f"Error loading Twitter page: {e}")
-        except Exception as e:
-            print(f"Error with Twitter query: {e}")
+        # Collect market research data
+        if not market_data.get("error"):
+            for search_result in market_data.get("search_results", []):
+                for result in search_result.get("results", []):
+                    all_content.append(
+                        {
+                            "type": "market_research",
+                            "title": result.get("title", ""),
+                            "url": result.get("url", ""),
+                            "content": result.get("content", "")[:2000],
+                            "query": search_result.get("query", ""),
+                            "score": result.get("score", 0.0),
+                        }
+                    )
 
-    return twitter_content
+        # Collect gap-specific data
+        for query in gap_queries:
+            search_result = tavily_search(
+                query=query,
+                max_results=3,
+                search_depth="advanced",
+                include_answer=True,
+                topic="business",
+            )
 
+            if not search_result.get("error"):
+                for result in search_result.get("results", []):
+                    all_content.append(
+                        {
+                            "type": "gap_discussion",
+                            "title": result.get("title", ""),
+                            "url": result.get("url", ""),
+                            "content": result.get("content", "")[:1500],
+                            "query": query,
+                            "score": result.get("score", 0.0),
+                        }
+                    )
 
-def collect_forum_signals(query_context: str) -> List[Dict[str, Any]]:
-    """Collect content from forums and Q&A sites"""
-    forum_content = []
+        gaps["raw_data_collected"] = len(all_content)
 
-    forum_queries = [
-        f"{query_context} problems issues site:stackoverflow.com",
-        f"{query_context} discussion site:news.ycombinator.com",
-        f"{query_context} pain point problem site:quora.com",
-        f"{query_context} integration challenges workflow",
-    ]
+        # Phase 2: AI-powered competitive gap analysis
+        if all_content:
+            print("🤖 Analyzing competitive gaps with AI...")
+            gaps = analyze_competitive_gaps_with_ai(all_content, market_domain, gaps)
 
-    for query in forum_queries:
-        try:
-            results = google_search(query)
-            if results and hasattr(results, "results"):
-                for result in results.results[:2]:
-                    try:
-                        content = load_web_page(result.url)
-                        if content and len(content) > 300:
-                            forum_content.append(
-                                {
-                                    "source": "forum",
-                                    "url": result.url,
-                                    "title": result.title,
-                                    "content": content[:1500],
-                                    "query_context": query,
-                                    "platform_type": "technical_forum",
-                                }
-                            )
-                    except Exception as e:
-                        print(f"Error loading forum page: {e}")
-        except Exception as e:
-            print(f"Error with forum query: {e}")
+        return gaps
 
-    return forum_content
+    except Exception as e:
+        print(f"Error in analyze_competitive_gaps: {e}")
+        gaps["error"] = str(e)
+        return gaps
 
 
 def analyze_signals_with_ai(
@@ -203,9 +269,10 @@ def analyze_signals_with_ai(
         # Prepare content for AI analysis
         content_summary = "\n\n".join(
             [
-                f"Source: {item['source']} ({item['platform_type']})\n"
+                f"Source: {item['source']} ({item.get('platform_type', 'unknown')})\n"
                 f"Title: {item['title']}\n"
-                f"Content: {item['content'][:800]}"  # Limit per item
+                f"Content: {item['content'][:800]}\n"
+                f"Score: {item.get('score', 0.0)}"
                 for item in content_collection[
                     :12
                 ]  # Max 12 items to prevent token overflow
@@ -333,115 +400,6 @@ def analyze_signals_with_ai(
     return signals
 
 
-def analyze_competitive_gaps(market_domain: str) -> Dict[str, Any]:
-    """
-    Hybrid competitive analysis: Web scraping + AI gap identification
-    """
-    gaps = {
-        "market_domain": market_domain,
-        "analysis_timestamp": datetime.now().isoformat(),
-        "raw_data_collected": 0,
-        "competitive_landscape": {},
-        "identified_gaps": [],
-        "market_opportunities": [],
-        "positioning_strategies": [],
-    }
-
-    try:
-        print(f"🔍 Analyzing competitive landscape for: {market_domain}")
-
-        # Phase 1: Collect competitive intelligence
-        competitive_content = collect_competitive_data(market_domain)
-        gap_content = collect_gap_discussions(market_domain)
-
-        all_content = competitive_content + gap_content
-        gaps["raw_data_collected"] = len(all_content)
-
-        # Phase 2: AI-powered competitive gap analysis
-        if all_content:
-            print("🤖 Analyzing competitive gaps with AI...")
-            gaps = analyze_competitive_gaps_with_ai(all_content, market_domain, gaps)
-
-        return gaps
-
-    except Exception as e:
-        print(f"Error in analyze_competitive_gaps: {e}")
-        gaps["error"] = str(e)
-        return gaps
-
-
-def collect_competitive_data(market_domain: str) -> List[Dict[str, Any]]:
-    """Collect data about existing solutions"""
-    competitive_content = []
-
-    solution_queries = [
-        f"best {market_domain} tools software 2024",
-        f"{market_domain} platform comparison review",
-        f"top {market_domain} solutions market leaders",
-        f"{market_domain} startup competitors landscape",
-    ]
-
-    for query in solution_queries:
-        try:
-            results = google_search(query)
-            if results and hasattr(results, "results"):
-                for result in results.results[:3]:
-                    try:
-                        content = load_web_page(result.url)
-                        if content and len(content) > 400:
-                            competitive_content.append(
-                                {
-                                    "type": "competitive_intelligence",
-                                    "title": result.title,
-                                    "url": result.url,
-                                    "content": content[:2000],
-                                    "query": query,
-                                }
-                            )
-                    except Exception:
-                        continue
-        except Exception:
-            continue
-
-    return competitive_content
-
-
-def collect_gap_discussions(market_domain: str) -> List[Dict[str, Any]]:
-    """Collect discussions about market gaps"""
-    gap_content = []
-
-    gap_queries = [
-        f"{market_domain} doesn't exist missing solution",
-        f"why isn't there good {market_domain} tool",
-        f"{market_domain} market gap opportunity",
-        f"{market_domain} limitations problems current solutions",
-    ]
-
-    for query in gap_queries:
-        try:
-            results = google_search(query)
-            if results and hasattr(results, "results"):
-                for result in results.results[:3]:
-                    try:
-                        content = load_web_page(result.url)
-                        if content and len(content) > 300:
-                            gap_content.append(
-                                {
-                                    "type": "gap_discussion",
-                                    "title": result.title,
-                                    "url": result.url,
-                                    "content": content[:1500],
-                                    "query": query,
-                                }
-                            )
-                    except Exception:
-                        continue
-        except Exception:
-            continue
-
-    return gap_content
-
-
 def analyze_competitive_gaps_with_ai(
     content_collection: List[Dict], market_domain: str, gaps: Dict
 ) -> Dict[str, Any]:
@@ -453,7 +411,8 @@ def analyze_competitive_gaps_with_ai(
             [
                 f"Type: {item['type']}\n"
                 f"Title: {item['title']}\n"
-                f"Content: {item['content'][:700]}"
+                f"Content: {item['content'][:700]}\n"
+                f"Score: {item.get('score', 0.0)}"
                 for item in content_collection[:10]
             ]
         )
@@ -593,6 +552,10 @@ market_explorer_agent = LlmAgent(
         FunctionTool(func=discover_market_signals),
         FunctionTool(func=analyze_competitive_gaps),
         FunctionTool(func=validate_signals_cross_platform),
+        tavily_market_research_tool,
+        tavily_pain_point_discovery_tool,
+        tavily_competitive_intelligence_tool,
+        tavily_trend_analysis_tool,
         # google_search,
         # load_web_page,  # Fixed: Now properly imported as a function
     ],

@@ -5,7 +5,12 @@ Market Analyzer Agent - Validates market opportunities with real data
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search
 from google.adk.tools.load_web_page import load_web_page
-
+from ..tools.tavily import (
+    tavily_market_research_tool,
+    tavily_pain_point_discovery_tool,
+    tavily_competitive_intelligence_tool,
+    tavily_trend_analysis_tool,
+)
 
 from typing import Dict, Any
 import re
@@ -192,6 +197,10 @@ market_analyzer_agent = LlmAgent(
     tools=[
         FunctionTool(func=comprehensive_market_validation),
         FunctionTool(func=research_market_demographics),
+        tavily_market_research_tool,
+        tavily_pain_point_discovery_tool,
+        tavily_competitive_intelligence_tool,
+        tavily_trend_analysis_tool,
         # google_search,
         # load_web_page,
     ],
