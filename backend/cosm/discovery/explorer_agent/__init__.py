@@ -1,9 +1,12 @@
 """
-Market Explorer Agent - Combines web scraping with AI-powered analysis
+Market Explorer Agent - Fixed import issue
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search, load_web_page
+from google.adk.tools import FunctionTool, google_search
+
+# Fix: Import the actual function, not the module
+from google.adk.tools.load_web_page import load_web_page
 from google.genai import Client, types
 from typing import Dict, List, Any
 from datetime import datetime
@@ -591,7 +594,7 @@ market_explorer_agent = LlmAgent(
         FunctionTool(func=analyze_competitive_gaps),
         FunctionTool(func=validate_signals_cross_platform),
         google_search,
-        load_web_page,
+        load_web_page,  # Fixed: Now properly imported as a function
     ],
     output_key="market_signals",
 )

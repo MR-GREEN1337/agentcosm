@@ -1,5 +1,5 @@
 """
-Market Opportunity Discovery Agent - Root Coordinator
+Market Opportunity Discovery Agent - Root Coordinator (Fixed)
 Finds genuine liminal market spaces and builds testable business assets
 """
 
@@ -10,6 +10,7 @@ from google.adk.tools import FunctionTool
 from google.genai import types
 from datetime import datetime
 
+# Import fixed agents
 from .discovery.explorer_agent import market_explorer_agent
 from .discovery.trend_analyzer import trend_analyzer_agent
 from .discovery.gap_mapper import gap_mapper_agent

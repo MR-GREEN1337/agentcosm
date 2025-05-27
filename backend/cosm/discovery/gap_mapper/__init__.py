@@ -3,7 +3,8 @@ Enhanced Gap Mapper Agent with Gemini-powered extraction
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search, load_web_page
+from google.adk.tools import FunctionTool, google_search
+from google.adk.tools.load_web_page import load_web_page
 from google.genai import Client, types
 from typing import Dict, List, Any
 import json

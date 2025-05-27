@@ -1408,3 +1408,515 @@ def assess_market_readiness(demand_data: Dict[str, Any]) -> str:
         return "emerging"
     else:
         return "early"
+
+
+"""
+Market Risk Assessment and Recommendation Functions using Gemini AI
+"""
+
+# Initialize Gemini client
+client = Client()
+
+
+def assess_market_risks(
+    competition_analysis: Dict[str, Any], trend_analysis: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Assesses market risks using Gemini AI analysis
+
+    Args:
+        competition_analysis: Competition analysis data
+        trend_analysis: Trend analysis data
+
+    Returns:
+        Comprehensive risk assessment
+    """
+    risk_assessment = {
+        "overall_risk_level": "medium",
+        "risk_categories": {
+            "competitive_risks": [],
+            "market_risks": [],
+            "technology_risks": [],
+            "regulatory_risks": [],
+            "economic_risks": [],
+        },
+        "risk_mitigation_strategies": [],
+        "risk_score": 0.0,  # 0-100 scale, higher = more risky
+        "critical_risks": [],
+        "risk_timeline": {},
+        "confidence_level": "medium",
+    }
+
+    try:
+        # Prepare comprehensive data for Gemini analysis
+        analysis_data = {  # noqa: F841
+            "competition_data": competition_analysis,
+            "trend_data": trend_analysis,
+        }
+
+        prompt = f"""
+        Analyze the following market data and provide a comprehensive risk assessment for entering this market.
+
+        Competition Analysis:
+        {json.dumps(competition_analysis, indent=2)}
+
+        Trend Analysis:
+        {json.dumps(trend_analysis, indent=2)}
+
+        Please analyze and return a JSON object with the following structure:
+        {{
+            "overall_risk_level": "low|medium|high",
+            "risk_categories": {{
+                "competitive_risks": [
+                    {{
+                        "risk": "description of competitive risk",
+                        "severity": "low|medium|high",
+                        "probability": "low|medium|high",
+                        "impact": "description of potential impact",
+                        "evidence": "what data supports this risk"
+                    }}
+                ],
+                "market_risks": [
+                    {{
+                        "risk": "description of market risk",
+                        "severity": "low|medium|high",
+                        "probability": "low|medium|high",
+                        "impact": "description of potential impact",
+                        "evidence": "what data supports this risk"
+                    }}
+                ],
+                "technology_risks": [
+                    {{
+                        "risk": "description of technology risk",
+                        "severity": "low|medium|high",
+                        "probability": "low|medium|high",
+                        "impact": "description of potential impact",
+                        "evidence": "what data supports this risk"
+                    }}
+                ],
+                "regulatory_risks": [
+                    {{
+                        "risk": "description of regulatory risk",
+                        "severity": "low|medium|high",
+                        "probability": "low|medium|high",
+                        "impact": "description of potential impact",
+                        "evidence": "what data supports this risk"
+                    }}
+                ],
+                "economic_risks": [
+                    {{
+                        "risk": "description of economic risk",
+                        "severity": "low|medium|high",
+                        "probability": "low|medium|high",
+                        "impact": "description of potential impact",
+                        "evidence": "what data supports this risk"
+                    }}
+                ]
+            }},
+            "risk_mitigation_strategies": [
+                {{
+                    "strategy": "description of mitigation strategy",
+                    "addresses_risks": ["list of risks this strategy addresses"],
+                    "implementation_difficulty": "low|medium|high",
+                    "cost_estimate": "low|medium|high",
+                    "effectiveness": "low|medium|high"
+                }}
+            ],
+            "risk_score": number_0_to_100,
+            "critical_risks": [
+                {{
+                    "risk": "description of critical risk",
+                    "category": "competitive|market|technology|regulatory|economic",
+                    "immediate_action_required": true|false,
+                    "potential_impact": "description of severe impact"
+                }}
+            ],
+            "risk_timeline": {{
+                "immediate_risks": ["risks that need attention in 0-3 months"],
+                "short_term_risks": ["risks that need attention in 3-12 months"],
+                "long_term_risks": ["risks that need attention in 1+ years"]
+            }},
+            "confidence_level": "low|medium|high",
+            "key_risk_insights": [
+                "3-5 key insights about the risk landscape"
+            ]
+        }}
+
+        Focus on:
+        1. Analyze competition level and market saturation risks
+        2. Evaluate trend sustainability and market timing risks
+        3. Identify technology disruption potential
+        4. Consider regulatory and compliance challenges
+        5. Assess economic and market volatility factors
+        6. Provide specific, actionable mitigation strategies
+        7. Prioritize risks by severity and probability
+
+        Base your analysis on the actual data provided, not general assumptions.
+        """
+
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json", temperature=0.3
+            ),
+        )
+
+        if response and response.text:
+            risk_data = json.loads(response.text)
+            risk_assessment.update(risk_data)
+
+        return risk_assessment
+
+    except Exception as e:
+        print(f"Error in assess_market_risks: {e}")
+        risk_assessment["error"] = str(e)
+        # Provide basic fallback analysis
+        risk_assessment["risk_categories"]["market_risks"].append(
+            {
+                "risk": "Analysis error - manual review required",
+                "severity": "medium",
+                "probability": "unknown",
+                "impact": "Could not complete automated risk assessment",
+                "evidence": f"Error: {str(e)}",
+            }
+        )
+        return risk_assessment
+
+
+def generate_recommendation(
+    opportunity_score: float,
+    risk_assessment: Dict[str, Any],
+    market_data: Dict[str, Any] = None,
+) -> Dict[str, Any]:
+    """
+    Generates intelligent market entry recommendation using Gemini AI
+
+    Args:
+        opportunity_score: Calculated opportunity score (0-1)
+        risk_assessment: Risk assessment data
+        market_data: Optional additional market data
+
+    Returns:
+        Comprehensive recommendation with reasoning
+    """
+    recommendation = {
+        "recommendation": "analyze_further",
+        "confidence": "medium",
+        "reasoning": [],
+        "action_plan": [],
+        "success_probability": 0.0,
+        "investment_recommendation": "cautious",
+        "timeline_recommendation": "6-12 months",
+        "key_success_factors": [],
+        "alternative_approaches": [],
+        "next_steps": [],
+    }
+
+    try:
+        # Prepare comprehensive analysis for Gemini
+        analysis_context = {  # noqa: F841
+            "opportunity_score": opportunity_score,
+            "risk_assessment": risk_assessment,
+            "market_data": market_data or {},
+        }
+
+        prompt = f"""
+        Based on the following market analysis data, provide a comprehensive recommendation for this market opportunity.
+
+        Opportunity Score: {opportunity_score} (scale 0-1, where 1 is highest opportunity)
+
+        Risk Assessment:
+        {json.dumps(risk_assessment, indent=2)}
+
+        Additional Market Data:
+        {json.dumps(market_data or {}, indent=2)}
+
+        Please analyze all the data and return a JSON object with the following structure:
+        {{
+            "recommendation": "proceed|proceed_with_caution|analyze_further|pivot|do_not_proceed",
+            "confidence": "low|medium|high",
+            "reasoning": [
+                "Detailed reasoning point 1",
+                "Detailed reasoning point 2",
+                "Detailed reasoning point 3"
+            ],
+            "action_plan": [
+                {{
+                    "phase": "immediate|short_term|long_term",
+                    "action": "specific action to take",
+                    "timeline": "timeframe for this action",
+                    "priority": "high|medium|low",
+                    "resources_needed": "description of resources required"
+                }}
+            ],
+            "success_probability": number_0_to_100,
+            "investment_recommendation": "aggressive|moderate|cautious|minimal",
+            "timeline_recommendation": "immediate|3-6_months|6-12_months|12+_months",
+            "key_success_factors": [
+                "Critical factor 1 for success",
+                "Critical factor 2 for success",
+                "Critical factor 3 for success"
+            ],
+            "alternative_approaches": [
+                {{
+                    "approach": "description of alternative approach",
+                    "pros": ["advantage 1", "advantage 2"],
+                    "cons": ["disadvantage 1", "disadvantage 2"],
+                    "suitability": "high|medium|low"
+                }}
+            ],
+            "next_steps": [
+                {{
+                    "step": "specific next step",
+                    "priority": "high|medium|low",
+                    "timeline": "when to complete this step",
+                    "outcome_expected": "what this step should achieve"
+                }}
+            ],
+            "risk_mitigation_priorities": [
+                "Top priority risk to address first",
+                "Second priority risk to address",
+                "Third priority risk to address"
+            ],
+            "market_entry_strategy": {{
+                "recommended_approach": "description of recommended market entry approach",
+                "target_segment": "which market segment to target first",
+                "differentiation_strategy": "how to differentiate from competitors",
+                "pricing_strategy": "recommended pricing approach"
+            }},
+            "success_metrics": [
+                {{
+                    "metric": "name of metric to track",
+                    "target": "target value or milestone",
+                    "timeline": "when to achieve this target"
+                }}
+            ],
+            "decision_factors": {{
+                "go_factors": ["factors supporting proceeding"],
+                "no_go_factors": ["factors against proceeding"],
+                "neutral_factors": ["factors that could go either way"]
+            }}
+        }}
+
+        Provide specific, actionable recommendations based on:
+        1. The opportunity score relative to risk level
+        2. Critical risks that must be addressed
+        3. Market timing and competitive dynamics
+        4. Resource requirements vs. potential returns
+        5. Probability of success given current data
+
+        Be honest about uncertainties and provide clear decision criteria.
+        Consider multiple scenarios and provide flexible strategies.
+        """
+
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json", temperature=0.4
+            ),
+        )
+
+        if response and response.text:
+            recommendation_data = json.loads(response.text)
+            recommendation.update(recommendation_data)
+
+        # Add summary recommendation based on score and risk
+        recommendation["summary"] = generate_recommendation_summary(
+            opportunity_score, risk_assessment, recommendation
+        )
+
+        return recommendation
+
+    except Exception as e:
+        print(f"Error in generate_recommendation: {e}")
+        recommendation["error"] = str(e)
+
+        # Provide basic fallback recommendation
+        if opportunity_score > 0.7:
+            recommendation["recommendation"] = "proceed_with_caution"
+            recommendation["reasoning"] = ["High opportunity score suggests potential"]
+        elif opportunity_score > 0.5:
+            recommendation["recommendation"] = "analyze_further"
+            recommendation["reasoning"] = [
+                "Moderate opportunity score requires more analysis"
+            ]
+        else:
+            recommendation["recommendation"] = "do_not_proceed"
+            recommendation["reasoning"] = [
+                "Low opportunity score indicates limited potential"
+            ]
+
+        return recommendation
+
+
+def generate_recommendation_summary(
+    opportunity_score: float,
+    risk_assessment: Dict[str, Any],
+    recommendation_data: Dict[str, Any],
+) -> str:
+    """
+    Generates a concise executive summary of the recommendation
+    """
+    try:
+        score_percent = int(opportunity_score * 100)
+        risk_level = risk_assessment.get("overall_risk_level", "medium")
+        rec_action = recommendation_data.get("recommendation", "analyze_further")
+        success_prob = recommendation_data.get("success_probability", 50)
+
+        summary = f"""
+        EXECUTIVE SUMMARY:
+
+        Market Opportunity Score: {score_percent}%
+        Overall Risk Level: {risk_level.title()}
+        Recommendation: {rec_action.replace('_', ' ').title()}
+        Success Probability: {success_prob}%
+
+        {recommendation_data.get('reasoning', ['Analysis incomplete'])[0] if recommendation_data.get('reasoning') else 'Detailed analysis required for final recommendation.'}
+        """
+
+        return summary.strip()
+
+    except Exception:
+        return "Summary generation failed - refer to detailed recommendation data."
+
+
+def validate_market_opportunity_comprehensive(
+    keywords: list,
+    target_audience: str = "",
+    solution_type: str = "",
+    pain_points: list = None,
+) -> Dict[str, Any]:
+    """
+    Comprehensive market opportunity validation combining all analysis functions
+
+    Args:
+        keywords: Market keywords to analyze
+        target_audience: Target audience description
+        solution_type: Type of solution being considered
+        pain_points: List of pain points to validate
+
+    Returns:
+        Complete market validation report with recommendations
+    """
+    from datetime import datetime
+
+    # Import required functions (these would be in the same module)
+    from .market_research import (
+        analyze_market_size,
+        research_competition,
+        validate_demand_signals,
+        calculate_opportunity_score_real,
+    )
+
+    validation_report = {
+        "validation_id": datetime.now().isoformat(),
+        "input_parameters": {
+            "keywords": keywords,
+            "target_audience": target_audience,
+            "solution_type": solution_type,
+            "pain_points": pain_points or [],
+        },
+        "market_size_analysis": {},
+        "competition_analysis": {},
+        "demand_validation": {},
+        "trend_analysis": {},
+        "risk_assessment": {},
+        "opportunity_score": 0.0,
+        "final_recommendation": {},
+        "validation_timestamp": datetime.now().isoformat(),
+    }
+
+    try:
+        print("Starting comprehensive market validation...")
+
+        # 1. Market Size Analysis
+        print("Analyzing market size...")
+        validation_report["market_size_analysis"] = analyze_market_size(
+            keywords, target_audience
+        )
+
+        # 2. Competition Research
+        print("Researching competition...")
+        validation_report["competition_analysis"] = research_competition(
+            keywords, solution_type
+        )
+
+        # 3. Demand Validation
+        print("Validating demand signals...")
+        validation_report["demand_validation"] = validate_demand_signals(
+            keywords, pain_points or []
+        )
+
+        # 4. Trend Analysis (placeholder - would integrate with trend analysis function)
+        validation_report["trend_analysis"] = {
+            "trend_direction": "stable",
+            "growth_indicators": [],
+            "market_maturity": "developing",
+        }
+
+        # 5. Risk Assessment
+        print("Assessing market risks...")
+        validation_report["risk_assessment"] = assess_market_risks(
+            validation_report["competition_analysis"],
+            validation_report["trend_analysis"],
+        )
+
+        # 6. Calculate Opportunity Score
+        print("Calculating opportunity score...")
+        validation_report["opportunity_score"] = calculate_opportunity_score_real(
+            {
+                "market_signals": validation_report["demand_validation"].get(
+                    "demand_sources", []
+                ),
+                "competition_analysis": validation_report["competition_analysis"],
+                "demand_validation": validation_report["demand_validation"],
+                "trend_analysis": validation_report["trend_analysis"],
+            }
+        )
+
+        # 7. Generate Final Recommendation
+        print("Generating recommendation...")
+        validation_report["final_recommendation"] = generate_recommendation(
+            validation_report["opportunity_score"],
+            validation_report["risk_assessment"],
+            {
+                "market_size": validation_report["market_size_analysis"],
+                "competition": validation_report["competition_analysis"],
+                "demand": validation_report["demand_validation"],
+            },
+        )
+
+        print("Market validation completed successfully!")
+        return validation_report
+
+    except Exception as e:
+        print(f"Error in comprehensive validation: {e}")
+        validation_report["error"] = str(e)
+        return validation_report
+
+
+# Example usage function
+def example_market_validation():
+    """
+    Example of how to use the comprehensive market validation
+    """
+    keywords = ["AI productivity tools", "workflow automation", "team collaboration"]
+    target_audience = "small to medium businesses, remote teams"
+    solution_type = "SaaS platform"
+    pain_points = [
+        "Manual workflow processes are time-consuming",
+        "Poor team coordination in remote work",
+        "Difficulty tracking project progress",
+    ]
+
+    # Run comprehensive validation
+    result = validate_market_opportunity_comprehensive(
+        keywords=keywords,
+        target_audience=target_audience,
+        solution_type=solution_type,
+        pain_points=pain_points,
+    )
+
+    return result

@@ -3,7 +3,10 @@ Market Analyzer Agent - Validates market opportunities with real data
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.tools import FunctionTool, google_search, load_web_page
+from google.adk.tools import FunctionTool, google_search
+from google.adk.tools.load_web_page import load_web_page
+
+
 from typing import Dict, Any
 import re
 from datetime import datetime
@@ -13,7 +16,7 @@ from ..tools.market_research import (
     research_competition,
     validate_demand_signals,
     assess_market_risks,
-    calculate_opportunity_score,
+    calculate_opportunity_score_real,
     generate_recommendation,
 )
 from ..tools.trend_tracker import analyze_search_trends
@@ -77,7 +80,7 @@ def comprehensive_market_validation(opportunity_data: Dict[str, Any]) -> Dict[st
         )
 
         # 6. Calculate Opportunity Score
-        validation_report["opportunity_score"] = calculate_opportunity_score(
+        validation_report["opportunity_score"] = calculate_opportunity_score_real(
             validation_report
         )
 
