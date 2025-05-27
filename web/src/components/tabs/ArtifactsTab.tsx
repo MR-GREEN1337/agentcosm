@@ -22,12 +22,12 @@ export function ArtifactsTab({ appName, userId, sessionId }: ArtifactsTabProps) 
 
   const fetchArtifacts = async () => {
     if (!sessionId) return
-    
+
     setLoading(true)
     try {
       const response = await api.get(`/apps/${appName}/users/${userId}/sessions/${sessionId}/artifacts`)
       const artifactNames = response.data
-      
+
       const artifactsWithVersions = await Promise.all(
         artifactNames.map(async (name: string) => {
           const versionsResponse = await api.get(
@@ -39,7 +39,7 @@ export function ArtifactsTab({ appName, userId, sessionId }: ArtifactsTabProps) 
           }
         })
       )
-      
+
       setArtifacts(artifactsWithVersions)
     } catch (error) {
       console.error('Error fetching artifacts:', error)
@@ -57,7 +57,7 @@ export function ArtifactsTab({ appName, userId, sessionId }: ArtifactsTabProps) 
       const url = version
         ? `/apps/${appName}/users/${userId}/sessions/${sessionId}/artifacts/${artifactName}/versions/${version}`
         : `/apps/${appName}/users/${userId}/sessions/${sessionId}/artifacts/${artifactName}`
-      
+
       const response = await api.get(url)
       const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
       const link = document.createElement('a')

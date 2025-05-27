@@ -83,7 +83,7 @@ export function SessionsTab({ appName, userId, currentSession }: SessionsTabProp
           </div>
         </ScrollArea>
       </div>
-      
+
       <div className="flex-1">
         {selectedSession ? (
           <ScrollArea className="h-full">
@@ -107,7 +107,7 @@ export function SessionsTab({ appName, userId, currentSession }: SessionsTabProp
                   </div>
                 </div>
               </Card>
-              
+
               <Card className="bg-gray-800 border-gray-700 p-4">
                 <h3 className="text-lg font-medium text-gray-100 mb-2">State</h3>
                 <pre className="text-sm text-gray-300 overflow-x-auto">

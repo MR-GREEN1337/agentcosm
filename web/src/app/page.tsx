@@ -28,7 +28,7 @@ interface ShaderProps {
 interface PageProps {
   className?: string;
 }
-      
+
 export const CanvasRevealEffect = ({
   animationSpeed = 10,
   opacities = [0.3, 0.3, 0.3, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8, 1],
@@ -598,8 +598,8 @@ function MiniNavbar() {
 
           <nav className="hidden sm:flex items-center space-x-4 sm:space-x-6 text-sm">
             {navLinksData.map((link) => (
-              <AnimatedNavLink 
-                key={link.href} 
+              <AnimatedNavLink
+                key={link.href}
                 href={link.href}
                 onClick={() => handleNavClick(link.label)}
               >
@@ -628,9 +628,9 @@ function MiniNavbar() {
                          ${isOpen ? 'max-h-[1000px] opacity-100 pt-4' : 'max-h-0 opacity-0 pt-0 pointer-events-none'}`}>
           <nav className="flex flex-col items-center space-y-4 text-base w-full">
             {navLinksData.map((link) => (
-              <a 
-                key={link.href} 
-                href={link.href} 
+              <a
+                key={link.href}
+                href={link.href}
                 onClick={(e) => {
                   e.preventDefault();
                   handleNavClick(link.label);
@@ -684,11 +684,11 @@ export const Page = ({ className }: PageProps) => {
             reverse={false}
           />
         </div>
-        
+
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,1)_0%,_transparent_100%)]" />
         <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black to-transparent" />
       </div>
-      
+
       {/* Content Layer */}
       <div className="relative z-10 flex flex-col flex-1">
         {/* Top navigation */}
@@ -697,7 +697,7 @@ export const Page = ({ className }: PageProps) => {
         {/* Main content container */}
         <div className="flex flex-1 flex-col justify-center items-center px-4">
           <div className="w-full max-w-sm">
-            <motion.div 
+            <motion.div
               key="business-query-step"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -708,19 +708,19 @@ export const Page = ({ className }: PageProps) => {
                 <h1 className="text-[2.9rem] font-bold leading-[1.1] tracking-tight text-white">agent cosm</h1>
                 <h1 className="text-[1.2rem] text-white/70 font-light">Discover Your Next Market -{'>'} Launch Your Mini-Business.</h1>
               </div>
-              
+
               <div className="space-y-4">
                 <form onSubmit={handleBusinessQuerySubmit}>
                   <div className="relative">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="What business are you curious about?"
                       value={businessQuery}
                       onChange={(e) => setBusinessQuery(e.target.value)}
                       className="w-full backdrop-blur-[1px] text-white border-1 border-white/10 rounded-full py-3 px-4 pr-12 focus:outline-none focus:border focus:border-white/30 text-center"
                       required
                     />
-                    <button 
+                    <button
                       type="submit"
                       className="absolute right-1.5 top-1.5 text-white w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors group overflow-hidden"
                     >
@@ -736,7 +736,7 @@ export const Page = ({ className }: PageProps) => {
                   </div>
                 </form>
               </div>
-              
+
               <p className="text-xs text-white/40 pt-10">
               Let AI help you find unfulfilled needs and instantly scaffold and validate a business concept.
               </p>
@@ -747,7 +747,7 @@ export const Page = ({ className }: PageProps) => {
         {/* Footer */}
         <footer className="relative z-10 py-6 px-6">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0">
-            <motion.a 
+            <motion.a
               href="https://googlecloudmultiagents.devpost.com/?ref_feature=challenge&ref_medium=your-open-hackathons&ref_content=Submissions+open"
               target="_blank"
               rel="noopener noreferrer"

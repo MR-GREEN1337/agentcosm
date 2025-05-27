@@ -4,22 +4,21 @@ Receives HTML/CSS/JS assets and serves them at dynamic URLs for instant validati
 """
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 import uuid
 import json
 from datetime import datetime
-from jinja2 import Template, Environment, BaseLoader
-import re
+from jinja2 import Environment, BaseLoader
 from settings import settings
 
 # Initialize FastAPI app
 app = FastAPI(
     title="In-Memory Landing Page Renderer",
     description="Instant webpage deployment for market validation",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS middleware
@@ -37,12 +36,16 @@ DEPLOYED_SITES: Dict[str, Dict[str, Any]] = {}
 # Analytics storage
 SITE_ANALYTICS: Dict[str, List[Dict[str, Any]]] = {}
 
+
 # Pydantic models
 class WebsiteAssets(BaseModel):
     html_template: str = Field(..., description="Jinja2 HTML template")
     css_styles: str = Field(..., description="CSS styles")
     javascript: str = Field(default="", description="JavaScript code")
-    config: Dict[str, Any] = Field(default_factory=dict, description="Site configuration")
+    config: Dict[str, Any] = Field(
+        default_factory=dict, description="Site configuration"
+    )
+
 
 class ContentData(BaseModel):
     brand_name: str = Field(default="Demo Site")
@@ -54,6 +57,7 @@ class ContentData(BaseModel):
     testimonials: List[Dict[str, Any]] = Field(default_factory=list)
     faqs: List[Dict[str, Any]] = Field(default_factory=list)
 
+
 class DeploymentRequest(BaseModel):
     deployment_id: Optional[str] = Field(default=None)
     site_name: str = Field(..., description="Site identifier")
@@ -62,6 +66,7 @@ class DeploymentRequest(BaseModel):
     meta_data: Dict[str, Any] = Field(default_factory=dict)
     analytics: Dict[str, Any] = Field(default_factory=dict)
 
+
 class AnalyticsEvent(BaseModel):
     site_id: str
     event_type: str  # 'page_view', 'click', 'form_submit', etc.
@@ -69,12 +74,15 @@ class AnalyticsEvent(BaseModel):
     user_agent: Optional[str] = None
     ip_address: Optional[str] = None
 
+
 # Jinja2 Environment setup
 jinja_env = Environment(loader=BaseLoader())
+
 
 def generate_site_id() -> str:
     """Generate a unique site ID"""
     return str(uuid.uuid4())[:8]
+
 
 def process_jinja_template(template_str: str, content_data: Dict[str, Any]) -> str:
     """Process Jinja2 template with content data"""
@@ -85,17 +93,20 @@ def process_jinja_template(template_str: str, content_data: Dict[str, Any]) -> s
         print(f"Template rendering error: {e}")
         return f"<html><body><h1>Template Error</h1><p>{str(e)}</p></body></html>"
 
-def create_complete_html(assets: WebsiteAssets, content_data: Dict[str, Any], site_id: str) -> str:
+
+def create_complete_html(
+    assets: WebsiteAssets, content_data: Dict[str, Any], site_id: str
+) -> str:
     """Create complete HTML with embedded CSS and JS"""
-    
+
     # Process the Jinja template
     rendered_html = process_jinja_template(assets.html_template, content_data)
-    
+
     # Inject CSS and JS directly into the HTML
     css_injection = f"""<style>
 {assets.css_styles}
 </style>"""
-    
+
     js_injection = f"""<script>
 // Site ID for analytics
 window.SITE_ID = '{site_id}';
@@ -124,43 +135,40 @@ trackEvent('page_view', {{
 // Custom JavaScript
 {assets.javascript}
 </script>"""
-    
+
     # Inject CSS before </head>
     if "</head>" in rendered_html:
         rendered_html = rendered_html.replace("</head>", f"{css_injection}\n</head>")
     else:
         rendered_html = css_injection + rendered_html
-    
+
     # Inject JS before </body>
     if "</body>" in rendered_html:
         rendered_html = rendered_html.replace("</body>", f"{js_injection}\n</body>")
     else:
         rendered_html = rendered_html + js_injection
-    
+
     return rendered_html
+
 
 @app.post("/api/deploy")
 async def deploy_website(deployment: DeploymentRequest):
     """Deploy a new website and return access URLs"""
-    
+
     try:
         # Generate site ID if not provided
         site_id = deployment.deployment_id or generate_site_id()
-        
+
         # Convert Pydantic models to dicts for template processing
         content_dict = deployment.content_data.dict()
-        
+
         # Add some default values if missing
         content_dict.setdefault("current_year", datetime.now().year)
         content_dict.setdefault("site_url", f"http://localhost:8001/site/{site_id}")
-        
+
         # Create complete HTML
-        complete_html = create_complete_html(
-            deployment.assets, 
-            content_dict, 
-            site_id
-        )
-        
+        complete_html = create_complete_html(deployment.assets, content_dict, site_id)
+
         # Store in memory
         DEPLOYED_SITES[site_id] = {
             "site_id": site_id,
@@ -171,18 +179,18 @@ async def deploy_website(deployment: DeploymentRequest):
             "analytics": deployment.analytics,
             "created_at": datetime.now().isoformat(),
             "last_accessed": None,
-            "view_count": 0
+            "view_count": 0,
         }
-        
+
         # Initialize analytics storage
         SITE_ANALYTICS[site_id] = []
-        
+
         # Generate URLs
         base_url = "http://localhost:8001"  # Configure as needed
         live_url = f"{base_url}/site/{site_id}"
         admin_url = f"{base_url}/admin/{site_id}"
         analytics_url = f"{base_url}/analytics/{site_id}"
-        
+
         return {
             "success": True,
             "site_id": site_id,
@@ -193,17 +201,18 @@ async def deploy_website(deployment: DeploymentRequest):
                 "deployment_id": site_id,
                 "status": "deployed",
                 "created_at": datetime.now().isoformat(),
-                "site_name": deployment.site_name
-            }
+                "site_name": deployment.site_name,
+            },
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Deployment failed: {str(e)}")
+
 
 @app.get("/site/{site_id}")
 async def serve_website(site_id: str, request: Request):
     """Serve the deployed website"""
-    
+
     if site_id not in DEPLOYED_SITES:
         return HTMLResponse(
             content="""
@@ -216,37 +225,37 @@ async def serve_website(site_id: str, request: Request):
                 </body>
             </html>
             """.format(site_id),
-            status_code=404
+            status_code=404,
         )
-    
+
     # Update access tracking
     site_data = DEPLOYED_SITES[site_id]
     site_data["last_accessed"] = datetime.now().isoformat()
     site_data["view_count"] += 1
-    
+
     # Track analytics
-    SITE_ANALYTICS[site_id].append({
-        "event_type": "page_view",
-        "timestamp": datetime.now().isoformat(),
-        "user_agent": request.headers.get("user-agent"),
-        "ip_address": request.client.host,
-        "event_data": {
-            "url": str(request.url),
-            "method": request.method
+    SITE_ANALYTICS[site_id].append(
+        {
+            "event_type": "page_view",
+            "timestamp": datetime.now().isoformat(),
+            "user_agent": request.headers.get("user-agent"),
+            "ip_address": request.client.host,
+            "event_data": {"url": str(request.url), "method": request.method},
         }
-    })
-    
+    )
+
     return HTMLResponse(content=site_data["html_content"])
+
 
 @app.get("/admin/{site_id}")
 async def admin_panel(site_id: str):
     """Simple admin panel for site management"""
-    
+
     if site_id not in DEPLOYED_SITES:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     site_data = DEPLOYED_SITES[site_id]
-    
+
     admin_html = f"""
     <!DOCTYPE html>
     <html>
@@ -274,7 +283,7 @@ async def admin_panel(site_id: str):
                 <h1>🛠️ Admin Panel</h1>
                 <p><strong>Site:</strong> {site_data['site_name']} | <strong>ID:</strong> {site_id}</p>
             </div>
-            
+
             <div class="stat-grid">
                 <div class="stat-card">
                     <div class="stat-number">{site_data['view_count']}</div>
@@ -293,14 +302,14 @@ async def admin_panel(site_id: str):
                     <div class="stat-label">Status</div>
                 </div>
             </div>
-            
+
             <div class="actions">
                 <a href="/site/{site_id}" class="btn" target="_blank">👁️ View Live Site</a>
                 <a href="/analytics/{site_id}" class="btn">📊 View Analytics</a>
                 <a href="/api/sites/{site_id}/data" class="btn">📄 Export Data</a>
                 <button onclick="deleteSite()" class="btn btn-danger">🗑️ Delete Site</button>
             </div>
-            
+
             <div class="section">
                 <h3>📋 Site Information</h3>
                 <pre>{json.dumps({{
@@ -317,7 +326,7 @@ async def admin_panel(site_id: str):
                 }}, indent=2)}</pre>
             </div>
         </div>
-        
+
         <script>
             function deleteSite() {{
                 if (confirm('Are you sure you want to delete this site? This action cannot be undone.')) {{
@@ -337,23 +346,26 @@ async def admin_panel(site_id: str):
     </body>
     </html>
     """
-    
+
     return HTMLResponse(content=admin_html)
+
 
 @app.get("/analytics/{site_id}")
 async def analytics_dashboard(site_id: str):
     """Analytics dashboard for the site"""
-    
+
     if site_id not in DEPLOYED_SITES:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     analytics_data = SITE_ANALYTICS.get(site_id, [])
     site_data = DEPLOYED_SITES[site_id]
-    
+
     # Process analytics data
-    page_views = len([e for e in analytics_data if e['event_type'] == 'page_view'])
-    unique_ips = len(set(e.get('ip_address') for e in analytics_data if e.get('ip_address')))
-    
+    page_views = len([e for e in analytics_data if e["event_type"] == "page_view"])
+    unique_ips = len(
+        set(e.get("ip_address") for e in analytics_data if e.get("ip_address"))
+    )
+
     analytics_html = f"""
     <!DOCTYPE html>
     <html>
@@ -379,7 +391,7 @@ async def analytics_dashboard(site_id: str):
                 <h1>📊 Analytics Dashboard</h1>
                 <p><strong>Site:</strong> {site_data['site_name']} | <strong>ID:</strong> {site_id}</p>
             </div>
-            
+
             <div class="metric-grid">
                 <div class="metric-card">
                     <div class="metric-number">{page_views}</div>
@@ -398,12 +410,12 @@ async def analytics_dashboard(site_id: str):
                     <div class="metric-label">Site Views</div>
                 </div>
             </div>
-            
+
             <div style="margin: 30px 0;">
                 <a href="/admin/{site_id}" class="btn">🛠️ Back to Admin</a>
                 <a href="/site/{site_id}" class="btn" target="_blank">👁️ View Live Site</a>
             </div>
-            
+
             <h3>📋 Recent Events</h3>
             <div class="events-list">
                 {"".join([f'''
@@ -417,26 +429,30 @@ async def analytics_dashboard(site_id: str):
     </body>
     </html>
     """
-    
+
     return HTMLResponse(content=analytics_html)
+
 
 @app.post("/api/analytics/track")
 async def track_analytics(event: AnalyticsEvent):
     """Track analytics events"""
-    
+
     if event.site_id not in DEPLOYED_SITES:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     # Store the event
-    SITE_ANALYTICS.setdefault(event.site_id, []).append({
-        "event_type": event.event_type,
-        "event_data": event.event_data,
-        "timestamp": datetime.now().isoformat(),
-        "user_agent": event.user_agent,
-        "ip_address": event.ip_address
-    })
-    
+    SITE_ANALYTICS.setdefault(event.site_id, []).append(
+        {
+            "event_type": event.event_type,
+            "event_data": event.event_data,
+            "timestamp": datetime.now().isoformat(),
+            "user_agent": event.user_agent,
+            "ip_address": event.ip_address,
+        }
+    )
+
     return {"success": True}
+
 
 @app.get("/api/sites")
 async def list_sites():
@@ -448,42 +464,45 @@ async def list_sites():
                 "site_name": data["site_name"],
                 "created_at": data["created_at"],
                 "view_count": data["view_count"],
-                "live_url": f"http://localhost:8001/site/{site_id}"
+                "live_url": f"http://localhost:8001/site/{site_id}",
             }
             for site_id, data in DEPLOYED_SITES.items()
         ]
     }
 
+
 @app.get("/api/sites/{site_id}/data")
 async def get_site_data(site_id: str):
     """Get complete site data"""
-    
+
     if site_id not in DEPLOYED_SITES:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     return {
         "site_data": DEPLOYED_SITES[site_id],
-        "analytics": SITE_ANALYTICS.get(site_id, [])
+        "analytics": SITE_ANALYTICS.get(site_id, []),
     }
+
 
 @app.delete("/api/sites/{site_id}")
 async def delete_site(site_id: str):
     """Delete a deployed site"""
-    
+
     if site_id not in DEPLOYED_SITES:
         raise HTTPException(status_code=404, detail="Site not found")
-    
+
     # Remove from storage
     del DEPLOYED_SITES[site_id]
     if site_id in SITE_ANALYTICS:
         del SITE_ANALYTICS[site_id]
-    
+
     return {"success": True, "message": "Site deleted successfully"}
+
 
 @app.get("/admin")
 async def admin_home():
     """Admin home page listing all sites"""
-    
+
     sites_html = ""
     for site_id, data in DEPLOYED_SITES.items():
         sites_html += f"""
@@ -499,7 +518,7 @@ async def admin_home():
             </td>
         </tr>
         """
-    
+
     admin_home_html = f"""
     <!DOCTYPE html>
     <html>
@@ -520,7 +539,7 @@ async def admin_home():
     <body>
         <div class="container">
             <h1>🚀 Landing Page Renderer Dashboard</h1>
-            
+
             <div class="stats">
                 <div class="stat-card">
                     <div class="stat-number">{len(DEPLOYED_SITES)}</div>
@@ -535,7 +554,7 @@ async def admin_home():
                     <div>Analytics Events</div>
                 </div>
             </div>
-            
+
             <h2>📋 Deployed Sites</h2>
             <table>
                 <thead>
@@ -555,8 +574,9 @@ async def admin_home():
     </body>
     </html>
     """
-    
+
     return HTMLResponse(content=admin_home_html)
+
 
 @app.get("/")
 async def root():
@@ -572,12 +592,14 @@ async def root():
             "admin_panel": "GET /admin/{site_id}",
             "analytics": "GET /analytics/{site_id}",
             "list_sites": "GET /api/sites",
-            "admin_home": "GET /admin"
-        }
+            "admin_home": "GET /admin",
+        },
     }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     print("🚀 Starting In-Memory Landing Page Renderer...")
     print("📊 Admin Dashboard: http://localhost:8001/admin")
     print("🔧 API Docs: http://localhost:8001/docs")

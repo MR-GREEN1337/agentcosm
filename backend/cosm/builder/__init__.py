@@ -9,15 +9,19 @@ from typing import Dict, List, Any, Optional
 import json
 import re
 from datetime import datetime
-import requests
 
-from cosm.prompts import BRAND_CREATOR_PROMPT, COPY_WRITER_PROMPT, LANDING_BUILDER_PROMPT
+from cosm.prompts import (
+    BRAND_CREATOR_PROMPT,
+    COPY_WRITER_PROMPT,
+    LANDING_BUILDER_PROMPT,
+)
 
 client = Client()
 
 # =============================================================================
 # BRAND CREATOR AGENT
 # =============================================================================
+
 
 def create_brand_identity(opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -34,41 +38,44 @@ def create_brand_identity(opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
         "visual_identity": {},
         "messaging_framework": {},
         "domain_suggestions": [],
-        "trademark_considerations": []
+        "trademark_considerations": [],
     }
-    
+
     try:
         # Generate brand identity using AI
         brand_response = generate_brand_with_ai(opportunity_data)
-        
+
         if brand_response:
             brand_identity.update(brand_response)
-        
+
         # Generate domain suggestions
         brand_identity["domain_suggestions"] = generate_domain_suggestions(
             brand_identity.get("brand_name", "")
         )
-        
+
         # Add trademark considerations
         brand_identity["trademark_considerations"] = assess_trademark_risks(
             brand_identity.get("brand_name", "")
         )
-        
+
         return brand_identity
-        
+
     except Exception as e:
         print(f"Error creating brand identity: {e}")
         brand_identity["error"] = str(e)
         return brand_identity
 
-def generate_brand_with_ai(opportunity_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+
+def generate_brand_with_ai(
+    opportunity_data: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
     """Use AI to generate comprehensive brand identity"""
     try:
         prompt = f"""
         Create a comprehensive brand identity for this market opportunity:
-        
+
         Opportunity: {json.dumps(opportunity_data, indent=2)}
-        
+
         Generate a JSON response with:
         {{
             "brand_name": "Memorable, unique brand name",
@@ -92,100 +99,107 @@ def generate_brand_with_ai(opportunity_data: Dict[str, Any]) -> Optional[Dict[st
                 "differentiation_points": ["differentiator1", "differentiator2"]
             }}
         }}
-        
+
         Focus on liminal market positioning - how this sits between existing categories.
         """
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.4
-            )
+                response_mime_type="application/json", temperature=0.4
+            ),
         )
-        
+
         if response and response.text:
             return json.loads(response.text)
-            
+
     except Exception as e:
         print(f"Error generating brand with AI: {e}")
-    
+
     return None
+
 
 def generate_domain_suggestions(brand_name: str) -> List[Dict[str, Any]]:
     """Generate domain name suggestions"""
     if not brand_name:
         return []
-    
+
     suggestions = []
-    base_name = re.sub(r'[^a-zA-Z0-9]', '', brand_name.lower())
-    
+    base_name = re.sub(r"[^a-zA-Z0-9]", "", brand_name.lower())
+
     # Primary domain options
-    primary_options = [
-        f"{base_name}.com",
-        f"{base_name}.io",
-        f"{base_name}.co"
-    ]
-    
+    primary_options = [f"{base_name}.com", f"{base_name}.io", f"{base_name}.co"]
+
     # Alternative options
     alternative_options = [
         f"get{base_name}.com",
         f"{base_name}app.com",
         f"{base_name}hq.com",
         f"{base_name}pro.com",
-        f"try{base_name}.com"
+        f"try{base_name}.com",
     ]
-    
+
     # Add suggestions with priority
     for domain in primary_options:
-        suggestions.append({
-            "domain": domain,
-            "priority": "high",
-            "availability": "check_required",
-            "recommendation": "primary_option"
-        })
-    
+        suggestions.append(
+            {
+                "domain": domain,
+                "priority": "high",
+                "availability": "check_required",
+                "recommendation": "primary_option",
+            }
+        )
+
     for domain in alternative_options:
-        suggestions.append({
-            "domain": domain,
-            "priority": "medium", 
-            "availability": "check_required",
-            "recommendation": "alternative_option"
-        })
-    
+        suggestions.append(
+            {
+                "domain": domain,
+                "priority": "medium",
+                "availability": "check_required",
+                "recommendation": "alternative_option",
+            }
+        )
+
     return suggestions
+
 
 def assess_trademark_risks(brand_name: str) -> List[str]:
     """Assess potential trademark risks"""
     considerations = []
-    
+
     if not brand_name:
         return ["No brand name provided for assessment"]
-    
+
     # Basic trademark considerations
-    considerations.extend([
-        "Conduct comprehensive trademark search before final selection",
-        "Check for existing trademarks in relevant business categories",
-        "Consider international trademark implications",
-        "Verify domain availability for primary brand name",
-        "Search for existing companies with similar names"
-    ])
-    
+    considerations.extend(
+        [
+            "Conduct comprehensive trademark search before final selection",
+            "Check for existing trademarks in relevant business categories",
+            "Consider international trademark implications",
+            "Verify domain availability for primary brand name",
+            "Search for existing companies with similar names",
+        ]
+    )
+
     # Name-specific considerations
     if len(brand_name.split()) > 2:
         considerations.append("Multi-word names may be harder to trademark")
-    
+
     if any(char.isdigit() for char in brand_name):
         considerations.append("Names with numbers may face trademark challenges")
-    
+
     return considerations
 
+
 # =============================================================================
-# COPY WRITER AGENT  
+# COPY WRITER AGENT
 # =============================================================================
 
-def generate_marketing_copy(brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
+
+def generate_marketing_copy(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Generates comprehensive marketing copy for the opportunity
     """
@@ -198,40 +212,49 @@ def generate_marketing_copy(brand_data: Dict[str, Any], opportunity_data: Dict[s
         "email_sequences": {},
         "social_media_copy": {},
         "ad_copy": {},
-        "press_release": ""
+        "press_release": "",
     }
-    
+
     try:
         # Generate core copy elements
         core_copy = generate_core_copy_with_ai(brand_data, opportunity_data)
         if core_copy:
             copy_package.update(core_copy)
-        
+
         # Generate website copy
-        copy_package["website_copy"] = generate_website_copy(brand_data, opportunity_data)
-        
+        copy_package["website_copy"] = generate_website_copy(
+            brand_data, opportunity_data
+        )
+
         # Generate email sequences
-        copy_package["email_sequences"] = generate_email_sequences(brand_data, opportunity_data)
-        
+        copy_package["email_sequences"] = generate_email_sequences(
+            brand_data, opportunity_data
+        )
+
         # Generate social media copy
-        copy_package["social_media_copy"] = generate_social_copy(brand_data, opportunity_data)
-        
+        copy_package["social_media_copy"] = generate_social_copy(
+            brand_data, opportunity_data
+        )
+
         return copy_package
-        
+
     except Exception as e:
         print(f"Error generating marketing copy: {e}")
         copy_package["error"] = str(e)
         return copy_package
 
-def generate_core_copy_with_ai(brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+
+def generate_core_copy_with_ai(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
     """Generate core copy elements using AI"""
     try:
         prompt = f"""
         Create marketing copy for this brand and opportunity:
-        
+
         Brand Data: {json.dumps(brand_data, indent=2)}
         Opportunity Data: {json.dumps(opportunity_data, indent=2)}
-        
+
         Generate JSON with:
         {{
             "headlines": [
@@ -241,7 +264,7 @@ def generate_core_copy_with_ai(brand_data: Dict[str, Any], opportunity_data: Dic
             ],
             "taglines": [
                 "3-word tagline",
-                "5-word tagline", 
+                "5-word tagline",
                 "7-word tagline"
             ],
             "value_propositions": [
@@ -260,144 +283,150 @@ def generate_core_copy_with_ai(brand_data: Dict[str, Any], opportunity_data: Dic
                 ]
             }}
         }}
-        
+
         Focus on liminal market positioning and immediate user benefits.
         """
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.4
-            )
+                response_mime_type="application/json", temperature=0.4
+            ),
         )
-        
+
         if response and response.text:
             return json.loads(response.text)
-            
+
     except Exception as e:
         print(f"Error generating core copy: {e}")
-    
+
     return None
 
-def generate_website_copy(brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]) -> Dict[str, str]:
+
+def generate_website_copy(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> Dict[str, str]:
     """Generate website copy sections"""
-    
+
     brand_name = brand_data.get("brand_name", "Solution")
     value_prop = brand_data.get("value_proposition", "Transform your workflow")
-    
+
     website_copy = {
         "hero_headline": f"Finally, {value_prop.lower()}",
         "hero_subheadline": f"{brand_name} bridges the gap between your existing tools to eliminate manual work and reduce errors.",
-        
-        "problem_section": f"""
+        "problem_section": """
         **The Problem Everyone Faces**
-        
+
         You're switching between multiple tools, copying data manually, and losing time on tasks that should be automated. Your workflow breaks down at the integration points, forcing you into inefficient workarounds.
         """,
-        
         "solution_section": f"""
         **How {brand_name} Works**
-        
+
         {brand_name} sits in the gap between your existing tools, automatically handling the connections and data transfers that currently require manual work. No complex setup, no workflow disruption - just intelligent automation where you need it most.
         """,
-        
-        "benefits_section": f"""
+        "benefits_section": """
         **What You'll Achieve**
-        
+
         - Eliminate manual data entry between systems
-        - Reduce errors from copy-paste workflows  
+        - Reduce errors from copy-paste workflows
         - Save hours every week on repetitive tasks
         - Keep using the tools you already know
         - Scale your processes without scaling your effort
         """,
-        
         "how_it_works": f"""
         **Simple Integration**
-        
+
         1. **Connect**: Link {brand_name} to your existing tools (2-minute setup)
-        2. **Configure**: Set up the automated workflows you need  
+        2. **Configure**: Set up the automated workflows you need
         3. **Automate**: Watch as manual processes become seamless automation
         """,
-        
-        "cta_primary": f"Start Automating Your Workflow",
-        "cta_secondary": f"See {brand_name} in Action"
+        "cta_primary": "Start Automating Your Workflow",
+        "cta_secondary": f"See {brand_name} in Action",
     }
-    
+
     return website_copy
 
-def generate_email_sequences(brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]) -> Dict[str, List[Dict[str, str]]]:
+
+def generate_email_sequences(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> Dict[str, List[Dict[str, str]]]:
     """Generate email marketing sequences"""
-    
+
     brand_name = brand_data.get("brand_name", "Solution")
-    
+
     sequences = {
         "welcome_sequence": [
             {
                 "subject": f"Welcome to {brand_name} - Your workflow just got easier",
                 "preview": "Here's what happens next...",
-                "body": f"Thanks for joining {brand_name}! You're about to eliminate the manual work that's been slowing down your workflow. Here's what to expect..."
+                "body": f"Thanks for joining {brand_name}! You're about to eliminate the manual work that's been slowing down your workflow. Here's what to expect...",
             },
             {
                 "subject": "The #1 workflow killer (and how to fix it)",
                 "preview": "It's not what you think...",
-                "body": "The biggest productivity killer isn't big problems - it's the small friction points between your tools that add up to hours of wasted time every week."
+                "body": "The biggest productivity killer isn't big problems - it's the small friction points between your tools that add up to hours of wasted time every week.",
             },
             {
                 "subject": f"See {brand_name} in action (2-minute demo)",
                 "preview": "Watch this quick demo...",
-                "body": f"Here's a quick demo showing exactly how {brand_name} eliminates the manual work between your existing tools."
-            }
+                "body": f"Here's a quick demo showing exactly how {brand_name} eliminates the manual work between your existing tools.",
+            },
         ],
-        
         "nurture_sequence": [
             {
                 "subject": "Case study: How TeamX saved 15 hours/week",
                 "preview": "Real results from real users",
-                "body": f"See how one team used {brand_name} to eliminate manual data entry and save 15 hours per week."
+                "body": f"See how one team used {brand_name} to eliminate manual data entry and save 15 hours per week.",
             },
             {
                 "subject": "The hidden cost of manual workflows",
                 "preview": "It's more than just time...",
-                "body": "Manual workflows don't just waste time - they introduce errors, create bottlenecks, and prevent scaling."
-            }
-        ]
+                "body": "Manual workflows don't just waste time - they introduce errors, create bottlenecks, and prevent scaling.",
+            },
+        ],
     }
-    
+
     return sequences
 
-def generate_social_copy(brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]) -> Dict[str, List[str]]:
+
+def generate_social_copy(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> Dict[str, List[str]]:
     """Generate social media copy"""
-    
+
     brand_name = brand_data.get("brand_name", "Solution")
     value_prop = brand_data.get("value_proposition", "workflow automation")
-    
+
     social_copy = {
         "twitter_posts": [
             f"Stop copying data between tools manually. {brand_name} automates the connections your workflow needs. 🚀",
             f"The gap between your tools is where productivity goes to die. {brand_name} bridges those gaps automatically.",
-            f"Manual workflows don't scale. {value_prop} does. See how: [link]"
+            f"Manual workflows don't scale. {value_prop} does. See how: [link]",
         ],
-        
         "linkedin_posts": [
             f"Productivity insight: The biggest workflow bottlenecks aren't in your tools - they're between your tools. {brand_name} solves this by automating the manual handoffs that slow teams down.",
-            f"Team efficiency tip: Audit your manual processes this week. Any task you do more than once between different tools is a candidate for automation with {brand_name}."
+            f"Team efficiency tip: Audit your manual processes this week. Any task you do more than once between different tools is a candidate for automation with {brand_name}.",
         ],
-        
         "facebook_posts": [
             f"Tired of switching between multiple tools and copying data manually? {brand_name} connects your existing tools so you can focus on work that matters.",
-            f"Save hours every week by automating the busy work between your favorite tools. See how {brand_name} works: [link]"
-        ]
+            f"Save hours every week by automating the busy work between your favorite tools. See how {brand_name} works: [link]",
+        ],
     }
-    
+
     return social_copy
+
 
 # =============================================================================
 # LANDING BUILDER AGENT
 # =============================================================================
 
-def build_landing_page(brand_data: Dict[str, Any], copy_data: Dict[str, Any], opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
+
+def build_landing_page(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Builds a complete landing page ready for deployment
     """
@@ -406,7 +435,7 @@ def build_landing_page(brand_data: Dict[str, Any], copy_data: Dict[str, Any], op
             "title": "",
             "description": "",
             "keywords": [],
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         },
         "html_template": "",
         "css_styles": "",
@@ -414,59 +443,69 @@ def build_landing_page(brand_data: Dict[str, Any], copy_data: Dict[str, Any], op
         "content_data": {},
         "deployment_config": {},
         "analytics_config": {},
-        "conversion_tracking": {}
+        "conversion_tracking": {},
     }
-    
+
     try:
         # Generate page metadata
         landing_page["metadata"] = generate_page_metadata(brand_data, copy_data)
-        
-        # Generate HTML template  
+
+        # Generate HTML template
         landing_page["html_template"] = generate_html_template()
-        
+
         # Generate CSS styles
         landing_page["css_styles"] = generate_css_styles(brand_data)
-        
+
         # Generate JavaScript
         landing_page["javascript"] = generate_javascript_code()
-        
+
         # Prepare content data
-        landing_page["content_data"] = prepare_content_data(brand_data, copy_data, opportunity_data)
-        
+        landing_page["content_data"] = prepare_content_data(
+            brand_data, copy_data, opportunity_data
+        )
+
         # Configure deployment
         landing_page["deployment_config"] = generate_deployment_config(brand_data)
-        
+
         # Configure analytics
         landing_page["analytics_config"] = generate_analytics_config()
-        
+
         return landing_page
-        
+
     except Exception as e:
         print(f"Error building landing page: {e}")
         landing_page["error"] = str(e)
         return landing_page
 
-def generate_page_metadata(brand_data: Dict[str, Any], copy_data: Dict[str, Any]) -> Dict[str, Any]:
+
+def generate_page_metadata(
+    brand_data: Dict[str, Any], copy_data: Dict[str, Any]
+) -> Dict[str, Any]:
     """Generate SEO and meta data for the page"""
-    
+
     brand_name = brand_data.get("brand_name", "Solution")
     headlines = copy_data.get("headlines", [])
-    primary_headline = headlines[0] if headlines else f"{brand_name} - Workflow Automation"
-    
+    primary_headline = (
+        headlines[0] if headlines else f"{brand_name} - Workflow Automation"
+    )
+
     return {
         "title": f"{primary_headline} | {brand_name}",
-        "description": brand_data.get("value_proposition", "Automate your workflow and eliminate manual processes")[:160],
+        "description": brand_data.get(
+            "value_proposition", "Automate your workflow and eliminate manual processes"
+        )[:160],
         "keywords": [
             brand_name.lower(),
             "workflow automation",
-            "productivity tools", 
+            "productivity tools",
             "integration platform",
-            "business automation"
+            "business automation",
         ],
         "og_title": primary_headline,
         "og_description": brand_data.get("value_proposition", ""),
-        "og_image": "/images/og-image.jpg"
+        "og_image": "/images/og-image.jpg",
     }
+
 
 def generate_html_template() -> str:
     """Generate responsive HTML template"""
@@ -479,13 +518,13 @@ def generate_html_template() -> str:
     <title>{{ title }}</title>
     <meta name="description" content="{{ description }}">
     <meta name="keywords" content="{{ keywords|join(', ') }}">
-    
+
     <!-- Open Graph -->
     <meta property="og:title" content="{{ og_title }}">
     <meta property="og:description" content="{{ og_description }}">
     <meta property="og:image" content="{{ og_image }}">
     <meta property="og:type" content="website">
-    
+
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -609,7 +648,7 @@ def generate_html_template() -> str:
             <div class="cta-content">
                 <h2>Ready to Eliminate Manual Work?</h2>
                 <p>Join hundreds of teams already automating their workflows with {{ brand_name }}</p>
-                
+
                 <div class="signup-form">
                     <form id="early-access-form" onsubmit="handleFormSubmit(event)">
                         <div class="form-group">
@@ -666,16 +705,16 @@ def generate_html_template() -> str:
 </html>
 """
 
+
 def generate_css_styles(brand_data: Dict[str, Any]) -> str:
     """Generate CSS styles based on brand identity"""
-    
+
     visual_identity = brand_data.get("visual_identity", {})
     colors = visual_identity.get("color_palette", ["#2563eb", "#1e40af", "#3b82f6"])
-    
+
     primary_color = colors[0] if colors else "#2563eb"
     secondary_color = colors[1] if len(colors) > 1 else "#1e40af"
-    accent_color = colors[2] if len(colors) > 2 else "#3b82f6"
-    
+
     return f"""
 /* Reset and Base Styles */
 * {{
@@ -1129,33 +1168,34 @@ body {{
         grid-template-columns: 1fr;
         text-align: center;
     }}
-    
+
     .hero-headline {{
         font-size: 2rem;
     }}
-    
+
     .solution-content {{
         grid-template-columns: 1fr;
     }}
-    
+
     .testimonials {{
         grid-template-columns: 1fr;
     }}
-    
+
     .hero-cta {{
         justify-content: center;
     }}
-    
+
     .cta-button-secondary {{
         margin-left: 0;
         margin-top: 1rem;
     }}
-    
+
     .form-group {{
         flex-direction: column;
     }}
 }}
 """
+
 
 def generate_javascript_code() -> str:
     """Generate JavaScript for interactions and analytics"""
@@ -1171,33 +1211,33 @@ function scrollToDemo() {
 // Form handling
 function handleFormSubmit(event) {
     event.preventDefault();
-    
+
     const email = document.getElementById('email').value;
     const company = document.getElementById('company').value;
-    
+
     // Basic validation
     if (!email || !company) {
         alert('Please fill in all fields');
         return;
     }
-    
+
     // Track form submission
     trackEvent('form_submit', {
         email: email,
         company: company
     });
-    
+
     // Simulate API call
     const submitButton = event.target.querySelector('button[type="submit"]');
     const originalText = submitButton.textContent;
-    
+
     submitButton.textContent = 'Submitting...';
     submitButton.disabled = true;
-    
+
     setTimeout(() => {
         submitButton.textContent = 'Thank you! We\\'ll be in touch.';
         document.getElementById('early-access-form').reset();
-        
+
         // Show success message
         setTimeout(() => {
             submitButton.textContent = originalText;
@@ -1212,12 +1252,12 @@ function trackEvent(eventName, eventData = {}) {
     if (typeof gtag !== 'undefined') {
         gtag('event', eventName, eventData);
     }
-    
+
     // Custom analytics
     if (window.analytics) {
         window.analytics.track(eventName, eventData);
     }
-    
+
     // Console log for development
     console.log('Event tracked:', eventName, eventData);
 }
@@ -1232,7 +1272,7 @@ function observeElements() {
             }
         });
     });
-    
+
     document.querySelectorAll('.problem-item, .testimonial, .faq-item').forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(20px)';
@@ -1255,77 +1295,84 @@ document.addEventListener('mouseout', function(e) {
 });
 """
 
-def prepare_content_data(brand_data: Dict[str, Any], copy_data: Dict[str, Any], opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
+
+def prepare_content_data(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+) -> Dict[str, Any]:
     """Prepare all content data for template rendering"""
-    
+
     website_copy = copy_data.get("website_copy", {})
-    
+
     return {
         "brand_name": brand_data.get("brand_name", "Solution"),
         "title": f"{brand_data.get('brand_name', 'Solution')} - {brand_data.get('tagline', 'Workflow Automation')}",
-        "description": brand_data.get("value_proposition", "Automate your workflow and eliminate manual processes"),
-        "keywords": ["workflow automation", "productivity", "integration", "business tools"],
+        "description": brand_data.get(
+            "value_proposition", "Automate your workflow and eliminate manual processes"
+        ),
+        "keywords": [
+            "workflow automation",
+            "productivity",
+            "integration",
+            "business tools",
+        ],
         "og_title": website_copy.get("hero_headline", "Transform Your Workflow"),
         "og_description": brand_data.get("value_proposition", ""),
         "og_image": "/images/og-image.jpg",
-        
-        "hero_headline": website_copy.get("hero_headline", "Finally, workflow automation that works"),
-        "hero_subheadline": website_copy.get("hero_subheadline", "Connect your tools and eliminate manual work"),
+        "hero_headline": website_copy.get(
+            "hero_headline", "Finally, workflow automation that works"
+        ),
+        "hero_subheadline": website_copy.get(
+            "hero_subheadline", "Connect your tools and eliminate manual work"
+        ),
         "cta_primary": website_copy.get("cta_primary", "Get Early Access"),
         "cta_secondary": website_copy.get("cta_secondary", "See Demo"),
-        
         "benefits": [
             "Eliminate manual data entry between systems",
             "Reduce errors from copy-paste workflows",
             "Save hours every week on repetitive tasks",
             "Keep using the tools you already know",
-            "Scale your processes without scaling effort"
-        ]
+            "Scale your processes without scaling effort",
+        ],
     }
+
 
 def generate_deployment_config(brand_data: Dict[str, Any]) -> Dict[str, Any]:
     """Generate deployment configuration"""
     brand_name = brand_data.get("brand_name", "solution").lower()
-    clean_name = re.sub(r'[^a-zA-Z0-9]', '', brand_name)
-    
+    clean_name = re.sub(r"[^a-zA-Z0-9]", "", brand_name)
+
     return {
         "site_name": f"{clean_name}-landing",
         "suggested_domains": [
             f"{clean_name}.com",
             f"get{clean_name}.com",
-            f"{clean_name}app.com"
+            f"{clean_name}app.com",
         ],
         "environment": "staging",
         "ssl_required": True,
-        "custom_domain_ready": True
+        "custom_domain_ready": True,
     }
+
 
 def generate_analytics_config() -> Dict[str, Any]:
     """Generate analytics configuration"""
     return {
-        "google_analytics": {
-            "enabled": True,
-            "property_id": "GA_MEASUREMENT_ID"
-        },
+        "google_analytics": {"enabled": True, "property_id": "GA_MEASUREMENT_ID"},
         "conversion_tracking": {
             "form_submissions": True,
             "button_clicks": True,
             "scroll_depth": True,
-            "exit_intent": True
+            "exit_intent": True,
         },
-        "heatmap_tracking": {
-            "enabled": True,
-            "provider": "hotjar"
-        },
+        "heatmap_tracking": {"enabled": True, "provider": "hotjar"},
         "a_b_testing": {
             "enabled": True,
-            "tests": [
-                "headline_variants",
-                "cta_button_colors", 
-                "form_length"
-            ]
-        }
+            "tests": ["headline_variants", "cta_button_colors", "form_length"],
+        },
     }
+
 
 # Create the builder agents
 brand_creator_agent = LlmAgent(
@@ -1336,23 +1383,23 @@ brand_creator_agent = LlmAgent(
     tools=[
         FunctionTool(func=create_brand_identity),
         FunctionTool(func=generate_domain_suggestions),
-        FunctionTool(func=assess_trademark_risks)
+        FunctionTool(func=assess_trademark_risks),
     ],
-    output_key="brand_identity"
+    output_key="brand_identity",
 )
 
 copy_writer_agent = LlmAgent(
     name="copy_writer_agent",
-    model="gemini-2.0-flash", 
+    model="gemini-2.0-flash",
     instruction=COPY_WRITER_PROMPT,
     description="Generates high-converting copy for early-stage market validation",
     tools=[
         FunctionTool(func=generate_marketing_copy),
         FunctionTool(func=generate_website_copy),
         FunctionTool(func=generate_email_sequences),
-        FunctionTool(func=generate_social_copy)
+        FunctionTool(func=generate_social_copy),
     ],
-    output_key="marketing_copy"
+    output_key="marketing_copy",
 )
 
 landing_builder_agent = LlmAgent(
@@ -1364,7 +1411,7 @@ landing_builder_agent = LlmAgent(
         FunctionTool(func=build_landing_page),
         FunctionTool(func=generate_html_template),
         FunctionTool(func=generate_css_styles),
-        FunctionTool(func=generate_javascript_code)
+        FunctionTool(func=generate_javascript_code),
     ],
-    output_key="landing_page"
+    output_key="landing_page",
 )

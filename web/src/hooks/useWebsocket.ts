@@ -53,7 +53,7 @@ export function useWebSocket(url: string | null, options: WebSocketOptions = {})
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current)
           }
-          
+
           reconnectTimeoutRef.current = setTimeout(() => {
             setReconnectAttempts(prev => prev + 1)
             connect()

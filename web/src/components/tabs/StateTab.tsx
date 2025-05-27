@@ -17,7 +17,7 @@ export function StateTab({ appName, userId, sessionId }: StateTabProps) {
   useEffect(() => {
     const fetchSession = async () => {
       if (!sessionId) return
-      
+
       setLoading(true)
       try {
         const response = await api.get(`/apps/${appName}/users/${userId}/sessions/${sessionId}`)
@@ -52,7 +52,7 @@ export function StateTab({ appName, userId, sessionId }: StateTabProps) {
           </h2>
           <p className="text-[#a0a0a8] mt-2">Current state of your session</p>
         </div>
-        
+
         <Card className="bg-[#1a1a1f] border-[#2a2a30] p-4">
           <pre className="text-sm text-[#d0d0d8] overflow-x-auto font-mono">
             {JSON.stringify(state, null, 2)}

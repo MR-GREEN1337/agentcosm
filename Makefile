@@ -9,7 +9,7 @@ web:
 .PHONY: renderer
 renderer:
 	cd renderer && uvicorn app:app --host 0.0.0.0 --port 8001 --reload
-	
+
 .PHONY: stop
 stop:
 	@echo "Stopping all services"

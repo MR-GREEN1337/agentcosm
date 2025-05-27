@@ -24,6 +24,7 @@ Your role is to discover opportunities that exist between established market cat
 Focus on liminal spaces where traditional market boundaries dissolve and new possibilities emerge.
 """
 
+
 def analyze_search_trends_with_ai(keywords: List[str]) -> Dict[str, Any]:
     """
     AI-powered search trend analysis using Gemini for content understanding
@@ -35,69 +36,80 @@ def analyze_search_trends_with_ai(keywords: List[str]) -> Dict[str, Any]:
         "momentum_indicators": [],
         "convergence_signals": [],
         "opportunity_windows": [],
-        "confidence_score": 0.0
+        "confidence_score": 0.0,
     }
-    
+
     try:
         # Collect content from multiple sources
         collected_content = []
-        
+
         for keyword in keywords[:3]:  # Limit for API efficiency
             search_queries = [
                 f"{keyword} market trends 2024 emerging opportunities",
                 f"{keyword} industry analysis growth patterns",
                 f"{keyword} future predictions technology convergence",
-                f"{keyword} startup investment funding trends"
+                f"{keyword} startup investment funding trends",
             ]
-            
+
             for query in search_queries:
                 try:
                     results = google_search(query)
-                    if results and hasattr(results, 'results'):
+                    if results and hasattr(results, "results"):
                         for result in results.results[:2]:  # Top 2 per query
                             try:
                                 content = load_web_page(result.url)
-                                if content and len(content) > 200:  # Ensure substantial content
-                                    collected_content.append({
-                                        "source_url": result.url,
-                                        "title": result.title,
-                                        "content": content[:3000],  # Limit content length
-                                        "keyword": keyword,
-                                        "query_context": query
-                                    })
+                                if (
+                                    content and len(content) > 200
+                                ):  # Ensure substantial content
+                                    collected_content.append(
+                                        {
+                                            "source_url": result.url,
+                                            "title": result.title,
+                                            "content": content[
+                                                :3000
+                                            ],  # Limit content length
+                                            "keyword": keyword,
+                                            "query_context": query,
+                                        }
+                                    )
                             except Exception as e:
                                 print(f"Error loading page content: {e}")
                 except Exception as e:
                     print(f"Error with search query: {e}")
-        
+
         # Use Gemini to analyze all collected content
         if collected_content:
             trend_data = analyze_content_with_gemini(collected_content, keywords)
-        
+
         return trend_data
-        
+
     except Exception as e:
         print(f"Error in analyze_search_trends_with_ai: {e}")
         trend_data["error"] = str(e)
         return trend_data
 
-def analyze_content_with_gemini(content_collection: List[Dict], keywords: List[str]) -> Dict[str, Any]:
+
+def analyze_content_with_gemini(
+    content_collection: List[Dict], keywords: List[str]
+) -> Dict[str, Any]:
     """
     Use Gemini to analyze collected content for trend insights
     """
     try:
         # Prepare content summary for analysis
-        content_summary = "\n\n".join([
-            f"Source: {item['title']}\nKeyword: {item['keyword']}\nContent: {item['content'][:1000]}"
-            for item in content_collection[:10]  # Limit to prevent token overflow
-        ])
-        
+        content_summary = "\n\n".join(
+            [
+                f"Source: {item['title']}\nKeyword: {item['keyword']}\nContent: {item['content'][:1000]}"
+                for item in content_collection[:10]  # Limit to prevent token overflow
+            ]
+        )
+
         analysis_prompt = f"""
         Analyze this market research content about keywords: {', '.join(keywords)}
-        
+
         Content to analyze:
         {content_summary}
-        
+
         Provide a comprehensive trend analysis in JSON format with:
         {{
             "trend_insights": [
@@ -145,35 +157,37 @@ def analyze_content_with_gemini(content_collection: List[Dict], keywords: List[s
             "confidence_score": "Overall confidence in analysis (0.0-1.0)",
             "key_takeaways": ["Most important insights for entrepreneurs"]
         }}
-        
+
         Focus on liminal opportunities - gaps between established markets where new solutions could emerge.
         """
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=analysis_prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.3
-            )
+                response_mime_type="application/json", temperature=0.3
+            ),
         )
-        
+
         if response and response.text:
             analysis_result = json.loads(response.text)
             analysis_result["analysis_timestamp"] = datetime.now().isoformat()
             analysis_result["keywords"] = keywords
             return analysis_result
-            
+
     except Exception as e:
         print(f"Error in Gemini content analysis: {e}")
-    
+
     return {
         "error": "Failed to analyze content with AI",
         "keywords": keywords,
-        "analysis_timestamp": datetime.now().isoformat()
+        "analysis_timestamp": datetime.now().isoformat(),
     }
 
-def track_industry_momentum_with_ai(industry: str, focus_areas: List[str]) -> Dict[str, Any]:
+
+def track_industry_momentum_with_ai(
+    industry: str, focus_areas: List[str]
+) -> Dict[str, Any]:
     """
     AI-powered industry momentum tracking
     """
@@ -185,68 +199,77 @@ def track_industry_momentum_with_ai(industry: str, focus_areas: List[str]) -> Di
         "disruption_signals": [],
         "investment_trends": [],
         "regulatory_landscape": [],
-        "technology_enablers": []
+        "technology_enablers": [],
     }
-    
+
     try:
         # Collect industry-specific content
         industry_content = []
-        
+
         search_queries = [
             f"{industry} industry transformation 2024 2025",
             f"{industry} disruption new technologies trends",
             f"{industry} investment funding venture capital",
             f"{industry} regulatory changes impact business",
-            f"{industry} AI automation future outlook"
+            f"{industry} AI automation future outlook",
         ]
-        
+
         for query in search_queries:
             try:
                 results = google_search(query)
-                if results and hasattr(results, 'results'):
+                if results and hasattr(results, "results"):
                     for result in results.results[:3]:
                         try:
                             content = load_web_page(result.url)
                             if content and len(content) > 300:
-                                industry_content.append({
-                                    "source": result.title,
-                                    "url": result.url,
-                                    "content": content[:2000],
-                                    "query_context": query
-                                })
+                                industry_content.append(
+                                    {
+                                        "source": result.title,
+                                        "url": result.url,
+                                        "content": content[:2000],
+                                        "query_context": query,
+                                    }
+                                )
                         except Exception:
                             continue
             except Exception:
                 continue
-        
+
         # Analyze with Gemini
         if industry_content:
-            momentum_data = analyze_industry_with_gemini(industry_content, industry, focus_areas)
-        
+            momentum_data = analyze_industry_with_gemini(
+                industry_content, industry, focus_areas
+            )
+
         return momentum_data
-        
+
     except Exception as e:
         print(f"Error in track_industry_momentum_with_ai: {e}")
         momentum_data["error"] = str(e)
         return momentum_data
 
-def analyze_industry_with_gemini(content_collection: List[Dict], industry: str, focus_areas: List[str]) -> Dict[str, Any]:
+
+def analyze_industry_with_gemini(
+    content_collection: List[Dict], industry: str, focus_areas: List[str]
+) -> Dict[str, Any]:
     """
     Use Gemini to analyze industry momentum and transformation patterns
     """
     try:
-        content_text = "\n\n".join([
-            f"Source: {item['source']}\nContext: {item['query_context']}\nContent: {item['content']}"
-            for item in content_collection[:8]
-        ])
-        
+        content_text = "\n\n".join(
+            [
+                f"Source: {item['source']}\nContext: {item['query_context']}\nContent: {item['content']}"
+                for item in content_collection[:8]
+            ]
+        )
+
         momentum_prompt = f"""
         Analyze the momentum and transformation patterns in the {industry} industry.
         Focus areas: {', '.join(focus_areas)}
-        
+
         Industry content to analyze:
         {content_text}
-        
+
         Provide analysis in JSON format:
         {{
             "momentum_analysis": {{
@@ -299,31 +322,31 @@ def analyze_industry_with_gemini(content_collection: List[Dict], industry: str, 
             "key_insights": ["Most important takeaways for entrepreneurs"]
         }}
         """
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=momentum_prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.3
-            )
+                response_mime_type="application/json", temperature=0.3
+            ),
         )
-        
+
         if response and response.text:
             analysis = json.loads(response.text)
             analysis["industry"] = industry
             analysis["focus_areas"] = focus_areas
             analysis["analysis_timestamp"] = datetime.now().isoformat()
             return analysis
-            
+
     except Exception as e:
         print(f"Error in industry analysis with Gemini: {e}")
-    
+
     return {
         "error": "Failed to analyze industry momentum",
         "industry": industry,
-        "analysis_timestamp": datetime.now().isoformat()
+        "analysis_timestamp": datetime.now().isoformat(),
     }
+
 
 def identify_convergence_opportunities(domains: List[str]) -> Dict[str, Any]:
     """
@@ -335,65 +358,74 @@ def identify_convergence_opportunities(domains: List[str]) -> Dict[str, Any]:
         "convergence_points": [],
         "cross_pollination_opportunities": [],
         "technology_bridges": [],
-        "market_gaps": []
+        "market_gaps": [],
     }
-    
+
     try:
         # Search for convergence signals between domains
         convergence_queries = [
             f"{' '.join(domains)} convergence integration opportunities",
             f"intersection {' and '.join(domains)} emerging markets",
             f"{' '.join(domains)} cross-industry innovation trends",
-            f"hybrid solutions {' '.join(domains)} market opportunities"
+            f"hybrid solutions {' '.join(domains)} market opportunities",
         ]
-        
+
         convergence_content = []
-        
+
         for query in convergence_queries:
             try:
                 results = google_search(query)
-                if results and hasattr(results, 'results'):
+                if results and hasattr(results, "results"):
                     for result in results.results[:3]:
                         try:
                             content = load_web_page(result.url)
                             if content and len(content) > 200:
-                                convergence_content.append({
-                                    "source": result.title,
-                                    "content": content[:1500],
-                                    "query": query
-                                })
+                                convergence_content.append(
+                                    {
+                                        "source": result.title,
+                                        "content": content[:1500],
+                                        "query": query,
+                                    }
+                                )
                         except Exception:
                             continue
             except Exception:
                 continue
-        
+
         # Analyze convergence with Gemini
         if convergence_content:
-            convergence_data = analyze_convergence_with_gemini(convergence_content, domains)
-        
+            convergence_data = analyze_convergence_with_gemini(
+                convergence_content, domains
+            )
+
         return convergence_data
-        
+
     except Exception as e:
         print(f"Error in identify_convergence_opportunities: {e}")
         convergence_data["error"] = str(e)
         return convergence_data
 
-def analyze_convergence_with_gemini(content_collection: List[Dict], domains: List[str]) -> Dict[str, Any]:
+
+def analyze_convergence_with_gemini(
+    content_collection: List[Dict], domains: List[str]
+) -> Dict[str, Any]:
     """
     Use Gemini to identify convergence opportunities between domains
     """
     try:
-        content_text = "\n\n".join([
-            f"Query: {item['query']}\nSource: {item['source']}\nContent: {item['content']}"
-            for item in content_collection[:6]
-        ])
-        
+        content_text = "\n\n".join(
+            [
+                f"Query: {item['query']}\nSource: {item['source']}\nContent: {item['content']}"
+                for item in content_collection[:6]
+            ]
+        )
+
         convergence_prompt = f"""
         Analyze convergence opportunities between these domains: {', '.join(domains)}
-        
+
         Research content:
         {content_text}
-        
+
         Identify convergence opportunities in JSON format:
         {{
             "convergence_points": [
@@ -439,33 +471,33 @@ def analyze_convergence_with_gemini(content_collection: List[Dict], domains: Lis
             }},
             "actionable_insights": ["Most valuable insights for entrepreneurs"]
         }}
-        
+
         Focus on identifying genuine market gaps that exist between these domains.
         """
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=convergence_prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.3
-            )
+                response_mime_type="application/json", temperature=0.3
+            ),
         )
-        
+
         if response and response.text:
             analysis = json.loads(response.text)
             analysis["domains"] = domains
             analysis["analysis_timestamp"] = datetime.now().isoformat()
             return analysis
-            
+
     except Exception as e:
         print(f"Error in convergence analysis: {e}")
-    
+
     return {
         "error": "Failed to analyze convergence opportunities",
         "domains": domains,
-        "analysis_timestamp": datetime.now().isoformat()
+        "analysis_timestamp": datetime.now().isoformat(),
     }
+
 
 # Create the AI-native trend analyzer agent
 trend_analyzer_agent = LlmAgent(
@@ -481,7 +513,7 @@ trend_analyzer_agent = LlmAgent(
         FunctionTool(func=track_industry_momentum_with_ai),
         FunctionTool(func=identify_convergence_opportunities),
         google_search,
-        load_web_page
+        load_web_page,
     ],
-    output_key="trend_analysis"
+    output_key="trend_analysis",
 )

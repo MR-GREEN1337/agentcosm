@@ -24,32 +24,32 @@ interface EventsTabProps {
 // Simple markdown parser for basic formatting
 const parseMarkdown = (text: string) => {
   if (!text) return text;
-  
+
   return text
     // Bold text (**text** or __text__)
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/__(.*?)__/g, '<strong>$1</strong>')
-    
+
     // Italic text (*text* or _text_)
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/_(.*?)_/g, '<em>$1</em>')
-    
+
     // Code inline (`code`)
     .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
-    
+
     // Headers (# ## ###)
     .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
     .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>')
     .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
-    
+
     // Code blocks (```code```)
     .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2"><code class="text-sm">$1</code></pre>')
-    
+
     // Lists
     .replace(/^\* (.*$)/gim, '<li class="ml-4">• $1</li>')
     .replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
     .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
-    
+
     // Line breaks
     .replace(/\n\n/g, '</p><p class="mb-2">')
     .replace(/\n/g, '<br />')
@@ -58,23 +58,23 @@ const parseMarkdown = (text: string) => {
 // Component to render markdown text
 const MarkdownText = ({ text, className }: { text: string; className?: string }) => {
   const parsedText = parseMarkdown(text)
-  
+
   return (
-    <div 
+    <div
       className={className}
       dangerouslySetInnerHTML={{ __html: `<p class="mb-2">${parsedText}</p>` }}
     />
   )
 }
 
-export function EventsTab({ 
+export function EventsTab({
   ref,
-  appName, 
-  userId, 
-  sessionId, 
+  appName,
+  userId,
+  sessionId,
   events = [],
   onResendMessage,
-  onEditMessage 
+  onEditMessage
 }: EventsTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
@@ -121,7 +121,7 @@ export function EventsTab({
       const date = new Date(timestamp * 1000)
       const now = new Date()
       const isToday = date.toDateString() === now.toDateString()
-      
+
       if (isToday) {
         // Format as HH:mm
         const hours = date.getHours().toString().padStart(2, '0')
@@ -160,11 +160,11 @@ export function EventsTab({
           // Create a unique key for each event
           const eventKey = event.id || `${event.author}-${event.timestamp}-${index}`
           const isUser = event.author === 'user' || event.content?.role === 'user'
-          
+
           // Extract message text and images
           let messageText = event.text || ''
           let messageImages: string[] = []
-          
+
           if (event.content?.parts) {
             for (const part of event.content.parts) {
               if (part.text) {
@@ -181,18 +181,18 @@ export function EventsTab({
           } else if (!messageText && typeof event.content === 'string') {
             messageText = event.content
           }
-          
+
           // Also check for function calls from the event
           const functionCalls = event.function_calls || event.actions?.function_calls
           const functionResponses = event.function_responses || event.actions?.function_responses
-          
+
           // Skip empty events
           if (!messageText && !functionCalls && !functionResponses && messageImages.length === 0) {
             return null
           }
 
           const isEditing = editingMessageId === eventKey
-          
+
           return (
             <div
               key={eventKey}
@@ -204,22 +204,22 @@ export function EventsTab({
               {!isUser && (
                 <div className="flex-shrink-0">
                   <div className="w-8 h-8 rounded-lg overflow-hidden">
-                    <img 
-                      src="/face.png" 
-                      alt="AI Assistant" 
+                    <img
+                      src="/face.png"
+                      alt="AI Assistant"
                       className="w-full h-full object-cover"
                     />
                   </div>
                 </div>
               )}
-              
+
               <div className="flex flex-col gap-1 max-w-[70%]">
                 <div className="flex items-end gap-2">
                   <div
                     className={cn(
                       "rounded-2xl px-4 py-3 relative",
-                      isUser 
-                        ? "bg-blue-600 text-white dark:bg-blue-500" 
+                      isUser
+                        ? "bg-blue-600 text-white dark:bg-blue-500"
                         : "bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]"
                     )}
                   >
@@ -254,7 +254,7 @@ export function EventsTab({
                       <>
                         {messageText && (
                           <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <MarkdownText 
+                            <MarkdownText
                               text={messageText}
                               className="whitespace-pre-wrap break-words"
                             />
@@ -263,7 +263,7 @@ export function EventsTab({
                             )}
                           </div>
                         )}
-                        
+
                         {/* Display attached images */}
                         {messageImages.length > 0 && (
                           <div className="mt-3 space-y-2">
@@ -280,7 +280,7 @@ export function EventsTab({
                         )}
                       </>
                     )}
-                    
+
                     {functionCalls && functionCalls.length > 0 && (
                       <div className="mt-3 space-y-2">
                         <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Function calls:</p>
@@ -291,7 +291,7 @@ export function EventsTab({
                         ))}
                       </div>
                     )}
-                    
+
                     {functionResponses && functionResponses.length > 0 && (
                       <div className="mt-3 space-y-2">
                         <p className="text-sm text-green-600 dark:text-green-400 font-medium">Function responses:</p>
@@ -318,8 +318,8 @@ export function EventsTab({
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent 
-                          align={isUser ? "end" : "start"} 
+                        <DropdownMenuContent
+                          align={isUser ? "end" : "start"}
                           className="bg-white dark:bg-[#2a2a30] border-gray-200 dark:border-[#3a3a40]"
                         >
                           <DropdownMenuItem
@@ -374,7 +374,7 @@ export function EventsTab({
                   </span>
                 )}
               </div>
-              
+
               {isUser && (
                 <div className="flex-shrink-0">
                   <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-[#2a2a30] flex items-center justify-center">

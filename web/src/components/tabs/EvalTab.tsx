@@ -92,7 +92,7 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
 
   const createEvalSet = async () => {
     if (!newEvalSetName.trim()) return
-    
+
     try {
       await api.post(`/apps/${appName}/eval_sets/${newEvalSetName}`)
       await fetchEvalSets()
@@ -105,7 +105,7 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
 
   const runEval = async () => {
     if (!selectedEvalSet || selectedMetrics.length === 0) return
-    
+
     setRunningEval(true)
     try {
       const response = await api.post(`/apps/${appName}/eval_sets/${selectedEvalSet}/run_eval`, {
@@ -173,7 +173,7 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
               </DialogContent>
             </Dialog>
           </div>
-          
+
           <ScrollArea className="h-[400px]">
             <div className="space-y-2">
               {evalSets.map((evalSet) => (
@@ -194,7 +194,7 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
           </ScrollArea>
         </div>
       </div>
-      
+
       <div className="flex-1 p-6">
         {selectedEvalSet ? (
           <div>
@@ -233,7 +233,7 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
                 </Button>
               </div>
             </div>
-            
+
             <ScrollArea className="h-[500px]">
               <div className="space-y-3">
                 {evalCases.map((evalCase) => (

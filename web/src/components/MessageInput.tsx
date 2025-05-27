@@ -80,13 +80,13 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [attachedImage, setAttachedImage] = useState<string | null>(null)
   const [isInputFocused, setIsInputFocused] = useState(false)
-  
+
   // Audio states
   const [isListening, setIsListening] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [transcript, setTranscript] = useState('')
-  
+
   const webcamRef = useRef<Webcam>(null)
   const recognitionRef = useRef<any>(null)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
@@ -102,21 +102,21 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition
       recognitionRef.current = new SpeechRecognition()
-      
+
       recognitionRef.current.continuous = false
       recognitionRef.current.interimResults = true
       recognitionRef.current.lang = 'en-US'
-      
+
       recognitionRef.current.onstart = () => {
         console.log('Speech recognition started')
         setIsListening(true)
         finalTranscriptRef.current = '' // Reset on start
       }
-      
+
       recognitionRef.current.onresult = (event: any) => {
         let finalTranscript = ''
         let interimTranscript = ''
-        
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript
           if (event.results[i].isFinal) {
@@ -125,26 +125,26 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
             interimTranscript += transcript
           }
         }
-        
+
         // Update the ref with final transcript
         if (finalTranscript) {
           finalTranscriptRef.current += finalTranscript
         }
-        
+
         // Only update transcript state for UI display
         const fullTranscript = finalTranscriptRef.current + interimTranscript
         setTranscript(fullTranscript)
-        
+
         console.log('Speech result:', { finalTranscript, interimTranscript, fullTranscript, finalFromRef: finalTranscriptRef.current })
       }
-      
+
       recognitionRef.current.onend = () => {
         console.log('Speech recognition ended, final transcript:', finalTranscriptRef.current)
         setIsListening(false)
-        
+
         // Clear the transcript display
         setTranscript('')
-        
+
         // Send the message using the ref value - do this after state updates
         const voiceText = finalTranscriptRef.current.trim()
         if (voiceText) {
@@ -155,7 +155,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
           }, 100) // Small delay to ensure state updates are complete
         }
       }
-      
+
       recognitionRef.current.onerror = (event: any) => {
         // Don't log "aborted" errors as they're normal when stopping recognition
         if (event.error !== 'aborted') {
@@ -182,15 +182,15 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
   useEffect(() => {
     if (lastAiMessage && !isMuted && 'speechSynthesis' in window) {
       console.log('Speaking AI response:', lastAiMessage)
-      
+
       // Cancel any ongoing speech
       speechSynthesis.cancel()
-      
+
       const utterance = new SpeechSynthesisUtterance(lastAiMessage)
       utterance.rate = 0.9
       utterance.pitch = 1.0
       utterance.volume = 0.8
-      
+
       utterance.onstart = () => {
         console.log('TTS started')
         setIsPlaying(true)
@@ -203,7 +203,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
         console.error('TTS error:', event)
         setIsPlaying(false)
       }
-      
+
       // Small delay to ensure UI updates
       setTimeout(() => {
         speechSynthesis.speak(utterance)
@@ -213,19 +213,19 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
 
   const handleSend = async (textToSend?: string) => {
     const messageText = textToSend || message.trim()
-    
+
     if ((messageText || attachedImage) && !disabled && !isSending) {
       setIsSending(true)
-      
+
       // Create content structure that matches backend format
       const parts: any[] = []
-      
+
       if (messageText) {
         parts.push({
           text: messageText
         })
       }
-      
+
       if (attachedImage) {
         parts.push({
           inline_data: {
@@ -234,17 +234,17 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
           }
         })
       }
-      
+
       const messagePayload = {
         content: {
           parts,
           role: "user"
         }
       }
-      
+
       try {
         await onSendMessage(messagePayload)
-        
+
         // Only clear the manual message input, not voice transcript
         if (!textToSend) {
           setMessage('')
@@ -265,7 +265,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
       console.log('Voice message not sent:', { voiceText: voiceText.trim(), disabled, isSending })
       return
     }
-    
+
     console.log('Processing voice message through main send handler:', voiceText.trim())
     // Use the main handleSend function to ensure consistent behavior
     await handleSend(voiceText.trim())
@@ -283,7 +283,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
       alert('Speech recognition not supported in this browser')
       return
     }
-    
+
     if (isListening) {
       console.log('Stopping speech recognition')
       // Use stop() instead of abort() for graceful shutdown
@@ -337,7 +337,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
       {/* Container - completely transparent, no background interference */}
       <div className="w-full px-2 sm:px-4 py-2 sm:py-4 pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-none">
-          <div 
+          <div
             className={cn(
               "relative backdrop-blur-xl rounded-2xl pointer-events-auto",
               "border shadow-lg",
@@ -371,11 +371,11 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
             {/* Subtle glow effect */}
             <div className={cn(
               "absolute inset-0 pointer-events-none opacity-30",
-              isListening 
-                ? "bg-gradient-to-r from-red-500/15 via-pink-500/15 to-red-500/15 dark:from-red-500/25 dark:via-pink-500/25 dark:to-red-500/25" 
+              isListening
+                ? "bg-gradient-to-r from-red-500/15 via-pink-500/15 to-red-500/15 dark:from-red-500/25 dark:via-pink-500/25 dark:to-red-500/25"
                 : "bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10"
             )}></div>
-            
+
             {/* Voice transcript indicator */}
             {isListening && transcript && (
               <div className="p-3 border-b border-gray-200/30 bg-blue-50/20 dark:border-gray-600/30 dark:bg-gray-800/40">
@@ -390,9 +390,9 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
             {attachedImage && (
               <div className="p-3 border-b border-gray-200/30 bg-white/20 dark:border-gray-600/30 dark:bg-gray-800/40">
                 <div className="relative inline-block">
-                  <img 
-                    src={attachedImage} 
-                    alt="Attached" 
+                  <img
+                    src={attachedImage}
+                    alt="Attached"
                     className="h-20 rounded-xl object-cover shadow-sm"
                   />
                   <button
@@ -460,8 +460,8 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
                   className={cn(
                     "p-2 rounded-xl transition-all transform hover:scale-105",
                     "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900",
-                    isListening 
-                      ? "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500/20 dark:focus:ring-red-500/30 animate-pulse shadow-lg shadow-red-500/25" 
+                    isListening
+                      ? "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500/20 dark:focus:ring-red-500/30 animate-pulse shadow-lg shadow-red-500/25"
                       : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-green-500/10 active:bg-green-500/15 dark:hover:bg-green-500/20 dark:active:bg-green-500/25 focus:ring-green-500/20 dark:focus:ring-green-500/30"
                   )}
                   disabled={disabled || isSending}
@@ -480,8 +480,8 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
                   onClick={toggleMute}
                   className={cn(
                     "p-2 rounded-xl transition-colors hidden sm:flex",
-                    isMuted 
-                      ? "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-500/10 dark:hover:bg-gray-500/20" 
+                    isMuted
+                      ? "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-500/10 dark:hover:bg-gray-500/20"
                       : isPlaying
                         ? "text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-500/10 dark:hover:bg-green-500/20 animate-pulse"
                         : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-blue-500/10 dark:hover:bg-blue-500/20",
@@ -604,7 +604,7 @@ export function MessageInput({ onSendMessage, disabled = false, lastAiMessage }:
             transform: translateY(0px);
           }
         }
-        
+
         @keyframes voicePulse {
           0% {
             box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);

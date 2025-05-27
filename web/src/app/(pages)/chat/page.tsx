@@ -59,18 +59,18 @@ export default function AgentDevUI() {
     }
     setUserId(localStorage.getItem('userId'))
   }, [])
-  
+
   // Process SSE events
   useEffect(() => {
     if (sseEvents.length === 0) return
-    
+
     // Get the latest event
     const latestEvent = sseEvents[sseEvents.length - 1]
-    
+
     // Only process events with text content
     const text = latestEvent.content?.parts?.[0]?.text
     if (!text) return
-    
+
     setSessionEvents(prev => {
       // If this is a streaming event, update the last message
       if (latestEvent.isStreaming || latestEvent.partial) {
@@ -86,7 +86,7 @@ export default function AgentDevUI() {
           return updated
         }
       }
-      
+
       // This is a new message or the final version
       const eventToAdd = {
         id: latestEvent.id || `event-${Date.now()}-${Math.random()}`,
@@ -97,12 +97,12 @@ export default function AgentDevUI() {
         function_calls: latestEvent.actions?.function_calls,
         function_responses: latestEvent.function_responses
       }
-      
+
       // If we were streaming and this is the final message, replace the last one
       if (!latestEvent.partial && !latestEvent.isStreaming) {
         const lastIndex = prev.length - 1
-        if (lastIndex >= 0 && 
-            prev[lastIndex].author === eventToAdd.author && 
+        if (lastIndex >= 0 &&
+            prev[lastIndex].author === eventToAdd.author &&
             prev[lastIndex].isStreaming) {
           // Replace the streaming message with the final one
           const updated = [...prev]
@@ -113,19 +113,19 @@ export default function AgentDevUI() {
           return updated
         }
       }
-      
+
       // Check if this exact text already exists from the same author
-      const exists = prev.some(e => 
-        e.author === eventToAdd.author && 
+      const exists = prev.some(e =>
+        e.author === eventToAdd.author &&
         e.text === eventToAdd.text &&
         !e.isStreaming
       )
-      
+
       if (exists) {
         console.log('Skipping duplicate in state:', eventToAdd.text)
         return prev
       }
-      
+
       return [...prev, eventToAdd]
     })
   }, [sseEvents])
@@ -154,18 +154,18 @@ export default function AgentDevUI() {
         // Get query parameter from URL
         const urlParams = new URLSearchParams(window.location.search);
         const queryParam = urlParams.get('query');
-        
+
         if (queryParam) {
           initialBusinessQuerySent.current = true; // Mark as handled immediately to prevent duplicate processing
-          
+
           try {
             // Create a new session in the backend
             const newSessionResponse = await api.post(`/apps/${selectedApp}/users/${userId}/sessions`);
             const newSessionId = newSessionResponse.data.id;
-            
+
             // Update the current session state
             setCurrentSession(newSessionId);
-            
+
             // Wait a short time for the session to be fully initialized
             setTimeout(async () => {
               // Create the message object
@@ -175,7 +175,7 @@ export default function AgentDevUI() {
                   role: "user"
                 }
               };
-              
+
               // Add the user message to the UI immediately
               const userMessage = {
                 id: `user-${Date.now()}`,
@@ -184,15 +184,15 @@ export default function AgentDevUI() {
                 timestamp: Date.now() / 1000,
                 isStreaming: false
               };
-              
+
               setSessionEvents([userMessage]);
-              
+
               // IMPORTANT: Call the actual sendMessage function to trigger AI response
               // This is what was missing - you need to call sendMessage from useSSE
               if (sendMessage) {
                 await sendMessage(message);
               }
-              
+
               // Remove the query parameter from URL without refreshing the page
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
@@ -203,15 +203,15 @@ export default function AgentDevUI() {
         }
       }
     };
-    
+
     checkAndHandleQueryParam();
   }, [userId, selectedApp, sendMessage]); // Add sendMessage to dependencies
-  
+
   const handleSessionChange = async (sessionId: string) => {
     setCurrentSession(sessionId)
     setSessionEvents([])
     processedEventsRef.current.clear()
-    
+
     // Load session events
     try {
       const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions/${sessionId}`)
@@ -252,26 +252,26 @@ export default function AgentDevUI() {
       timestamp: Date.now() / 1000,
       isStreaming: false
     }
-    
+
     setSessionEvents(prev => [...prev, userMessage])
-    
+
     // Scroll to bottom after adding user message
     setTimeout(scrollToBottom, 50)
-    
+
     // Send through SSE
     await sendMessage(message)
   }
 
   const handleEditMessage = async (messageId: string, newText: string) => {
     // Find the message and update it
-    setSessionEvents(prev => 
-      prev.map(event => 
-        event.id === messageId 
+    setSessionEvents(prev =>
+      prev.map(event =>
+        event.id === messageId
           ? { ...event, text: newText }
           : event
       )
     )
-    
+
     // Optionally resend the edited message
     await handleResendMessage(newText)
   }
@@ -282,12 +282,12 @@ export default function AgentDevUI() {
       // Check if we have a query parameter - if so, we'll handle session creation in the other effect
       const urlParams = new URLSearchParams(window.location.search);
       const queryParam = urlParams.get('query');
-      
+
       // If there's a query parameter, skip the normal initialization
       if (queryParam) {
         return;
       }
-      
+
       try {
         const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions`)
         const sessions = response.data
@@ -321,7 +321,7 @@ export default function AgentDevUI() {
         <div className="flex flex-col h-screen overflow-hidden">
           {/* Gradient background */}
           <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 pointer-events-none" />
-          
+
           {/* Subtle animated particles */}
           <div className="fixed inset-0 opacity-30 pointer-events-none">
             <div className="particles-container">
@@ -480,7 +480,7 @@ export default function AgentDevUI() {
             <div className="flex-1 flex flex-col min-h-0 relative">
               {/* Gradient overlay for content area */}
               <div className="absolute inset-0 bg-gradient-to-br from-background/30 via-background/10 to-background/20 pointer-events-none"></div>
-              
+
               {activeTab === 'events' ? (
                 <>
                   <div className="flex-1 overflow-hidden" ref={scrollContainerRef}>
@@ -496,7 +496,7 @@ export default function AgentDevUI() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="flex-shrink-0 bg-transparent z-10">
                     <MessageInput
                       onSendMessage={handleSendMessage}
@@ -542,7 +542,7 @@ export default function AgentDevUI() {
             </div>
           </div>
         </div>
-        
+
         {/* Global styles for animations and custom elements */}
         <style jsx global>{`
           /* Custom scrollbar styling */
@@ -550,25 +550,25 @@ export default function AgentDevUI() {
             scrollbar-width: thin;
             scrollbar-color: rgba(var(--primary-rgb), 0.3) transparent;
           }
-          
+
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
           }
-          
+
           .custom-scrollbar::-webkit-scrollbar-track {
             background: transparent;
           }
-          
+
           .custom-scrollbar::-webkit-scrollbar-thumb {
             background-color: rgba(var(--primary-rgb), 0.2);
             border-radius: 10px;
             border: 2px solid transparent;
           }
-          
+
           .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background-color: rgba(var(--primary-rgb), 0.4);
           }
-          
+
           /* Floating animation for message bubbles */
           @keyframes float {
             0% {
@@ -581,7 +581,7 @@ export default function AgentDevUI() {
               transform: translateY(0px);
             }
           }
-          
+
           /* Subtle particle animation */
           .particles-container {
             position: absolute;
@@ -589,14 +589,14 @@ export default function AgentDevUI() {
             height: 100%;
             overflow: hidden;
           }
-          
+
           .particles-container::before,
           .particles-container::after {
             content: '';
             position: absolute;
             width: 100%;
             height: 100%;
-            background-image: 
+            background-image:
               radial-gradient(circle at 25% 25%, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px),
               radial-gradient(circle at 75% 75%, rgba(var(--secondary-rgb), 0.1) 1px, transparent 1px);
             background-size: 40px 40px;
@@ -604,14 +604,14 @@ export default function AgentDevUI() {
             animation: particlesDrift 60s linear infinite;
             opacity: 0.5;
           }
-          
+
           .particles-container::after {
             background-size: 30px 30px;
             animation-duration: 90s;
             animation-direction: reverse;
             opacity: 0.3;
           }
-          
+
           @keyframes particlesDrift {
             0% {
               background-position: 0 0;
@@ -620,7 +620,7 @@ export default function AgentDevUI() {
               background-position: 100px 100px;
             }
           }
-          
+
           /* Message bubble styling enhancements */
           /* These styles will be applied to the EventsTab component's message bubbles */
           :root {

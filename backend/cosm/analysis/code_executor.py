@@ -5,7 +5,7 @@ Code Executor Agent - Executes Python code using subprocess with temp files
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client, types
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 import json
 import tempfile
 import subprocess
@@ -27,7 +27,7 @@ You are a Python code execution and data analysis agent. Your role is to:
 
 You have access to common Python libraries including:
 - pandas, numpy for data analysis
-- matplotlib, seaborn for visualization  
+- matplotlib, seaborn for visualization
 - scipy for scientific computing
 - requests for HTTP requests
 - json, csv for data formats
@@ -46,14 +46,15 @@ Never:
 - Modify system files
 """
 
+
 def execute_python_code(code: str, timeout: int = 30) -> Dict[str, Any]:
     """
     Execute Python code in a subprocess using temporary files
-    
+
     Args:
         code: Python code to execute
         timeout: Maximum execution time in seconds
-        
+
     Returns:
         Dictionary containing execution results, output, and any errors
     """
@@ -63,19 +64,19 @@ def execute_python_code(code: str, timeout: int = 30) -> Dict[str, Any]:
         "error": "",
         "execution_time": 0,
         "files_created": [],
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
-    
+
     # Create temporary directory for execution
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        
+
         try:
             start_time = datetime.now()
-            
+
             # Write code to temporary file
             code_file = temp_path / "exec_code.py"
-            
+
             # Add safety imports and setup
             safe_code = f"""
 import sys
@@ -106,9 +107,9 @@ except Exception as e:
     print(f"EXECUTION_ERROR: {{type(e).__name__}}: {{str(e)}}")
     traceback.print_exc()
 """
-            
-            code_file.write_text(safe_code, encoding='utf-8')
-            
+
+            code_file.write_text(safe_code, encoding="utf-8")
+
             # Execute the code
             process = subprocess.run(
                 [sys.executable, str(code_file)],
@@ -116,24 +117,24 @@ except Exception as e:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                env={**os.environ, 'PYTHONPATH': str(temp_dir)}
+                env={**os.environ, "PYTHONPATH": str(temp_dir)},
             )
-            
+
             end_time = datetime.now()
             result["execution_time"] = (end_time - start_time).total_seconds()
-            
+
             # Capture output
             result["output"] = process.stdout
             if process.stderr:
                 result["error"] = process.stderr
-            
+
             # Check for execution errors in output
             if "EXECUTION_ERROR:" in result["output"]:
                 result["error"] = result["output"]
                 result["output"] = ""
             else:
                 result["success"] = process.returncode == 0
-            
+
             # List any files created
             created_files = []
             for file_path in temp_path.iterdir():
@@ -141,47 +142,54 @@ except Exception as e:
                     try:
                         # Read small files to include in results
                         if file_path.stat().st_size < 1024 * 1024:  # 1MB limit
-                            if file_path.suffix in ['.txt', '.json', '.csv']:
-                                created_files.append({
-                                    "name": file_path.name,
-                                    "size": file_path.stat().st_size,
-                                    "content": file_path.read_text(encoding='utf-8')[:10000]  # First 10KB
-                                })
+                            if file_path.suffix in [".txt", ".json", ".csv"]:
+                                created_files.append(
+                                    {
+                                        "name": file_path.name,
+                                        "size": file_path.stat().st_size,
+                                        "content": file_path.read_text(
+                                            encoding="utf-8"
+                                        )[:10000],  # First 10KB
+                                    }
+                                )
                             else:
-                                created_files.append({
-                                    "name": file_path.name,
-                                    "size": file_path.stat().st_size,
-                                    "type": "binary"
-                                })
+                                created_files.append(
+                                    {
+                                        "name": file_path.name,
+                                        "size": file_path.stat().st_size,
+                                        "type": "binary",
+                                    }
+                                )
                     except Exception as e:
-                        created_files.append({
-                            "name": file_path.name,
-                            "error": str(e)
-                        })
-            
+                        created_files.append({"name": file_path.name, "error": str(e)})
+
             result["files_created"] = created_files
-            
+
         except subprocess.TimeoutExpired:
             result["error"] = f"Code execution timed out after {timeout} seconds"
         except Exception as e:
             result["error"] = f"Execution failed: {str(e)}"
             result["traceback"] = traceback.format_exc()
-            
+
     return result
+
 
 def _indent_code(code: str, spaces: int) -> str:
     """Indent code by specified number of spaces"""
     indent = " " * spaces
     return "\n".join(indent + line for line in code.splitlines())
 
-def analyze_data_with_code(data_description: str, analysis_request: str) -> Dict[str, Any]:
+
+def analyze_data_with_code(
+    data_description: str, analysis_request: str
+) -> Dict[str, Any]:
     """
     Generate and execute Python code for data analysis
-    
+
     Args:
         data_description: Description of the data to analyze
         analysis_request: Specific analysis request
-        
+
     Returns:
         Analysis results including generated code and execution output
     """
@@ -189,71 +197,74 @@ def analyze_data_with_code(data_description: str, analysis_request: str) -> Dict
         # Generate code using AI
         prompt = f"""
         Generate Python code to perform the following data analysis:
-        
+
         Data Description: {data_description}
         Analysis Request: {analysis_request}
-        
+
         Requirements:
         - Use pandas, numpy, matplotlib as needed
         - Generate clear visualizations if appropriate
         - Include print statements for key results
         - Handle potential errors gracefully
         - Save any plots as PNG files
-        
+
         Return only the Python code, no explanations or markdown formatting.
         """
-        
+
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.2
-            )
+            config=types.GenerateContentConfig(temperature=0.2),
         )
-        
+
         if not response or not response.text:
             return {"error": "Failed to generate analysis code"}
-            
+
         generated_code = response.text.strip()
-        
+
         # Clean up code if it contains markdown formatting
         if "```python" in generated_code:
-            generated_code = generated_code.split("```python")[1].split("```")[0].strip()
+            generated_code = (
+                generated_code.split("```python")[1].split("```")[0].strip()
+            )
         elif "```" in generated_code:
             generated_code = generated_code.split("```")[1].strip()
-        
+
         # Execute the generated code
         execution_result = execute_python_code(generated_code)
-        
+
         return {
             "generated_code": generated_code,
             "execution_result": execution_result,
             "data_description": data_description,
-            "analysis_request": analysis_request
+            "analysis_request": analysis_request,
         }
-        
+
     except Exception as e:
         return {
             "error": f"Analysis failed: {str(e)}",
-            "traceback": traceback.format_exc()
+            "traceback": traceback.format_exc(),
         }
 
-def create_visualization(data_dict: Dict[str, Any], chart_type: str, title: str = "") -> Dict[str, Any]:
+
+def create_visualization(
+    data_dict: Dict[str, Any], chart_type: str, title: str = ""
+) -> Dict[str, Any]:
     """
     Generate code to create visualizations from data
-    
+
     Args:
         data_dict: Dictionary containing data to visualize
         chart_type: Type of chart (bar, line, scatter, histogram, etc.)
         title: Chart title
-        
+
     Returns:
         Visualization results
     """
     try:
         # Convert data dict to code
         data_code = f"data = {json.dumps(data_dict, indent=2)}"
-        
+
         # Generate visualization code
         viz_code = f"""
 import matplotlib.pyplot as plt
@@ -310,30 +321,31 @@ print(f"Visualization saved as visualization.png")
 print(f"Data shape: {{df.shape}}")
 print(f"Data summary:\\n{{df.describe()}}")
 """
-        
+
         # Execute visualization code
         result = execute_python_code(viz_code)
-        
+
         return {
             "visualization_code": viz_code,
             "execution_result": result,
             "chart_type": chart_type,
-            "title": title
+            "title": title,
         }
-        
+
     except Exception as e:
         return {
             "error": f"Visualization failed: {str(e)}",
-            "traceback": traceback.format_exc()
+            "traceback": traceback.format_exc(),
         }
+
 
 def validate_market_data(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Validate and analyze market research data
-    
+
     Args:
         data: Market data to validate
-        
+
     Returns:
         Validation results and insights
     """
@@ -351,29 +363,29 @@ print(f"Data type: {{type(market_data)}}")
 
 if isinstance(market_data, dict):
     print(f"\\nData keys: {{list(market_data.keys())}}")
-    
+
     # Validate key fields
     required_fields = ['market_signals', 'competition_analysis', 'demand_validation']
     missing_fields = [field for field in required_fields if field not in market_data]
-    
+
     if missing_fields:
         print(f"\\nMISSING REQUIRED FIELDS: {{missing_fields}}")
     else:
         print("\\n✓ All required fields present")
-    
+
     # Analyze market signals
     if 'market_signals' in market_data:
         signals = market_data['market_signals']
         print(f"\\nMarket Signals Analysis:")
         print(f"  - Number of signals: {{len(signals) if isinstance(signals, list) else 'N/A'}}")
-        
+
         if isinstance(signals, list) and signals:
             signal_types = {{}}
             for signal in signals:
                 if isinstance(signal, dict) and 'type' in signal:
                     signal_types[signal['type']] = signal_types.get(signal['type'], 0) + 1
             print(f"  - Signal types: {{signal_types}}")
-    
+
     # Analyze competition
     if 'competition_analysis' in market_data:
         comp = market_data['competition_analysis']
@@ -381,7 +393,7 @@ if isinstance(market_data, dict):
         if isinstance(comp, dict):
             print(f"  - Competition level: {{comp.get('competition_level', 'Unknown')}}")
             print(f"  - Direct competitors: {{len(comp.get('direct_competitors', []))}}")
-    
+
     # Calculate opportunity score
     if 'opportunity_score' in market_data:
         score = market_data['opportunity_score']
@@ -393,14 +405,15 @@ if isinstance(market_data, dict):
                 print("  → MODERATE OPPORTUNITY")
             else:
                 print("  → LOW POTENTIAL OPPORTUNITY")
-    
+
     print("\\n=== VALIDATION COMPLETE ===")
 
 else:
     print("ERROR: Expected dictionary format for market data")
 """
-    
+
     return execute_python_code(validation_code)
+
 
 # Create the code executor agent
 code_executor_agent = LlmAgent(
@@ -415,7 +428,7 @@ code_executor_agent = LlmAgent(
         FunctionTool(func=execute_python_code),
         FunctionTool(func=analyze_data_with_code),
         FunctionTool(func=create_visualization),
-        FunctionTool(func=validate_market_data)
+        FunctionTool(func=validate_market_data),
     ],
-    output_key="code_execution_results"
+    output_key="code_execution_results",
 )

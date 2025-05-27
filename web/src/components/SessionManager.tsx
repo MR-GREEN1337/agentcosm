@@ -41,7 +41,7 @@ export function SessionManager({
 
   const fetchSessions = async () => {
     if (!appName) return
-    
+
     setLoading(true)
     try {
       const response = await api.get(`/apps/${appName}/users/${userId}/sessions`)
@@ -83,20 +83,20 @@ export function SessionManager({
       console.error('Error deleting session:', error)
     }
   }
-  
+
   // Format date and time from Unix timestamp
   const formatDateTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    
+
     // Format date as "May 18, 2025"
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     };
-    
+
     return date.toLocaleString(undefined, options);
   }
 
@@ -108,15 +108,15 @@ export function SessionManager({
         </SelectTrigger>
         <SelectContent className="bg-popover border-border">
           {sessions.map((session) => (
-            <SelectItem 
-              key={session.id} 
-              value={session.id} 
+            <SelectItem
+              key={session.id}
+              value={session.id}
               className="text-popover-foreground hover:bg-accent focus:bg-accent"
             >
               <div className="flex items-center justify-between w-full">
                 <span>{session.id.substring(0, 8)}...</span>
                 <span className="text-xs text-muted-foreground ml-2">
-                  {session.creation_timestamp 
+                  {session.creation_timestamp
                     ? formatDateTime(session.creation_timestamp)
                     : session.last_update_time
                       ? formatDateTime(session.last_update_time)
