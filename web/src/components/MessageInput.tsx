@@ -15,8 +15,12 @@ interface MessageInputProps {
   onSendMessage: (message: any) => void
   disabled?: boolean
   lastAiMessage?: string
-  ttsEndpoint?: string
-  voiceId?: string
+  gcpTtsEndpoint?: string
+  voiceConfig?: {
+    languageCode: string
+    name: string
+    ssmlGender: string
+  }
 }
 
 interface UseAutoResizeTextareaProps {
@@ -75,12 +79,69 @@ function useAutoResizeTextarea({
   return { textareaRef, adjustHeight }
 }
 
+// Audio cache to store recent TTS results
+class TTSCache {
+  private cache = new Map<string, ArrayBuffer>()
+  private maxSize = 50
+  private accessTime = new Map<string, number>()
+
+  set(text: string, audioBuffer: ArrayBuffer) {
+    // Clean cache if too large
+    if (this.cache.size >= this.maxSize) {
+      this.evictLRU()
+    }
+
+    const key = this.hashText(text)
+    this.cache.set(key, audioBuffer)
+    this.accessTime.set(key, Date.now())
+  }
+
+  get(text: string): ArrayBuffer | null {
+    const key = this.hashText(text)
+    const audioBuffer = this.cache.get(key)
+    if (audioBuffer) {
+      this.accessTime.set(key, Date.now())
+      return audioBuffer
+    }
+    return null
+  }
+
+  private hashText(text: string): string {
+    // Simple hash for text - in production you might want a better hash function
+    return btoa(text.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '')
+  }
+
+  private evictLRU() {
+    let oldestKey = ''
+    let oldestTime = Date.now()
+
+    for (const [key, time] of this.accessTime) {
+      if (time < oldestTime) {
+        oldestTime = time
+        oldestKey = key
+      }
+    }
+
+    if (oldestKey) {
+      this.cache.delete(oldestKey)
+      this.accessTime.delete(oldestKey)
+    }
+  }
+}
+
+// Global TTS cache instance
+const ttsCache = new TTSCache()
+
 export function MessageInput({
   onSendMessage,
   disabled = false,
   lastAiMessage,
-  ttsEndpoint = '/api/tts',
-  voiceId = 'JBFqnCBsd6RMkjVDRZzb'
+  gcpTtsEndpoint = '/api/gcp-tts',
+  voiceConfig = {
+    languageCode: 'en-US',
+    name: 'en-US-Neural2-F', // High-quality neural voice
+    ssmlGender: 'FEMALE'
+  }
 }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -93,11 +154,15 @@ export function MessageInput({
   const [isListening, setIsListening] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isGeneratingTTS, setIsGeneratingTTS] = useState(false)
   const [transcript, setTranscript] = useState('')
 
   const webcamRef = useRef<Webcam>(null)
   const recognitionRef = useRef<any>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const pendingTTSRef = useRef<AbortController | null>(null)
+  const lastProcessedMessageRef = useRef<string>('')
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 44,
     maxHeight: 160,
@@ -105,6 +170,33 @@ export function MessageInput({
 
   // Store the final transcript in a ref to avoid stale closures
   const finalTranscriptRef = useRef('')
+
+  // Initialize Audio Context for low-latency playback
+  useEffect(() => {
+    const initAudioContext = () => {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      }
+    }
+
+    // Initialize on first user interaction
+    const handleUserInteraction = () => {
+      initAudioContext()
+      document.removeEventListener('click', handleUserInteraction)
+      document.removeEventListener('keydown', handleUserInteraction)
+    }
+
+    document.addEventListener('click', handleUserInteraction)
+    document.addEventListener('keydown', handleUserInteraction)
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction)
+      document.removeEventListener('keydown', handleUserInteraction)
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+      }
+    }
+  }, [])
 
   // Initialize speech recognition
   useEffect(() => {
@@ -188,79 +280,168 @@ export function MessageInput({
     }
   }, []) // Keep empty dependency array
 
-  // Text-to-speech for AI responses using backend endpoint
-  useEffect(() => {
-    if (false && lastAiMessage && !isMuted) {
-      console.log('Generating speech for AI response:', lastAiMessage)
+  // Optimized TTS with GCP integration
+  const generateAndPlayTTS = useCallback(async (text: string) => {
+    if (isMuted || !text.trim()) return
 
-      // Stop any currently playing audio
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
+    // Skip very short texts or code blocks
+    if (text.length < 10 || text.includes('```')) {
+      console.log('Skipping TTS for short/code content')
+      return
+    }
 
-      const speakWithTTS = async () => {
-        try {
-          setIsPlaying(true)
+    // Cancel any pending TTS request
+    if (pendingTTSRef.current) {
+      pendingTTSRef.current.abort()
+    }
 
-          // Call your backend TTS endpoint
-          const response = await fetch(ttsEndpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              text: lastAiMessage,
-              voiceId: voiceId
-            }),
-          })
+    // Check cache first
+    const cachedAudio = ttsCache.get(text)
+    if (cachedAudio) {
+      console.log('Playing cached TTS audio')
+      await playAudioBuffer(cachedAudio)
+      return
+    }
 
-          if (!response.ok) {
-            throw new Error(`TTS API error: ${response.status}`)
-          }
+    setIsGeneratingTTS(true)
+    const abortController = new AbortController()
+    pendingTTSRef.current = abortController
 
-          // Get audio blob from response
-          const audioBlob = await response.blob()
-          const audioUrl = URL.createObjectURL(audioBlob)
-
-          // Create and play audio
-          const audio = new Audio(audioUrl)
-          audioRef.current = audio
-
-          audio.onended = () => {
-            console.log('TTS playback ended')
-            setIsPlaying(false)
-            URL.revokeObjectURL(audioUrl)
-            audioRef.current = null
-          }
-
-          audio.onerror = (event) => {
-            console.error('TTS playback error:', event)
-            setIsPlaying(false)
-            URL.revokeObjectURL(audioUrl)
-            audioRef.current = null
-          }
-
-          await audio.play()
-
-        } catch (error) {
-          console.error('TTS generation error:', error)
-          setIsPlaying(false)
+    try {
+      // Prepare request payload for GCP TTS
+      const ttsPayload = {
+        input: {
+          text: text
+        },
+        voice: voiceConfig,
+        audioConfig: {
+          audioEncoding: 'LINEAR16', // Uncompressed for lowest latency
+          sampleRateHertz: 24000,    // High quality but not excessive
+          speakingRate: 1.1,         // Slightly faster for conversational feel
+          pitch: 0,
+          volumeGainDb: 0
         }
       }
 
-      // Small delay to ensure UI updates
-      setTimeout(() => {
-        speakWithTTS()
-      }, 100)
+      const startTime = Date.now()
+      console.log('Generating TTS with GCP...')
+
+      const response = await fetch(gcpTtsEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ttsPayload),
+        signal: abortController.signal,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`GCP TTS API error: ${response.status} ${response.statusText} - ${errorText}`)
+      }
+
+      const audioBuffer = await response.arrayBuffer()
+      const generationTime = Date.now() - startTime
+      console.log(`TTS generated in ${generationTime}ms, size: ${audioBuffer.byteLength} bytes`)
+
+      // Cache the result
+      ttsCache.set(text, audioBuffer)
+
+      // Play immediately if not aborted
+      if (!abortController.signal.aborted) {
+        await playAudioBuffer(audioBuffer)
+      }
+
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('GCP TTS generation error:', error)
+      }
+    } finally {
+      setIsGeneratingTTS(false)
+      if (pendingTTSRef.current === abortController) {
+        pendingTTSRef.current = null
+      }
     }
-  }, [lastAiMessage, isMuted, ttsEndpoint, voiceId])
+  }, [isMuted, gcpTtsEndpoint, voiceConfig])
+
+  // Low-latency audio playback using Web Audio API
+  const playAudioBuffer = useCallback(async (arrayBuffer: ArrayBuffer) => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      }
+
+      const audioContext = audioContextRef.current
+
+      // Resume context if suspended
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
+
+      setIsPlaying(true)
+
+      // Decode audio data
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0))
+
+      // Create and configure audio source
+      const source = audioContext.createBufferSource()
+      source.buffer = audioBuffer
+
+      // Connect to destination
+      source.connect(audioContext.destination)
+
+      // Set up completion handler
+      source.onended = () => {
+        console.log('TTS playback completed')
+        setIsPlaying(false)
+      }
+
+      // Start playback immediately
+      source.start(0)
+
+    } catch (error: any) {
+      console.error('Audio playback error:', error)
+      setIsPlaying(false)
+    }
+  }, [])
+
+  // Enhanced TTS trigger with streaming support and duplicate prevention
+  useEffect(() => {
+    if (!lastAiMessage || isMuted) return
+
+    // Skip if we've already processed this exact message
+    if (lastProcessedMessageRef.current === lastAiMessage) {
+      return
+    }
+
+    // Debounce for streaming messages - only trigger TTS after message seems complete
+    const timeoutId = setTimeout(() => {
+      // Double-check the message hasn't changed (indicating streaming is still active)
+      if (lastAiMessage && lastProcessedMessageRef.current !== lastAiMessage) {
+        console.log('Triggering TTS for AI response:', lastAiMessage.substring(0, 100) + '...')
+        lastProcessedMessageRef.current = lastAiMessage
+        generateAndPlayTTS(lastAiMessage)
+      }
+    }, 500) // Increased delay to ensure message completion
+
+    return () => clearTimeout(timeoutId)
+  }, [lastAiMessage, isMuted, generateAndPlayTTS])
 
   const handleSend = async (textToSend?: string) => {
     const messageText = textToSend || message.trim()
 
     if ((messageText || attachedImage) && !disabled && !isSending) {
       setIsSending(true)
+
+      // Stop any playing audio when user sends a message
+      if (audioRef.current) {
+        audioRef.current.pause()
+        setIsPlaying(false)
+      }
+      if (pendingTTSRef.current) {
+        pendingTTSRef.current.abort()
+        setIsGeneratingTTS(false)
+      }
 
       // Create content structure that matches backend format
       const parts: any[] = []
@@ -335,10 +516,19 @@ export function MessageInput({
   }
 
   const toggleMute = () => {
-    setIsMuted(!isMuted)
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause()
-      setIsPlaying(false)
+    const newMutedState = !isMuted
+    setIsMuted(newMutedState)
+
+    if (newMutedState) {
+      // Stop any playing audio when muting
+      if (isPlaying && audioContextRef.current) {
+        // Stop all audio sources (Web Audio API doesn't have a direct stop method for context)
+        setIsPlaying(false)
+      }
+      if (pendingTTSRef.current) {
+        pendingTTSRef.current.abort()
+        setIsGeneratingTTS(false)
+      }
     }
   }
 
@@ -389,10 +579,12 @@ export function MessageInput({
               isInputFocused ? "bg-white/95 border-blue-500/30 shadow-xl shadow-blue-500/10 dark:bg-gray-900/95 dark:border-blue-500/40 dark:shadow-blue-500/20" : "",
               // Listening states
               isListening ? "border-red-500/50 shadow-xl shadow-red-500/20 bg-red-50/90 dark:border-red-500/60 dark:shadow-red-500/30 dark:bg-gray-800/95" : "",
+              // TTS generating state
+              isGeneratingTTS ? "border-green-500/50 shadow-xl shadow-green-500/20 bg-green-50/90 dark:border-green-500/60 dark:shadow-green-500/30 dark:bg-gray-800/95" : "",
             )}
             style={{
               transform: "translateY(0)",
-              animation: isInputFocused || isListening ? "none" : "float 6s ease-in-out infinite",
+              animation: isInputFocused || isListening || isGeneratingTTS ? "none" : "float 6s ease-in-out infinite",
             }}
           >
             {/* Voice indicator - purely decorative overlay */}
@@ -402,11 +594,20 @@ export function MessageInput({
               </div>
             )}
 
+            {/* TTS generating indicator */}
+            {isGeneratingTTS && (
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-green-500/10 dark:from-green-500/20 dark:via-blue-500/20 dark:to-green-500/20 pointer-events-none">
+                <div className="absolute inset-0 animate-pulse bg-green-500/5 dark:bg-green-500/10"></div>
+              </div>
+            )}
+
             {/* Subtle glow effect - purely decorative */}
             <div className={cn(
               "absolute inset-0 pointer-events-none opacity-30",
               isListening
                 ? "bg-gradient-to-r from-red-500/15 via-pink-500/15 to-red-500/15 dark:from-red-500/25 dark:via-pink-500/25 dark:to-red-500/25"
+                : isGeneratingTTS
+                ? "bg-gradient-to-r from-green-500/15 via-blue-500/15 to-green-500/15 dark:from-green-500/25 dark:via-blue-500/25 dark:to-green-500/25"
                 : "bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10"
             )}></div>
 
@@ -416,6 +617,16 @@ export function MessageInput({
                 <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
                   <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full animate-pulse"></div>
                   <span>Listening: {transcript}</span>
+                </div>
+              </div>
+            )}
+
+            {/* TTS status indicator */}
+            {isGeneratingTTS && (
+              <div className="p-3 border-b border-gray-200/30 bg-green-50/20 dark:border-gray-600/30 dark:bg-gray-800/40">
+                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
+                  <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse"></div>
+                  <span>Generating speech...</span>
                 </div>
               </div>
             )}
@@ -453,7 +664,13 @@ export function MessageInput({
                   onKeyDown={handleKeyDown}
                   onFocus={() => setIsInputFocused(true)}
                   onBlur={() => setIsInputFocused(false)}
-                  placeholder={isListening ? "🎙️ Listening... (speak now)" : "Type a message or click mic to speak..."}
+                  placeholder={
+                    isListening
+                      ? "🎙️ Listening... (speak now)"
+                      : isGeneratingTTS
+                      ? "🔊 Generating speech..."
+                      : "Type a message or click mic to speak..."
+                  }
                   className={cn(
                     "w-full px-4 py-3.5",
                     "resize-none",
@@ -510,7 +727,7 @@ export function MessageInput({
                   )}
                 </button>
 
-                {/* Mute Toggle for TTS */}
+                {/* Enhanced Mute Toggle for TTS */}
                 <button
                   type="button"
                   onClick={toggleMute}
@@ -520,11 +737,22 @@ export function MessageInput({
                       ? "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-500/10 dark:hover:bg-gray-500/20"
                       : isPlaying
                         ? "text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-500/10 dark:hover:bg-green-500/20 animate-pulse"
+                        : isGeneratingTTS
+                        ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 animate-pulse"
                         : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-blue-500/10 dark:hover:bg-blue-500/20",
                     "focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30",
                   )}
                   disabled={disabled || isSending}
                   aria-label={isMuted ? "Unmute responses" : "Mute responses"}
+                  title={
+                    isGeneratingTTS
+                      ? "Generating speech..."
+                      : isPlaying
+                      ? "Playing response"
+                      : isMuted
+                      ? "Unmute responses"
+                      : "Mute responses"
+                  }
                 >
                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
@@ -628,7 +856,7 @@ export function MessageInput({
         </DialogContent>
       </Dialog>
 
-      {/* CSS for floating animation and voice indicators */}
+      {/* CSS for floating animation and enhanced indicators */}
       <style jsx global>{`
         @keyframes float {
           0% {
@@ -651,6 +879,18 @@ export function MessageInput({
           }
           100% {
             box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+          }
+        }
+
+        @keyframes ttsPulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
           }
         }
       `}</style>
