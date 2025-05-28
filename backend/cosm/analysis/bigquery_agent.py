@@ -21,9 +21,9 @@ from litellm import completion
 # Initialize clients
 bq_client = bigquery.Client(
     credentials=service_account.Credentials.from_service_account_file(
-        "../service-account.json"
+        "service-account.json"
     ),
-    project="static-protocol-411511",
+    project=settings.GOOGLE_CLOUD_PROJECT_ID,
 )
 genai_client = Client()
 
@@ -40,18 +40,18 @@ Focus on actionable insights backed by data analysis.
 """
 
 
-def setup_bigquery_tables(project_id: str, dataset_id: str = "agentcosm_market"):
+def setup_bigquery_tables(dataset_id: str = "agentcosm_market"):
     """Setup BigQuery tables for market intelligence"""
     try:
         client = bigquery.Client(
-            project=project_id,
+            project=settings.GOOGLE_CLOUD_PROJECT_ID,
             credentials=service_account.Credentials.from_service_account_file(
-                "../service-account.json"
+                "service-account.json"
             ),
         )
 
         # Create dataset
-        dataset_id_full = f"{project_id}.{dataset_id}"
+        dataset_id_full = f"{settings.GOOGLE_CLOUD_PROJECT_ID}.{dataset_id}"
         dataset = bigquery.Dataset(dataset_id_full)
         dataset.location = "US"
         client.create_dataset(dataset, exists_ok=True)
@@ -81,7 +81,7 @@ def setup_bigquery_tables(project_id: str, dataset_id: str = "agentcosm_market")
         tables = [("market_signals", signals_schema), ("keyword_trends", trends_schema)]
 
         for table_name, schema in tables:
-            table_id = f"{project_id}.{dataset_id}.{table_name}"
+            table_id = f"{settings.GOOGLE_CLOUD_PROJECT_ID}.{dataset_id}.{table_name}"
             table = bigquery.Table(table_id, schema=schema)
             client.create_table(table, exists_ok=True)
             print(f"✅ Table ready: {table_name}")

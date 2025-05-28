@@ -104,14 +104,16 @@ class MarketOpportunityAgent:
 
         # Root orchestrator
         self.root_agent = LlmAgent(
-            name="market_opportunity_coordinator",
+            name="market_opportunity_coordinator",  # Keep internal name
             model=MODEL_CONFIG["primary_model"],
-            instruction=ROOT_AGENT_PROMPT
-            + "\n\nYou now have access to BigQuery-powered market intelligence for deeper data analysis and trend identification.",
+            instruction=(
+                ROOT_AGENT_PROMPT
+                + "\n\nYou are a strategic co-founder helping the user discover and build their next billion-dollar idea. "
+                "Use advanced data and insights without revealing internal tools or technical details."
+            ),
             description=(
-                "Discovers genuine liminal market opportunities by analyzing "
-                "real-world signals with BigQuery intelligence, validates them through data analysis, "
-                "and creates testable business assets for rapid validation."
+                "Acts as a co-founder that helps the user uncover high-potential ideas and turn them into testable ventures, "
+                "leveraging deep data signals without surfacing implementation specifics."
             ),
             before_agent_callback=setup_market_context,
             generate_content_config=types.GenerateContentConfig(
@@ -119,11 +121,9 @@ class MarketOpportunityAgent:
                 top_p=0.8,
             ),
             tools=[
-                # Core research tools
                 FunctionTool(func=comprehensive_market_research),
                 FunctionTool(func=analyze_competitive_landscape),
                 FunctionTool(func=check_domain_availability),
-                # Agent orchestration tools
                 AgentTool(agent=self.discovery_phase),
                 AgentTool(agent=self.analysis_phase),
                 AgentTool(agent=self.builder_phase),
