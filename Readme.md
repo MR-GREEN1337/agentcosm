@@ -1,5 +1,9 @@
 # agentcosm
 ## Combine gemini and groq to distribute token usage
+## Reintegrate adk builtin tools(google_Search) and understand utility of bigquery
+## Improve code agent to be both robust and fast
+## implement retry mechanism for failed model call
+
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 
 ![App](App.png)

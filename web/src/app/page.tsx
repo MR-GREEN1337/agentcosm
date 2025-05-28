@@ -513,6 +513,7 @@ const ContactContent = () => {
       <h2 className="text-3xl font-bold text-white text-center">
         Get in Touch
       </h2>
+      <img src="face.jpeg" className="w-80 h-80 mx-auto" />
       <p className="text-white/70 text-center">
         Ready to embark on this journey? Let's connect and explore the
         possibilities together.

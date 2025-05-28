@@ -66,11 +66,11 @@ class MarketOpportunityAgent:
         # Create BigQuery agent
         self.bigquery_agent = create_bigquery_agent()
 
-        # Phase 1: Discovery (Parallel)
+        # Phase 1: Discovery
         self.discovery_phase = LlmAgent(
             name="market_discovery_phase",
             model=MODEL_CONFIG["primary_model"],
-            description="Discovers market signals from multiple sources in parallel",
+            description="Discovers market signals from multiple sources",
             sub_agents=[
                 market_explorer_agent,
                 trend_analyzer_agent,
