@@ -1,6 +1,5 @@
 """
-Market Opportunity Discovery Agent - Root Coordinator (Fixed)
-Finds genuine liminal market spaces and builds testable business assets
+Market Opportunity Discovery Agent
 """
 
 from google.adk.agents import LlmAgent, SequentialAgent
@@ -10,7 +9,7 @@ from google.adk.tools import FunctionTool
 from google.genai import types
 from datetime import datetime
 
-# Import fixed agents
+# Import existing agents
 from .discovery.explorer_agent import market_explorer_agent
 from .discovery.trend_analyzer import trend_analyzer_agent
 from .discovery.gap_mapper import gap_mapper_agent
@@ -18,6 +17,12 @@ from .analysis import market_analyzer_agent
 from .analysis.code_executor import code_executor_agent
 from .analysis.opportunity_scorer import opportunity_scorer_agent
 from .builder import brand_creator_agent, landing_builder_agent, copy_writer_agent
+
+# Import BigQuery agen
+from .analysis.bigquery_agent import create_bigquery_agent
+
+from .settings import settings
+
 from .tools.market_research import (
     comprehensive_market_research,
     analyze_competitive_landscape,
@@ -35,6 +40,7 @@ def setup_market_context(callback_context: CallbackContext):
             "data_sources": [],
             "validation_criteria": {},
             "research_pipeline": {},
+            "bigquery_enabled": True,  # NEW: Enable BigQuery features
         }
 
     if "research_results" not in callback_context.state:
@@ -45,35 +51,42 @@ def setup_market_context(callback_context: CallbackContext):
             "validation_data": {},
             "opportunity_scores": {},
             "business_assets": {},
+            "bigquery_insights": {},  # NEW: Store BigQuery results
         }
 
 
 class MarketOpportunityAgent:
     """
-    Root agent that orchestrates the discovery and validation of liminal market opportunities
+    Root agent with BigQuery intelligence
     """
 
     def __init__(self):
-        # Phase 1: Market Signal Discovery (Parallel)
+        self.project_id = settings.GOOGLE_CLOUD_PROJECT_ID
+
+        # Create BigQuery agent
+        self.bigquery_agent = create_bigquery_agent()
+
+        # Phase 1: Discovery (Parallel)
         self.discovery_phase = LlmAgent(
             name="market_discovery_phase",
             model=MODEL_CONFIG["primary_model"],
             description="Discovers market signals from multiple sources in parallel",
             sub_agents=[
-                market_explorer_agent,  # Scrapes social media, forums, reviews
-                trend_analyzer_agent,  # Analyzes search trends, industry reports
-                gap_mapper_agent,  # Maps connections between signals
+                market_explorer_agent,
+                trend_analyzer_agent,
+                gap_mapper_agent,
             ],
         )
 
-        # Phase 2: Deep Analysis & Validation (Sequential)
+        # Phase 2: Enhanced Analysis with BigQuery (Sequential)
         self.analysis_phase = SequentialAgent(
             name="market_analysis_phase",
-            description="Performs deep analysis and validation of discovered opportunities",
+            description="Performs deep analysis including BigQuery intelligence",
             sub_agents=[
-                market_analyzer_agent,  # Market sizing and competitive analysis
-                code_executor_agent,  # Data analysis and visualization
-                opportunity_scorer_agent,  # Scores and ranks opportunities
+                market_analyzer_agent,
+                self.bigquery_agent,  # NEW: Add BigQuery agent
+                code_executor_agent,
+                opportunity_scorer_agent,
             ],
         )
 
@@ -83,31 +96,28 @@ class MarketOpportunityAgent:
             model=MODEL_CONFIG["primary_model"],
             description="Creates business assets for rapid market validation",
             sub_agents=[
-                brand_creator_agent,  # Creates brand identity and positioning
-                copy_writer_agent,  # Generates marketing copy
-                landing_builder_agent,  # Builds functional landing page
+                brand_creator_agent,
+                copy_writer_agent,
+                landing_builder_agent,
             ],
         )
 
-        # Root orchestrator agent with enhanced ADK features
-        # FIXED: Removed output_schema and related configs that conflict with sub_agents
+        # Root orchestrator
         self.root_agent = LlmAgent(
             name="market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
-            instruction=ROOT_AGENT_PROMPT,
+            instruction=ROOT_AGENT_PROMPT
+            + "\n\nYou now have access to BigQuery-powered market intelligence for deeper data analysis and trend identification.",
             description=(
                 "Discovers genuine liminal market opportunities by analyzing "
-                "real-world signals, validates them through data analysis, "
+                "real-world signals with BigQuery intelligence, validates them through data analysis, "
                 "and creates testable business assets for rapid validation."
             ),
-            # ADK Enhanced Features
             before_agent_callback=setup_market_context,
             generate_content_config=types.GenerateContentConfig(
                 temperature=0.3,
                 top_p=0.8,
-                # Removed response_mime_type="application/json" since no output_schema
             ),
-            # Removed output_key and output_schema to allow sub_agents
             tools=[
                 # Core research tools
                 FunctionTool(func=comprehensive_market_research),
@@ -122,5 +132,4 @@ class MarketOpportunityAgent:
         )
 
 
-# Create the root agent instance
 root_agent = MarketOpportunityAgent().root_agent

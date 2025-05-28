@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     TAVI_API_KEY: str
     GOOGLE_API_KEY: str
     GOOGLE_GENAI_USE_VERTEXAI: bool
+    GOOGLE_CLOUD_PROJECT_ID: str
 
 
 settings = Settings()
