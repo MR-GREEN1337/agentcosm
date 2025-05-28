@@ -7,6 +7,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.cloud import bigquery
 from google.genai import Client, types
+from google.oauth2 import service_account
 from typing import Dict, List, Any
 import json
 from datetime import datetime
@@ -18,7 +19,12 @@ from cosm.settings import settings
 from litellm import completion
 
 # Initialize clients
-bq_client = bigquery.Client()
+bq_client = bigquery.Client(
+    credentials=service_account.Credentials.from_service_account_file(
+        "../service-account.json"
+    ),
+    project="static-protocol-411511",
+)
 genai_client = Client()
 
 BIGQUERY_PROMPT = """
@@ -37,7 +43,12 @@ Focus on actionable insights backed by data analysis.
 def setup_bigquery_tables(project_id: str, dataset_id: str = "agentcosm_market"):
     """Setup BigQuery tables for market intelligence"""
     try:
-        client = bigquery.Client(project=project_id)
+        client = bigquery.Client(
+            project=project_id,
+            credentials=service_account.Credentials.from_service_account_file(
+                "../service-account.json"
+            ),
+        )
 
         # Create dataset
         dataset_id_full = f"{project_id}.{dataset_id}"

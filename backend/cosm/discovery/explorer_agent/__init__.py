@@ -1,5 +1,5 @@
 """
-Market Explorer Agent - Updated with Tavily search integration
+Market Explorer Agent
 """
 
 from google.adk.agents import LlmAgent
@@ -546,8 +546,7 @@ def validate_signals_cross_platform(signals_data: Dict[str, Any]) -> Dict[str, A
 # Create the hybrid market explorer agent
 market_explorer_agent = LlmAgent(
     name="market_explorer_agent",
-    model=LiteLlm(model=MODEL_CONFIG["market_explorer"]),
-    api_key=settings.GROQ_API_KEY,
+    model=LiteLlm(model=MODEL_CONFIG["market_explorer"], api_key=settings.GROQ_API_KEY),
     instruction=EXPLORER_AGENT_PROMPT,
     description=(
         "Hybrid market signal explorer that combines web scraping with AI-powered "
@@ -562,7 +561,7 @@ market_explorer_agent = LlmAgent(
         tavily_competitive_intelligence_tool,
         tavily_trend_analysis_tool,
         # google_search,
-        # load_web_page,  # Fixed: Now properly imported as a function
+        # load_web_page,
     ],
     output_key="market_signals",
 )
