@@ -258,7 +258,10 @@ export default function AgentDevUI() {
     await handleSendMessage(message);
   };
 
+  // Fix for your chat page handleSendMessage function
   const handleSendMessage = async (message: any) => {
+    console.log('🔥 handleSendMessage called with:', message);
+
     // Add user message to events immediately
     const userMessage = {
       id: `user-${Date.now()}`,
@@ -268,13 +271,21 @@ export default function AgentDevUI() {
       isStreaming: false,
     };
 
+    console.log('👤 Adding user message to UI:', userMessage);
     setSessionEvents((prev) => [...prev, userMessage]);
 
     // Scroll to bottom after adding user message
     setTimeout(scrollToBottom, 50);
 
-    // Send through SSE
-    await sendMessage(message);
+    // 🚨 CRITICAL: Always call sendMessage for AI response
+    console.log('🤖 Calling sendMessage to trigger AI response...');
+
+    try {
+      await sendMessage(message);
+      console.log('✅ sendMessage completed - AI should respond now');
+    } catch (error) {
+      console.error('❌ sendMessage failed:', error);
+    }
   };
 
   const handleEditMessage = async (messageId: string, newText: string) => {

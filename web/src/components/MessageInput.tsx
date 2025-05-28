@@ -9,6 +9,7 @@ import {
   X,
   Volume2,
   VolumeX,
+  Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Webcam from 'react-webcam';
@@ -30,6 +31,9 @@ interface MessageInputProps {
     name: string;
     ssmlGender: string;
   };
+  // Add these optional props to help with debugging
+  sendMessage?: (message: any) => void; // Direct SSE sendMessage function
+  isLoading?: boolean; // SSE loading state
 }
 
 interface UseAutoResizeTextareaProps {
@@ -53,89 +57,48 @@ function useAutoResizeTextarea({
         return;
       }
 
-      // Temporarily shrink to get the right scrollHeight
       textarea.style.height = `${minHeight}px`;
-
-      // Calculate new height
       const newHeight = Math.max(
         minHeight,
         Math.min(textarea.scrollHeight, maxHeight ?? Number.POSITIVE_INFINITY),
       );
-
       textarea.style.height = `${newHeight}px`;
     },
     [minHeight, maxHeight],
   );
 
   useEffect(() => {
-    // Set initial height
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = `${minHeight}px`;
     }
   }, [minHeight]);
 
-  // Adjust height on window resize
-  useEffect(() => {
-    const handleResize = () => adjustHeight();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [adjustHeight]);
-
   return { textareaRef, adjustHeight };
 }
 
-// Audio cache to store recent TTS results
+// Simple TTS cache
 class TTSCache {
   private cache = new Map<string, ArrayBuffer>();
-  private maxSize = 50;
-  private accessTime = new Map<string, number>();
+  private maxSize = 20;
 
   set(text: string, audioBuffer: ArrayBuffer) {
-    // Clean cache if too large
     if (this.cache.size >= this.maxSize) {
-      this.evictLRU();
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
     }
-
-    const key = this.hashText(text);
-    this.cache.set(key, audioBuffer);
-    this.accessTime.set(key, Date.now());
+    this.cache.set(this.hashText(text), audioBuffer);
   }
 
   get(text: string): ArrayBuffer | null {
-    const key = this.hashText(text);
-    const audioBuffer = this.cache.get(key);
-    if (audioBuffer) {
-      this.accessTime.set(key, Date.now());
-      return audioBuffer;
-    }
-    return null;
+    return this.cache.get(this.hashText(text)) || null;
   }
 
   private hashText(text: string): string {
-    // Simple hash for text - in production you might want a better hash function
-    return btoa(text.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '');
-  }
-
-  private evictLRU() {
-    let oldestKey = '';
-    let oldestTime = Date.now();
-
-    for (const [key, time] of this.accessTime) {
-      if (time < oldestTime) {
-        oldestTime = time;
-        oldestKey = key;
-      }
-    }
-
-    if (oldestKey) {
-      this.cache.delete(oldestKey);
-      this.accessTime.delete(oldestKey);
-    }
+    return btoa(text.substring(0, 50)).replace(/[^a-zA-Z0-9]/g, '');
   }
 }
 
-// Global TTS cache instance
 const ttsCache = new TTSCache();
 
 export function MessageInput({
@@ -145,9 +108,11 @@ export function MessageInput({
   gcpTtsEndpoint = '/api/gcp-tts',
   voiceConfig = {
     languageCode: 'en-US',
-    name: 'en-US-Neural2-F', // High-quality neural voice
+    name: 'en-US-Neural2-F',
     ssmlGender: 'FEMALE',
   },
+  sendMessage, // Optional direct SSE function
+  isLoading, // Optional SSE loading state
 }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -162,164 +127,306 @@ export function MessageInput({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGeneratingTTS, setIsGeneratingTTS] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [conversationMode, setConversationMode] = useState(false);
 
+  // Refs
   const webcamRef = useRef<Webcam>(null);
   const recognitionRef = useRef<any>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const pendingTTSRef = useRef<AbortController | null>(null);
   const lastProcessedMessageRef = useRef<string>('');
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isProcessingRef = useRef(false);
+
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 44,
     maxHeight: 160,
   });
 
-  // Store the final transcript in a ref to avoid stale closures
-  const finalTranscriptRef = useRef('');
-
-  // Initialize Audio Context for low-latency playback
+  // Debug: Log what onSendMessage function we received
   useEffect(() => {
-    const initAudioContext = () => {
+    console.log(
+      '🔍 MessageInput received onSendMessage function:',
+      typeof onSendMessage,
+    );
+    console.log('🔍 Function name:', onSendMessage?.name || 'anonymous');
+
+    // Test call to see if function is working
+    console.log('🧪 Testing onSendMessage function availability...');
+  }, [onSendMessage]);
+
+  // Debug wrapper for onSendMessage to intercept all calls
+  const debugOnSendMessage = useCallback(
+    async (payload: any) => {
+      console.log('🚀 ===== DEBUG onSendMessage WRAPPER =====');
+      console.log('📦 Payload received:', JSON.stringify(payload, null, 2));
+      console.log('🔍 Payload type:', typeof payload);
+      console.log('🔍 Payload parts:', payload?.content?.parts);
+      console.log('🔍 Payload role:', payload?.content?.role);
+
+      try {
+        console.log('📡 Calling original onSendMessage...');
+        const result = await onSendMessage(payload);
+        console.log('✅ Original onSendMessage completed successfully');
+        console.log('📤 Result:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ Original onSendMessage failed:', error);
+
+        // Emergency fallback: try direct sendMessage if available
+        if (sendMessage) {
+          console.log(
+            '🆘 Trying emergency fallback with direct sendMessage...',
+          );
+          try {
+            const fallbackResult = await sendMessage(payload);
+            console.log('✅ Emergency fallback succeeded!');
+            return fallbackResult;
+          } catch (fallbackError) {
+            console.error('❌ Emergency fallback also failed:', fallbackError);
+          }
+        }
+
+        throw error;
+      } finally {
+        console.log('🚀 ===== DEBUG onSendMessage WRAPPER END =====');
+      }
+    },
+    [onSendMessage, sendMessage],
+  );
+
+  // Initialize Audio Context
+  useEffect(() => {
+    const initAudio = () => {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext ||
           window.webkitAudioContext)();
       }
     };
 
-    // Initialize on first user interaction
-    const handleUserInteraction = () => {
-      initAudioContext();
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
+    const handleClick = () => {
+      initAudio();
+      document.removeEventListener('click', handleClick);
     };
 
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('keydown', handleUserInteraction);
-
+    document.addEventListener('click', handleClick);
     return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state !== 'closed'
-      ) {
+      document.removeEventListener('click', handleClick);
+      if (audioContextRef.current) {
         audioContextRef.current.close();
       }
     };
   }, []);
 
-  // Initialize speech recognition
+  // Initialize Speech Recognition
   useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition =
-        window.webkitSpeechRecognition || window.SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onstart = () => {
-        console.log('Speech recognition started');
-        setIsListening(true);
-        finalTranscriptRef.current = ''; // Reset on start
-      };
-
-      recognitionRef.current.onresult = (event: any) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-
-        // Update the ref with final transcript
-        if (finalTranscript) {
-          finalTranscriptRef.current += finalTranscript;
-        }
-
-        // Only update transcript state for UI display
-        const fullTranscript = finalTranscriptRef.current + interimTranscript;
-        setTranscript(fullTranscript);
-
-        console.log('Speech result:', {
-          finalTranscript,
-          interimTranscript,
-          fullTranscript,
-          finalFromRef: finalTranscriptRef.current,
-        });
-      };
-
-      recognitionRef.current.onend = () => {
-        console.log(
-          'Speech recognition ended, final transcript:',
-          finalTranscriptRef.current,
-        );
-        setIsListening(false);
-
-        // Clear the transcript display
-        setTranscript('');
-
-        // Send the message using the ref value - do this after state updates
-        const voiceText = finalTranscriptRef.current.trim();
-        if (voiceText) {
-          console.log('Triggering voice message send:', voiceText);
-          // Call handleSend directly with the voice text
-          setTimeout(() => {
-            handleSend(voiceText);
-          }, 100); // Small delay to ensure state updates are complete
-        }
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        // Don't log "aborted" errors as they're normal when stopping recognition
-        if (event.error !== 'aborted') {
-          console.error('Speech recognition error:', event.error);
-        }
-        setIsListening(false);
-        setTranscript('');
-        finalTranscriptRef.current = '';
-      };
+    if (
+      !('webkitSpeechRecognition' in window) &&
+      !('SpeechRecognition' in window)
+    ) {
+      console.warn('Speech recognition not supported');
+      return;
     }
 
-    return () => {
-      if (recognitionRef.current && isListening) {
-        recognitionRef.current.abort();
+    const SpeechRecognition =
+      window.webkitSpeechRecognition || window.SpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      console.log('🎤 Started listening');
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
       }
-      // Clean up audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+
+      const fullTranscript = finalTranscript || interimTranscript;
+      setTranscript(fullTranscript);
+
+      // Reset silence timeout on speech
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+
+      // If we have final transcript, set timeout to process it
+      if (finalTranscript.trim()) {
+        console.log('📝 Final transcript:', finalTranscript);
+        silenceTimeoutRef.current = setTimeout(() => {
+          processSpeech(finalTranscript.trim());
+        }, 1500); // 1.5 seconds after final speech
       }
     };
-  }, []); // Keep empty dependency array
 
-  // Optimized TTS with GCP integration
+    recognition.onend = () => {
+      console.log('🎤 Stopped listening');
+      setIsListening(false);
+      setTranscript('');
+
+      // Auto-restart in conversation mode
+      if (conversationMode && !isProcessingRef.current) {
+        setTimeout(() => {
+          if (conversationMode && !isPlaying && !isGeneratingTTS) {
+            startListening();
+          }
+        }, 1000);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('🚨 Speech recognition error:', event.error);
+      setIsListening(false);
+      setTranscript('');
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognition && isListening) {
+        recognition.stop();
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+    };
+  }, [conversationMode, isPlaying, isGeneratingTTS]);
+
+  // Stop current audio
+  const stopCurrentAudio = useCallback(() => {
+    if (currentAudioSourceRef.current) {
+      currentAudioSourceRef.current.stop();
+      currentAudioSourceRef.current = null;
+    }
+    if (pendingTTSRef.current) {
+      pendingTTSRef.current.abort();
+      pendingTTSRef.current = null;
+    }
+    setIsPlaying(false);
+    setIsGeneratingTTS(false);
+  }, []);
+
+  // Process speech and send message
+  const processSpeech = useCallback(
+    async (speechText: string) => {
+      if (!speechText || isProcessingRef.current) return;
+
+      console.log('🎤 ===== VOICE MESSAGE START =====');
+      console.log('💬 Processing speech:', speechText);
+      console.log('🔍 onSendMessage function:', onSendMessage);
+      console.log('🔍 onSendMessage type:', typeof onSendMessage);
+
+      isProcessingRef.current = true;
+
+      // Stop current audio
+      stopCurrentAudio();
+
+      // Stop listening
+      if (recognitionRef.current && isListening) {
+        recognitionRef.current.stop();
+      }
+
+      setTranscript('');
+
+      // Create message payload that matches your SSE format
+      const messagePayload = {
+        content: {
+          parts: [{ text: speechText }],
+          role: 'user',
+        },
+      };
+
+      console.log(
+        '📦 Voice message payload:',
+        JSON.stringify(messagePayload, null, 2),
+      );
+
+      try {
+        console.log('📤 Calling onSendMessage with voice payload...');
+
+        // Call onSendMessage which should trigger the SSE stream
+        await onSendMessage(messagePayload);
+
+        console.log('✅ Voice message sent successfully');
+        console.log('🎤 ===== VOICE MESSAGE END =====');
+      } catch (error) {
+        console.error('❌ Error sending speech message:', error);
+        console.log('🎤 ===== VOICE MESSAGE ERROR =====');
+      }
+
+      isProcessingRef.current = false;
+    },
+    [onSendMessage, isListening, stopCurrentAudio],
+  );
+
+  // Start listening
+  const startListening = useCallback(() => {
+    if (!recognitionRef.current || isListening) return;
+
+    console.log('🎤 Starting to listen...');
+
+    // Stop any current audio when user wants to speak
+    stopCurrentAudio();
+
+    try {
+      recognitionRef.current.start();
+    } catch (error) {
+      console.error('Failed to start listening:', error);
+    }
+  }, [isListening, stopCurrentAudio]);
+
+  // Stop listening
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+    }
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+    }
+  }, [isListening]);
+
+  // Toggle conversation mode
+  const toggleConversationMode = useCallback(() => {
+    const newMode = !conversationMode;
+    setConversationMode(newMode);
+
+    if (newMode) {
+      console.log('🗣️ Entering conversation mode');
+      setTimeout(() => startListening(), 500);
+    } else {
+      console.log('🔇 Exiting conversation mode');
+      stopListening();
+    }
+  }, [conversationMode, startListening, stopListening]);
+
+  // Generate and play TTS
   const generateAndPlayTTS = useCallback(
     async (text: string) => {
-      if (isMuted || !text.trim()) return;
+      if (isMuted || !text.trim() || text.length < 10) return;
 
-      // Skip very short texts or code blocks
-      if (text.length < 10 || text.includes('```')) {
-        console.log('Skipping TTS for short/code content');
-        return;
-      }
+      console.log('🎵 Generating TTS for:', text.substring(0, 50) + '...');
 
-      // Cancel any pending TTS request
-      if (pendingTTSRef.current) {
-        pendingTTSRef.current.abort();
-      }
+      // Stop current audio
+      stopCurrentAudio();
 
-      // Check cache first
+      // Check cache
       const cachedAudio = ttsCache.get(text);
       if (cachedAudio) {
-        console.log('Playing cached TTS audio');
-        await playAudioBuffer(cachedAudio);
+        console.log('🔊 Playing cached audio');
+        playAudioBuffer(cachedAudio);
         return;
       }
 
@@ -328,160 +435,124 @@ export function MessageInput({
       pendingTTSRef.current = abortController;
 
       try {
-        // Prepare request payload for GCP TTS
-        const ttsPayload = {
-          input: {
-            text: text,
-          },
-          voice: voiceConfig,
-          audioConfig: {
-            audioEncoding: 'LINEAR16', // Uncompressed for lowest latency
-            sampleRateHertz: 24000, // High quality but not excessive
-            speakingRate: 1.1, // Slightly faster for conversational feel
-            pitch: 0,
-            volumeGainDb: 0,
-          },
-        };
-
-        const startTime = Date.now();
-        console.log('Generating TTS with GCP...');
-
         const response = await fetch(gcpTtsEndpoint, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(ttsPayload),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: { text },
+            voice: voiceConfig,
+            audioConfig: {
+              audioEncoding: 'LINEAR16',
+              sampleRateHertz: 24000,
+              speakingRate: 1.2,
+            },
+          }),
           signal: abortController.signal,
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `GCP TTS API error: ${response.status} ${response.statusText} - ${errorText}`,
-          );
-        }
+        if (!response.ok) throw new Error(`TTS Error: ${response.status}`);
 
         const audioBuffer = await response.arrayBuffer();
-        const generationTime = Date.now() - startTime;
-        console.log(
-          `TTS generated in ${generationTime}ms, size: ${audioBuffer.byteLength} bytes`,
-        );
+        console.log('🎵 TTS generated, playing...');
 
-        // Cache the result
+        // Cache and play
         ttsCache.set(text, audioBuffer);
 
-        // Play immediately if not aborted
         if (!abortController.signal.aborted) {
-          await playAudioBuffer(audioBuffer);
+          playAudioBuffer(audioBuffer);
         }
       } catch (error: any) {
         if (error.name !== 'AbortError') {
-          console.error('GCP TTS generation error:', error);
+          console.error('TTS Error:', error);
         }
       } finally {
         setIsGeneratingTTS(false);
-        if (pendingTTSRef.current === abortController) {
-          pendingTTSRef.current = null;
-        }
       }
     },
-    [isMuted, gcpTtsEndpoint, voiceConfig],
+    [isMuted, gcpTtsEndpoint, voiceConfig, stopCurrentAudio],
   );
 
-  // Low-latency audio playback using Web Audio API
-  const playAudioBuffer = useCallback(async (arrayBuffer: ArrayBuffer) => {
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext ||
-          window.webkitAudioContext)();
-      }
+  // Play audio buffer
+  const playAudioBuffer = useCallback(
+    async (arrayBuffer: ArrayBuffer) => {
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext ||
+            window.webkitAudioContext)();
+        }
 
-      const audioContext = audioContextRef.current;
+        const audioContext = audioContextRef.current;
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
 
-      // Resume context if suspended
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
+        setIsPlaying(true);
+        console.log('🔊 Playing audio...');
 
-      setIsPlaying(true);
+        const audioBuffer = await audioContext.decodeAudioData(
+          arrayBuffer.slice(0),
+        );
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
 
-      // Decode audio data
-      const audioBuffer = await audioContext.decodeAudioData(
-        arrayBuffer.slice(0),
-      );
+        currentAudioSourceRef.current = source;
 
-      // Create and configure audio source
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
+        source.onended = () => {
+          console.log('🔊 Audio finished');
+          currentAudioSourceRef.current = null;
+          setIsPlaying(false);
 
-      // Connect to destination
-      source.connect(audioContext.destination);
+          // In conversation mode, start listening after AI finishes
+          if (conversationMode) {
+            setTimeout(() => {
+              if (conversationMode && !isListening) {
+                console.log('🎤 Auto-starting listening after AI speech');
+                startListening();
+              }
+            }, 800);
+          }
+        };
 
-      // Set up completion handler
-      source.onended = () => {
-        console.log('TTS playback completed');
+        source.start(0);
+      } catch (error) {
+        console.error('Audio playback error:', error);
         setIsPlaying(false);
-      };
+      }
+    },
+    [conversationMode, isListening, startListening],
+  );
 
-      // Start playback immediately
-      source.start(0);
-    } catch (error: any) {
-      console.error('Audio playback error:', error);
-      setIsPlaying(false);
-    }
-  }, []);
-
-  // Enhanced TTS trigger with streaming support and duplicate prevention
+  // Handle new AI messages
   useEffect(() => {
-    if (!lastAiMessage || isMuted) return;
-
-    // Skip if we've already processed this exact message
-    if (lastProcessedMessageRef.current === lastAiMessage) {
+    if (!lastAiMessage || lastProcessedMessageRef.current === lastAiMessage) {
       return;
     }
 
-    // Debounce for streaming messages - only trigger TTS after message seems complete
-    const timeoutId = setTimeout(() => {
-      // Double-check the message hasn't changed (indicating streaming is still active)
-      if (lastAiMessage && lastProcessedMessageRef.current !== lastAiMessage) {
-        console.log(
-          'Triggering TTS for AI response:',
-          lastAiMessage.substring(0, 100) + '...',
-        );
-        lastProcessedMessageRef.current = lastAiMessage;
+    console.log('🤖 New AI message received');
+    lastProcessedMessageRef.current = lastAiMessage;
+
+    // Small delay to ensure message is complete
+    setTimeout(() => {
+      if (lastAiMessage === lastProcessedMessageRef.current) {
         generateAndPlayTTS(lastAiMessage);
       }
-    }, 500); // Increased delay to ensure message completion
+    }, 300);
+  }, [lastAiMessage, generateAndPlayTTS]);
 
-    return () => clearTimeout(timeoutId);
-  }, [lastAiMessage, isMuted, generateAndPlayTTS]);
-
+  // Manual send message
   const handleSend = async (textToSend?: string) => {
     const messageText = textToSend || message.trim();
 
     if ((messageText || attachedImage) && !disabled && !isSending) {
+      console.log('⌨️ ===== TEXT MESSAGE START =====');
+      console.log('📝 Text message:', messageText);
+
       setIsSending(true);
+      stopCurrentAudio();
 
-      // Stop any playing audio when user sends a message
-      if (audioRef.current) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-      if (pendingTTSRef.current) {
-        pendingTTSRef.current.abort();
-        setIsGeneratingTTS(false);
-      }
-
-      // Create content structure that matches backend format
       const parts: any[] = [];
-
-      if (messageText) {
-        parts.push({
-          text: messageText,
-        });
-      }
-
+      if (messageText) parts.push({ text: messageText });
       if (attachedImage) {
         parts.push({
           inline_data: {
@@ -492,23 +563,29 @@ export function MessageInput({
       }
 
       const messagePayload = {
-        content: {
-          parts,
-          role: 'user',
-        },
+        content: { parts, role: 'user' },
       };
 
-      try {
-        await onSendMessage(messagePayload);
+      console.log(
+        '📦 Text message payload:',
+        JSON.stringify(messagePayload, null, 2),
+      );
 
-        // Only clear the manual message input, not voice transcript
+      try {
+        console.log('📤 Calling onSendMessage with text payload...');
+        await debugOnSendMessage(messagePayload);
+
+        // Only clear manual message input, not voice transcript
         if (!textToSend) {
           setMessage('');
           adjustHeight(true);
         }
         setAttachedImage(null);
+        console.log('✅ Text message sent successfully');
+        console.log('⌨️ ===== TEXT MESSAGE END =====');
       } catch (error) {
-        console.error('Error sending message:', error);
+        console.error('❌ Error sending text message:', error);
+        console.log('⌨️ ===== TEXT MESSAGE ERROR =====');
       } finally {
         setIsSending(false);
       }
@@ -522,57 +599,20 @@ export function MessageInput({
     }
   };
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      alert('Speech recognition not supported in this browser');
-      return;
-    }
-
-    if (isListening) {
-      console.log('Stopping speech recognition');
-      // Use stop() instead of abort() for graceful shutdown
-      recognitionRef.current.stop();
-    } else {
-      console.log('Starting speech recognition');
-      setTranscript('');
-      setMessage(''); // Clear textarea when starting to listen
-      try {
-        recognitionRef.current.start();
-      } catch (error) {
-        console.error('Failed to start speech recognition:', error);
-        setIsListening(false);
-      }
-    }
-  };
-
   const toggleMute = () => {
-    const newMutedState = !isMuted;
-    setIsMuted(newMutedState);
-
-    if (newMutedState) {
-      // Stop any playing audio when muting
-      if (isPlaying && audioContextRef.current) {
-        // Stop all audio sources (Web Audio API doesn't have a direct stop method for context)
-        setIsPlaying(false);
-      }
-      if (pendingTTSRef.current) {
-        pendingTTSRef.current.abort();
-        setIsGeneratingTTS(false);
-      }
+    setIsMuted(!isMuted);
+    if (!isMuted) {
+      stopCurrentAudio();
     }
   };
 
+  // Camera functions
   const captureImage = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
-    if (imageSrc) {
-      setCapturedImage(imageSrc);
-    }
+    if (imageSrc) setCapturedImage(imageSrc);
   }, []);
 
-  const retakeImage = () => {
-    setCapturedImage(null);
-  };
-
+  const retakeImage = () => setCapturedImage(null);
   const confirmImage = () => {
     if (capturedImage) {
       setAttachedImage(capturedImage);
@@ -580,111 +620,81 @@ export function MessageInput({
       setShowCamera(false);
     }
   };
-
-  const removeAttachedImage = () => {
-    setAttachedImage(null);
-  };
+  const removeAttachedImage = () => setAttachedImage(null);
 
   return (
     <>
-      {/* Container - COMPLETELY transparent parent */}
       <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
         <div className="max-w-3xl mx-auto">
-          {/* Main input container with floating glass effect */}
           <div
             className={cn(
-              'relative backdrop-blur-xl rounded-2xl',
-              'border shadow-lg',
-              'transition-all duration-300 ease-in-out',
-              'overflow-hidden',
-              // Light mode styling
-              'bg-white/90 border-gray-200/50 text-gray-900',
-              'hover:bg-white/95 hover:border-gray-300/50',
-              'hover:shadow-xl hover:shadow-black/5',
-              // Dark mode styling
-              'dark:bg-gray-900/90 dark:border-gray-700/50 dark:text-white',
-              'dark:hover:bg-gray-900/95 dark:hover:border-gray-600/60',
-              'dark:hover:shadow-xl dark:hover:shadow-black/20',
-              // Focus states
-              isInputFocused
-                ? 'bg-white/95 border-blue-500/30 shadow-xl shadow-blue-500/10 dark:bg-gray-900/95 dark:border-blue-500/40 dark:shadow-blue-500/20'
-                : '',
-              // Listening states
-              isListening
-                ? 'border-red-500/50 shadow-xl shadow-red-500/20 bg-red-50/90 dark:border-red-500/60 dark:shadow-red-500/30 dark:bg-gray-800/95'
-                : '',
-              // TTS generating state
-              isGeneratingTTS
-                ? 'border-green-500/50 shadow-xl shadow-green-500/20 bg-green-50/90 dark:border-green-500/60 dark:shadow-green-500/30 dark:bg-gray-800/95'
-                : '',
+              'relative backdrop-blur-xl rounded-2xl border shadow-lg transition-all duration-300 overflow-hidden',
+              'bg-white/90 border-gray-200/50 text-gray-900 hover:bg-white/95',
+              'dark:bg-gray-900/90 dark:border-gray-700/50 dark:text-white dark:hover:bg-gray-900/95',
+              isInputFocused && 'border-blue-500/30 shadow-xl',
+              isListening && 'border-red-500/50 shadow-xl shadow-red-500/20',
+              isPlaying && 'border-green-500/50 shadow-xl shadow-green-500/20',
+              isGeneratingTTS &&
+                'border-blue-500/50 shadow-xl shadow-blue-500/20',
             )}
-            style={{
-              transform: 'translateY(0)',
-              animation:
-                isInputFocused || isListening || isGeneratingTTS
-                  ? 'none'
-                  : 'float 6s ease-in-out infinite',
-            }}
           >
-            {/* Voice indicator - purely decorative overlay */}
-            {isListening && (
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-pink-500/10 to-red-500/10 dark:from-red-500/20 dark:via-pink-500/20 dark:to-red-500/20 pointer-events-none">
-                <div className="absolute inset-0 animate-pulse bg-red-500/5 dark:bg-red-500/10"></div>
-              </div>
-            )}
-
-            {/* TTS generating indicator */}
-            {isGeneratingTTS && (
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-blue-500/10 to-green-500/10 dark:from-green-500/20 dark:via-blue-500/20 dark:to-green-500/20 pointer-events-none">
-                <div className="absolute inset-0 animate-pulse bg-green-500/5 dark:bg-green-500/10"></div>
-              </div>
-            )}
-
-            {/* Subtle glow effect - purely decorative */}
-            <div
-              className={cn(
-                'absolute inset-0 pointer-events-none opacity-30',
-                isListening
-                  ? 'bg-gradient-to-r from-red-500/15 via-pink-500/15 to-red-500/15 dark:from-red-500/25 dark:via-pink-500/25 dark:to-red-500/25'
-                  : isGeneratingTTS
-                    ? 'bg-gradient-to-r from-green-500/15 via-blue-500/15 to-green-500/15 dark:from-green-500/25 dark:via-blue-500/25 dark:to-green-500/25'
-                    : 'bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10',
-              )}
-            ></div>
-
-            {/* Voice transcript indicator */}
-            {isListening && transcript && (
-              <div className="p-3 border-b border-gray-200/30 bg-blue-50/20 dark:border-gray-600/30 dark:bg-gray-800/40">
-                <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-                  <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full animate-pulse"></div>
-                  <span>Listening: {transcript}</span>
+            {/* Status Bar */}
+            {(isListening ||
+              isPlaying ||
+              isGeneratingTTS ||
+              conversationMode) && (
+              <div className="px-4 py-2 border-b border-gray-200/30 bg-gray-50/50 dark:border-gray-600/30 dark:bg-gray-800/40">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div
+                      className={cn(
+                        'w-2 h-2 rounded-full animate-pulse',
+                        isListening && 'bg-red-500',
+                        isPlaying && 'bg-green-500',
+                        isGeneratingTTS && 'bg-blue-500',
+                        conversationMode &&
+                          !isListening &&
+                          !isPlaying &&
+                          !isGeneratingTTS &&
+                          'bg-purple-500',
+                      )}
+                    ></div>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {isListening
+                        ? transcript || 'Listening...'
+                        : isGeneratingTTS
+                          ? 'Generating speech...'
+                          : isPlaying
+                            ? 'AI is speaking...'
+                            : conversationMode
+                              ? 'Conversation mode active'
+                              : ''}
+                    </span>
+                  </div>
+                  {conversationMode && (
+                    <button
+                      onClick={toggleConversationMode}
+                      className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded-full hover:bg-purple-200 dark:hover:bg-purple-800"
+                    >
+                      Exit
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* TTS status indicator */}
-            {isGeneratingTTS && (
-              <div className="p-3 border-b border-gray-200/30 bg-green-50/20 dark:border-gray-600/30 dark:bg-gray-800/40">
-                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
-                  <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse"></div>
-                  <span>Generating speech...</span>
-                </div>
-              </div>
-            )}
-
-            {/* Attached Image Preview */}
+            {/* Attached Image */}
             {attachedImage && (
-              <div className="p-3 border-b border-gray-200/30 bg-white/20 dark:border-gray-600/30 dark:bg-gray-800/40">
+              <div className="p-3 border-b border-gray-200/30">
                 <div className="relative inline-block">
                   <img
                     src={attachedImage}
                     alt="Attached"
-                    className="h-20 rounded-xl object-cover shadow-sm"
+                    className="h-20 rounded-xl object-cover"
                   />
                   <button
                     onClick={removeAttachedImage}
-                    className="absolute -top-1.5 -right-1.5 p-1 bg-red-500/90 backdrop-blur-sm text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
-                    aria-label="Remove image"
+                    className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -692,9 +702,9 @@ export function MessageInput({
               </div>
             )}
 
-            {/* Main input area */}
-            <div className="flex items-end bg-transparent">
-              <div className="flex-1 bg-transparent">
+            {/* Input Area */}
+            <div className="flex items-end">
+              <div className="flex-1">
                 <Textarea
                   ref={textareaRef}
                   value={message}
@@ -706,61 +716,53 @@ export function MessageInput({
                   onFocus={() => setIsInputFocused(true)}
                   onBlur={() => setIsInputFocused(false)}
                   placeholder={
-                    isListening
-                      ? '🎙️ Listening... (speak now)'
-                      : isGeneratingTTS
-                        ? '🔊 Generating speech...'
+                    conversationMode
+                      ? 'Speak or type your message...'
+                      : isListening
+                        ? 'Listening...'
                         : 'Type a message or click mic to speak...'
                   }
-                  className={cn(
-                    'w-full px-4 py-3.5',
-                    'resize-none',
-                    'bg-transparent',
-                    'border-none',
-                    'text-gray-900 dark:text-white text-sm',
-                    'focus:outline-none',
-                    'focus-visible:ring-0 focus-visible:ring-offset-0',
-                    'placeholder:text-gray-500 dark:placeholder:text-gray-400 placeholder:text-sm',
-                    'min-h-[44px]',
-                    'transition-all duration-200',
-                  )}
-                  style={{
-                    overflow: 'hidden',
-                  }}
-                  disabled={disabled || isSending}
+                  className="w-full px-4 py-3.5 resize-none bg-transparent border-none focus:outline-none text-sm min-h-[44px]"
+                  disabled={disabled || isSending || isListening}
                 />
               </div>
 
-              {/* Action buttons */}
+              {/* Buttons */}
               <div className="flex items-center gap-1.5 px-3 pb-3">
                 <button
                   type="button"
-                  className={cn(
-                    'p-2 rounded-xl transition-colors',
-                    'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
-                    'hover:bg-blue-500/10 active:bg-blue-500/15 dark:hover:bg-blue-500/20 dark:active:bg-blue-500/25',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30',
-                  )}
+                  className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
                   disabled={disabled || isSending}
-                  aria-label="Attach file"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
 
-                {/* Voice Control Button */}
+                {/* Voice Button */}
                 <button
                   type="button"
-                  onClick={toggleListening}
+                  onClick={
+                    conversationMode
+                      ? toggleConversationMode
+                      : isListening
+                        ? stopListening
+                        : startListening
+                  }
+                  onDoubleClick={
+                    !conversationMode ? toggleConversationMode : undefined
+                  }
                   className={cn(
-                    'p-2 rounded-xl transition-all transform hover:scale-105',
-                    'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900',
+                    'p-2 rounded-xl transition-all',
                     isListening
-                      ? 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500/20 dark:focus:ring-red-500/30 animate-pulse shadow-lg shadow-red-500/25'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-green-500/10 active:bg-green-500/15 dark:hover:bg-green-500/20 dark:active:bg-green-500/25 focus:ring-green-500/20 dark:focus:ring-green-500/30',
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : conversationMode
+                        ? 'bg-purple-500 text-white'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800',
                   )}
                   disabled={disabled || isSending}
-                  aria-label={
-                    isListening ? 'Stop recording' : 'Start voice input'
+                  title={
+                    conversationMode
+                      ? 'Exit conversation mode'
+                      : 'Click to speak, double-click for conversation mode'
                   }
                 >
                   {isListening ? (
@@ -770,32 +772,19 @@ export function MessageInput({
                   )}
                 </button>
 
-                {/* Enhanced Mute Toggle for TTS */}
+                {/* Audio Control */}
                 <button
                   type="button"
                   onClick={toggleMute}
                   className={cn(
-                    'p-2 rounded-xl transition-colors hidden sm:flex',
+                    'p-2 rounded-xl transition-colors',
                     isMuted
-                      ? 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-500/10 dark:hover:bg-gray-500/20'
+                      ? 'text-gray-400'
                       : isPlaying
-                        ? 'text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-500/10 dark:hover:bg-green-500/20 animate-pulse'
-                        : isGeneratingTTS
-                          ? 'text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 animate-pulse'
-                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-blue-500/10 dark:hover:bg-blue-500/20',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30',
+                        ? 'text-green-500 animate-pulse'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
                   )}
                   disabled={disabled || isSending}
-                  aria-label={isMuted ? 'Unmute responses' : 'Mute responses'}
-                  title={
-                    isGeneratingTTS
-                      ? 'Generating speech...'
-                      : isPlaying
-                        ? 'Playing response'
-                        : isMuted
-                          ? 'Unmute responses'
-                          : 'Mute responses'
-                  }
                 >
                   {isMuted ? (
                     <VolumeX className="w-4 h-4" />
@@ -804,17 +793,22 @@ export function MessageInput({
                   )}
                 </button>
 
+                {/* Stop Audio Button */}
+                {(isPlaying || isGeneratingTTS) && (
+                  <button
+                    type="button"
+                    onClick={stopCurrentAudio}
+                    className="p-2 rounded-xl text-orange-500 hover:text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900 transition-colors"
+                  >
+                    <Square className="w-4 h-4" />
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setShowCamera(true)}
-                  className={cn(
-                    'p-2 rounded-xl transition-colors hidden sm:flex',
-                    'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
-                    'hover:bg-blue-500/10 active:bg-blue-500/15 dark:hover:bg-blue-500/20 dark:active:bg-blue-500/25',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30',
-                  )}
+                  className="p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors hidden sm:flex"
                   disabled={disabled || isSending}
-                  aria-label="Take photo"
                 >
                   <Camera className="w-4 h-4" />
                 </button>
@@ -826,13 +820,11 @@ export function MessageInput({
                     (!message.trim() && !attachedImage) || disabled || isSending
                   }
                   className={cn(
-                    'p-2 rounded-xl transition-all flex items-center justify-center ml-1',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-500/30',
+                    'p-2 rounded-xl transition-all ml-1',
                     (message.trim() || attachedImage) && !disabled && !isSending
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md hover:shadow-lg hover:opacity-95 active:opacity-90'
+                      ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md'
                       : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed',
                   )}
-                  aria-label="Send message"
                 >
                   {isSending ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -843,34 +835,36 @@ export function MessageInput({
               </div>
             </div>
           </div>
+
+          {/* Help Text */}
+          {conversationMode && (
+            <div className="mt-2 text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                🗣️ Conversation mode: AI will listen after speaking
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Camera Dialog */}
       <Dialog open={showCamera} onOpenChange={setShowCamera}>
-        <DialogContent className="sm:max-w-[600px] bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-xl">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle className="text-center text-lg font-medium text-gray-900">
-              Take a Photo
-            </DialogTitle>
+            <DialogTitle>Take a Photo</DialogTitle>
           </DialogHeader>
           <div className="mt-4">
             {!capturedImage ? (
-              <div className="relative rounded-xl overflow-hidden shadow-md">
+              <div className="relative rounded-xl overflow-hidden">
                 <Webcam
                   ref={webcamRef}
                   screenshotFormat="image/jpeg"
                   className="w-full rounded-xl"
-                  videoConstraints={{
-                    facingMode: 'user',
-                    width: 1280,
-                    height: 720,
-                  }}
                 />
-                <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
                   <Button
                     onClick={captureImage}
-                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-500 hover:bg-blue-600 rounded-xl px-5 py-2 text-sm font-medium shadow-lg"
+                    className="bg-blue-500 hover:bg-blue-600"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     Capture
@@ -879,24 +873,18 @@ export function MessageInput({
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-xl overflow-hidden shadow-md">
-                  <img
-                    src={capturedImage}
-                    alt="Captured"
-                    className="w-full rounded-xl"
-                  />
-                </div>
-                <div className="flex gap-4 justify-center pt-2">
-                  <Button
-                    onClick={retakeImage}
-                    variant="outline"
-                    className="rounded-xl border-gray-300 hover:bg-gray-50 px-5"
-                  >
+                <img
+                  src={capturedImage}
+                  alt="Captured"
+                  className="w-full rounded-xl"
+                />
+                <div className="flex gap-4 justify-center">
+                  <Button onClick={retakeImage} variant="outline">
                     Retake
                   </Button>
                   <Button
                     onClick={confirmImage}
-                    className="bg-blue-500 hover:bg-blue-600 rounded-xl px-5 shadow-md"
+                    className="bg-blue-500 hover:bg-blue-600"
                   >
                     Use Photo
                   </Button>
@@ -906,45 +894,6 @@ export function MessageInput({
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* CSS for floating animation and enhanced indicators */}
-      <style jsx global>{`
-        @keyframes float {
-          0% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-8px);
-          }
-          100% {
-            transform: translateY(0px);
-          }
-        }
-
-        @keyframes voicePulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-          }
-        }
-
-        @keyframes ttsPulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-          }
-        }
-      `}</style>
     </>
   );
 }
