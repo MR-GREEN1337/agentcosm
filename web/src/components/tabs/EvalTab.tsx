@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react'
-import { api } from '@/lib/api'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Plus, Play, Download, TestTube, FlaskConical, CheckCircle } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Plus,
+  Play,
+  Download,
+  TestTube,
+  FlaskConical,
+  CheckCircle,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,119 +20,136 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/components/ui/select';
 
 interface EvalTabProps {
-  appName: string
-  userId: string
+  appName: string;
+  userId: string;
 }
 
 interface EvalSet {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface EvalCase {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface EvalMetric {
-  id: string
-  name: string
-  description: string
+  id: string;
+  name: string;
+  description: string;
 }
 
 const AVAILABLE_METRICS: EvalMetric[] = [
-  { id: 'exact_match', name: 'Exact Match', description: 'Checks for exact string match' },
-  { id: 'semantic_similarity', name: 'Semantic Similarity', description: 'Measures semantic similarity' },
-  { id: 'response_length', name: 'Response Length', description: 'Evaluates response length' },
-]
+  {
+    id: 'exact_match',
+    name: 'Exact Match',
+    description: 'Checks for exact string match',
+  },
+  {
+    id: 'semantic_similarity',
+    name: 'Semantic Similarity',
+    description: 'Measures semantic similarity',
+  },
+  {
+    id: 'response_length',
+    name: 'Response Length',
+    description: 'Evaluates response length',
+  },
+];
 
 export function EvalTab({ appName, userId }: EvalTabProps) {
-  const [evalSets, setEvalSets] = useState<string[]>([])
-  const [selectedEvalSet, setSelectedEvalSet] = useState<string>('')
-  const [evalCases, setEvalCases] = useState<string[]>([])
-  const [newEvalSetName, setNewEvalSetName] = useState('')
-  const [showNewEvalSetDialog, setShowNewEvalSetDialog] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [runningEval, setRunningEval] = useState(false)
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([])
+  const [evalSets, setEvalSets] = useState<string[]>([]);
+  const [selectedEvalSet, setSelectedEvalSet] = useState<string>('');
+  const [evalCases, setEvalCases] = useState<string[]>([]);
+  const [newEvalSetName, setNewEvalSetName] = useState('');
+  const [showNewEvalSetDialog, setShowNewEvalSetDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [runningEval, setRunningEval] = useState(false);
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
 
   const fetchEvalSets = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await api.get(`/apps/${appName}/eval_sets`)
-      setEvalSets(response.data)
+      const response = await api.get(`/apps/${appName}/eval_sets`);
+      setEvalSets(response.data);
     } catch (error) {
-      console.error('Error fetching eval sets:', error)
+      console.error('Error fetching eval sets:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchEvalCases = async (evalSetId: string) => {
     try {
-      const response = await api.get(`/apps/${appName}/eval_sets/${evalSetId}/evals`)
-      setEvalCases(response.data)
+      const response = await api.get(
+        `/apps/${appName}/eval_sets/${evalSetId}/evals`,
+      );
+      setEvalCases(response.data);
     } catch (error) {
-      console.error('Error fetching eval cases:', error)
+      console.error('Error fetching eval cases:', error);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchEvalSets()
-  }, [appName])
+    fetchEvalSets();
+  }, [appName]);
 
   useEffect(() => {
     if (selectedEvalSet) {
-      fetchEvalCases(selectedEvalSet)
+      fetchEvalCases(selectedEvalSet);
     }
-  }, [selectedEvalSet])
+  }, [selectedEvalSet]);
 
   const createEvalSet = async () => {
-    if (!newEvalSetName.trim()) return
+    if (!newEvalSetName.trim()) return;
 
     try {
-      await api.post(`/apps/${appName}/eval_sets/${newEvalSetName}`)
-      await fetchEvalSets()
-      setNewEvalSetName('')
-      setShowNewEvalSetDialog(false)
+      await api.post(`/apps/${appName}/eval_sets/${newEvalSetName}`);
+      await fetchEvalSets();
+      setNewEvalSetName('');
+      setShowNewEvalSetDialog(false);
     } catch (error) {
-      console.error('Error creating eval set:', error)
+      console.error('Error creating eval set:', error);
     }
-  }
+  };
 
   const runEval = async () => {
-    if (!selectedEvalSet || selectedMetrics.length === 0) return
+    if (!selectedEvalSet || selectedMetrics.length === 0) return;
 
-    setRunningEval(true)
+    setRunningEval(true);
     try {
-      const response = await api.post(`/apps/${appName}/eval_sets/${selectedEvalSet}/run_eval`, {
-        eval_ids: [],
-        eval_metrics: selectedMetrics.map(id => ({ name: id }))
-      })
-      console.log('Eval results:', response.data)
+      const response = await api.post(
+        `/apps/${appName}/eval_sets/${selectedEvalSet}/run_eval`,
+        {
+          eval_ids: [],
+          eval_metrics: selectedMetrics.map((id) => ({ name: id })),
+        },
+      );
+      console.log('Eval results:', response.data);
     } catch (error) {
-      console.error('Error running eval:', error)
+      console.error('Error running eval:', error);
     } finally {
-      setRunningEval(false)
+      setRunningEval(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-[#a0a0a8]">Loading evaluation sets...</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -139,7 +163,10 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
               </div>
               Evaluation Sets
             </h2>
-            <Dialog open={showNewEvalSetDialog} onOpenChange={setShowNewEvalSetDialog}>
+            <Dialog
+              open={showNewEvalSetDialog}
+              onOpenChange={setShowNewEvalSetDialog}
+            >
               <DialogTrigger asChild>
                 <Button
                   variant="ghost"
@@ -151,7 +178,9 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
               </DialogTrigger>
               <DialogContent className="bg-[#1a1a1f] border-[#2a2a30]">
                 <DialogHeader>
-                  <DialogTitle className="text-white">Create New Evaluation Set</DialogTitle>
+                  <DialogTitle className="text-white">
+                    Create New Evaluation Set
+                  </DialogTitle>
                   <DialogDescription className="text-[#a0a0a8]">
                     Enter a name for your new evaluation set
                   </DialogDescription>
@@ -180,7 +209,9 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
                 <Card
                   key={evalSet}
                   className={`bg-[#1a1a1f] border-[#2a2a30] p-4 cursor-pointer hover:bg-[#1f1f24] transition-all ${
-                    selectedEvalSet === evalSet ? 'border-blue-500 bg-[#1f1f24]' : ''
+                    selectedEvalSet === evalSet
+                      ? 'border-blue-500 bg-[#1f1f24]'
+                      : ''
                   }`}
                   onClick={() => setSelectedEvalSet(evalSet)}
                 >
@@ -203,13 +234,22 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
                 {selectedEvalSet}
               </h3>
               <div className="flex gap-3">
-                <Select value={selectedMetrics.join(',')} onValueChange={(value) => setSelectedMetrics(value.split(',').filter(Boolean))}>
+                <Select
+                  value={selectedMetrics.join(',')}
+                  onValueChange={(value) =>
+                    setSelectedMetrics(value.split(',').filter(Boolean))
+                  }
+                >
                   <SelectTrigger className="w-64 bg-[#2a2a30] border-[#3a3a40] text-white">
                     <SelectValue placeholder="Select metrics" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#2a2a30] border-[#3a3a40]">
                     {AVAILABLE_METRICS.map((metric) => (
-                      <SelectItem key={metric.id} value={metric.id} className="text-white hover:bg-[#33333a]">
+                      <SelectItem
+                        key={metric.id}
+                        value={metric.id}
+                        className="text-white hover:bg-[#33333a]"
+                      >
                         {metric.name}
                       </SelectItem>
                     ))}
@@ -222,7 +262,8 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
                 >
                   {runningEval ? (
                     <span className="flex items-center gap-2">
-                      Running... <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Running...{' '}
+                      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     </span>
                   ) : (
                     <>
@@ -237,11 +278,16 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
             <ScrollArea className="h-[500px]">
               <div className="space-y-3">
                 {evalCases.map((evalCase) => (
-                  <Card key={evalCase} className="bg-[#1a1a1f] border-[#2a2a30] p-4 hover:bg-[#1f1f24] transition-colors">
+                  <Card
+                    key={evalCase}
+                    className="bg-[#1a1a1f] border-[#2a2a30] p-4 hover:bg-[#1f1f24] transition-colors"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CheckCircle className="w-5 h-5 text-green-500" />
-                        <span className="text-sm text-white font-medium">{evalCase}</span>
+                        <span className="text-sm text-white font-medium">
+                          {evalCase}
+                        </span>
                       </div>
                       <Button
                         variant="ghost"
@@ -261,11 +307,13 @@ export function EvalTab({ appName, userId }: EvalTabProps) {
             <div className="text-center">
               <FlaskConical className="w-16 h-16 text-[#3a3a40] mx-auto mb-4" />
               <p className="text-[#a0a0a8] text-lg">Select an evaluation set</p>
-              <p className="text-[#6a6a70] text-sm mt-2">Choose a set to view and run evaluations</p>
+              <p className="text-[#6a6a70] text-sm mt-2">
+                Choose a set to view and run evaluations
+              </p>
             </div>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

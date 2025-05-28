@@ -20,7 +20,7 @@ export const PlanetIcon = () => (
     />
 
     {/* Main planet body with dark gradient */}
-    <circle cx="256" cy="256" r="234" fill="url(#planetGradient)"/>
+    <circle cx="256" cy="256" r="234" fill="url(#planetGradient)" />
 
     {/* Subtle inner shadow for depth */}
     <path
@@ -61,14 +61,26 @@ export const PlanetIcon = () => (
     />
 
     {/* Small details/spots with reduced opacity */}
-    <rect x="248" y="58" width="16" height="16" fill="rgba(255,255,255,0.05)"/>
-    <rect x="208" y="178" width="16" height="16" fill="rgba(255,255,255,0.05)"/>
-    <rect x="56" y="314" width="16" height="16" fill="rgba(255,255,255,0.05)"/>
-    <rect x="400" y="384" width="16" height="16" fill="rgba(255,255,255,0.05)"/>
+    <rect x="248" y="58" width="16" height="16" fill="rgba(255,255,255,0.05)" />
+    <rect
+      x="208"
+      y="178"
+      width="16"
+      height="16"
+      fill="rgba(255,255,255,0.05)"
+    />
+    <rect x="56" y="314" width="16" height="16" fill="rgba(255,255,255,0.05)" />
+    <rect
+      x="400"
+      y="384"
+      width="16"
+      height="16"
+      fill="rgba(255,255,255,0.05)"
+    />
 
     {/* Optional: subtle highlights */}
-    <circle cx="220" cy="120" r="3" fill="rgba(255,255,255,0.2)"/>
-    <circle cx="340" cy="180" r="2" fill="rgba(255,255,255,0.15)"/>
+    <circle cx="220" cy="120" r="3" fill="rgba(255,255,255,0.2)" />
+    <circle cx="340" cy="180" r="2" fill="rgba(255,255,255,0.15)" />
 
     {/* Gradient definition */}
     <defs>

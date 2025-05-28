@@ -1,71 +1,102 @@
-import { useEffect, useRef, useState } from 'react'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Bot, User, Copy, Edit, RotateCcw, MoreVertical, Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useEffect, useRef, useState } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Bot,
+  User,
+  Copy,
+  Edit,
+  RotateCcw,
+  MoreVertical,
+  Check,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface EventsTabProps {
-  ref: React.RefObject<{ scrollToBottom: () => void }>
-  appName: string
-  userId: string
-  sessionId: string
-  events: any[]
-  onResendMessage?: (text: string) => void
-  onEditMessage?: (messageId: string, newText: string) => void
+  ref: React.RefObject<{ scrollToBottom: () => void }>;
+  appName: string;
+  userId: string;
+  sessionId: string;
+  events: any[];
+  onResendMessage?: (text: string) => void;
+  onEditMessage?: (messageId: string, newText: string) => void;
 }
 
 // Simple markdown parser for basic formatting
 const parseMarkdown = (text: string) => {
   if (!text) return text;
 
-  return text
-    // Bold text (**text** or __text__)
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+  return (
+    text
+      // Bold text (**text** or __text__)
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.*?)__/g, '<strong>$1</strong>')
 
-    // Italic text (*text* or _text_)
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/_(.*?)_/g, '<em>$1</em>')
+      // Italic text (*text* or _text_)
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/_(.*?)_/g, '<em>$1</em>')
 
-    // Code inline (`code`)
-    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+      // Code inline (`code`)
+      .replace(
+        /`([^`]+)`/g,
+        '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>',
+      )
 
-    // Headers (# ## ###)
-    .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
+      // Headers (# ## ###)
+      .replace(
+        /^### (.*$)/gim,
+        '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>',
+      )
+      .replace(
+        /^## (.*$)/gim,
+        '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>',
+      )
+      .replace(
+        /^# (.*$)/gim,
+        '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>',
+      )
 
-    // Code blocks (```code```)
-    .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2"><code class="text-sm">$1</code></pre>')
+      // Code blocks (```code```)
+      .replace(
+        /```([\s\S]*?)```/g,
+        '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2"><code class="text-sm">$1</code></pre>',
+      )
 
-    // Lists
-    .replace(/^\* (.*$)/gim, '<li class="ml-4">• $1</li>')
-    .replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
-    .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
+      // Lists
+      .replace(/^\* (.*$)/gim, '<li class="ml-4">• $1</li>')
+      .replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
+      .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
 
-    // Line breaks
-    .replace(/\n\n/g, '</p><p class="mb-2">')
-    .replace(/\n/g, '<br />')
-}
+      // Line breaks
+      .replace(/\n\n/g, '</p><p class="mb-2">')
+      .replace(/\n/g, '<br />')
+  );
+};
 
 // Component to render markdown text
-const MarkdownText = ({ text, className }: { text: string; className?: string }) => {
-  const parsedText = parseMarkdown(text)
+const MarkdownText = ({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) => {
+  const parsedText = parseMarkdown(text);
 
   return (
     <div
       className={className}
       dangerouslySetInnerHTML={{ __html: `<p class="mb-2">${parsedText}</p>` }}
     />
-  )
-}
+  );
+};
 
 export function EventsTab({
   ref,
@@ -74,83 +105,103 @@ export function EventsTab({
   sessionId,
   events = [],
   onResendMessage,
-  onEditMessage
+  onEditMessage,
 }: EventsTabProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
-  const [editText, setEditText] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [events])
+  }, [events]);
 
   const handleCopy = async (text: string, messageId: string) => {
     try {
-      await navigator.clipboard.writeText(text)
-      setCopiedMessageId(messageId)
-      setTimeout(() => setCopiedMessageId(null), 2000)
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err)
+      console.error('Failed to copy:', err);
     }
-  }
+  };
 
   const handleEdit = (messageId: string, text: string) => {
-    setEditingMessageId(messageId)
-    setEditText(text)
-  }
+    setEditingMessageId(messageId);
+    setEditText(text);
+  };
 
   const handleSaveEdit = (messageId: string) => {
     if (onEditMessage && editText.trim()) {
-      onEditMessage(messageId, editText)
+      onEditMessage(messageId, editText);
     }
-    setEditingMessageId(null)
-    setEditText('')
-  }
+    setEditingMessageId(null);
+    setEditText('');
+  };
 
   const handleCancelEdit = () => {
-    setEditingMessageId(null)
-    setEditText('')
-  }
+    setEditingMessageId(null);
+    setEditText('');
+  };
 
   const formatTimestamp = (timestamp: number) => {
     try {
-      const date = new Date(timestamp * 1000)
-      const now = new Date()
-      const isToday = date.toDateString() === now.toDateString()
+      const date = new Date(timestamp * 1000);
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
 
       if (isToday) {
         // Format as HH:mm
-        const hours = date.getHours().toString().padStart(2, '0')
-        const minutes = date.getMinutes().toString().padStart(2, '0')
-        return `${hours}:${minutes}`
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
       } else {
         // Format as MMM d, HH:mm
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        const month = months[date.getMonth()]
-        const day = date.getDate()
-        const hours = date.getHours().toString().padStart(2, '0')
-        const minutes = date.getMinutes().toString().padStart(2, '0')
-        return `${month} ${day}, ${hours}:${minutes}`
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        const month = months[date.getMonth()];
+        const day = date.getDate();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${month} ${day}, ${hours}:${minutes}`;
       }
     } catch {
-      return ''
+      return '';
     }
-  }
+  };
 
   if (events.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <img src="/duck.gif" className="w-16 h-16 text-gray-300 dark:text-[#3a3a40] mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-[#a0a0a8] text-lg">Start a conversation</p>
-          <p className="text-gray-500 dark:text-[#6a6a70] text-sm mt-2">Type a message below</p>
+          <img
+            src="/duck.gif"
+            className="w-16 h-16 text-gray-300 dark:text-[#3a3a40] mx-auto mb-4"
+          />
+          <p className="text-gray-600 dark:text-[#a0a0a8] text-lg">
+            Start a conversation
+          </p>
+          <p className="text-gray-500 dark:text-[#6a6a70] text-sm mt-2">
+            Type a message below
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -158,47 +209,56 @@ export function EventsTab({
       <div className="p-6 space-y-6" ref={scrollRef}>
         {events.map((event, index) => {
           // Create a unique key for each event
-          const eventKey = event.id || `${event.author}-${event.timestamp}-${index}`
-          const isUser = event.author === 'user' || event.content?.role === 'user'
+          const eventKey =
+            event.id || `${event.author}-${event.timestamp}-${index}`;
+          const isUser =
+            event.author === 'user' || event.content?.role === 'user';
 
           // Extract message text and images
-          let messageText = event.text || ''
-          let messageImages: string[] = []
+          let messageText = event.text || '';
+          let messageImages: string[] = [];
 
           if (event.content?.parts) {
             for (const part of event.content.parts) {
               if (part.text) {
-                messageText = part.text
+                messageText = part.text;
               } else if (part.inline_data) {
                 // Convert inline_data to data URL
-                const mimeType = part.inline_data.mime_type || 'image/jpeg'
-                const dataUrl = `data:${mimeType};base64,${part.inline_data.data}`
-                messageImages.push(dataUrl)
+                const mimeType = part.inline_data.mime_type || 'image/jpeg';
+                const dataUrl = `data:${mimeType};base64,${part.inline_data.data}`;
+                messageImages.push(dataUrl);
               }
             }
           } else if (!messageText && event.content?.parts?.[0]?.text) {
-            messageText = event.content.parts[0].text
+            messageText = event.content.parts[0].text;
           } else if (!messageText && typeof event.content === 'string') {
-            messageText = event.content
+            messageText = event.content;
           }
 
           // Also check for function calls from the event
-          const functionCalls = event.function_calls || event.actions?.function_calls
-          const functionResponses = event.function_responses || event.actions?.function_responses
+          const functionCalls =
+            event.function_calls || event.actions?.function_calls;
+          const functionResponses =
+            event.function_responses || event.actions?.function_responses;
 
           // Skip empty events
-          if (!messageText && !functionCalls && !functionResponses && messageImages.length === 0) {
-            return null
+          if (
+            !messageText &&
+            !functionCalls &&
+            !functionResponses &&
+            messageImages.length === 0
+          ) {
+            return null;
           }
 
-          const isEditing = editingMessageId === eventKey
+          const isEditing = editingMessageId === eventKey;
 
           return (
             <div
               key={eventKey}
               className={cn(
-                "flex gap-3 group relative",
-                isUser ? "justify-end" : "justify-start"
+                'flex gap-3 group relative',
+                isUser ? 'justify-end' : 'justify-start',
               )}
             >
               {!isUser && (
@@ -217,10 +277,10 @@ export function EventsTab({
                 <div className="flex items-end gap-2">
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-3 relative",
+                      'rounded-2xl px-4 py-3 relative',
                       isUser
-                        ? "bg-blue-600 text-white dark:bg-blue-500"
-                        : "bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]"
+                        ? 'bg-blue-600 text-white dark:bg-blue-500'
+                        : 'bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]',
                     )}
                   >
                     {isEditing ? (
@@ -283,10 +343,19 @@ export function EventsTab({
 
                     {functionCalls && functionCalls.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Function calls:</p>
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                          Function calls:
+                        </p>
                         {functionCalls.map((call: any, idx: number) => (
-                          <div key={idx} className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded text-blue-700 dark:text-blue-400 font-mono">
-                            {call.name}({call.arguments ? JSON.stringify(call.arguments) : ''})
+                          <div
+                            key={idx}
+                            className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded text-blue-700 dark:text-blue-400 font-mono"
+                          >
+                            {call.name}(
+                            {call.arguments
+                              ? JSON.stringify(call.arguments)
+                              : ''}
+                            )
                           </div>
                         ))}
                       </div>
@@ -294,11 +363,23 @@ export function EventsTab({
 
                     {functionResponses && functionResponses.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        <p className="text-sm text-green-600 dark:text-green-400 font-medium">Function responses:</p>
+                        <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                          Function responses:
+                        </p>
                         {functionResponses.map((response: any, idx: number) => (
-                          <div key={idx} className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded">
-                            <span className="text-green-700 dark:text-green-400 font-mono">{response.name}</span>
-                            <span className="text-gray-600 dark:text-[#a0a0a8]">: {JSON.stringify(response.response_data || response.data)}</span>
+                          <div
+                            key={idx}
+                            className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded"
+                          >
+                            <span className="text-green-700 dark:text-green-400 font-mono">
+                              {response.name}
+                            </span>
+                            <span className="text-gray-600 dark:text-[#a0a0a8]">
+                              :{' '}
+                              {JSON.stringify(
+                                response.response_data || response.data,
+                              )}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -319,7 +400,7 @@ export function EventsTab({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
-                          align={isUser ? "end" : "start"}
+                          align={isUser ? 'end' : 'start'}
                           className="bg-white dark:bg-[#2a2a30] border-gray-200 dark:border-[#3a3a40]"
                         >
                           <DropdownMenuItem
@@ -341,7 +422,9 @@ export function EventsTab({
                           {isUser && (
                             <>
                               <DropdownMenuItem
-                                onClick={() => handleEdit(eventKey, messageText)}
+                                onClick={() =>
+                                  handleEdit(eventKey, messageText)
+                                }
                                 className="text-gray-700 dark:text-[#d0d0d8] hover:bg-gray-100 dark:hover:bg-[#3a3a40] hover:text-gray-900 dark:hover:text-white"
                               >
                                 <Edit className="mr-2 h-4 w-4" />
@@ -366,10 +449,12 @@ export function EventsTab({
 
                 {/* Timestamp */}
                 {event.timestamp && (
-                  <span className={cn(
-                    "text-xs text-gray-500 dark:text-[#6a6a70] px-1",
-                    isUser ? "text-right" : "text-left"
-                  )}>
+                  <span
+                    className={cn(
+                      'text-xs text-gray-500 dark:text-[#6a6a70] px-1',
+                      isUser ? 'text-right' : 'text-left',
+                    )}
+                  >
                     {formatTimestamp(event.timestamp)}
                   </span>
                 )}
@@ -383,9 +468,9 @@ export function EventsTab({
                 </div>
               )}
             </div>
-          )
+          );
         })}
       </div>
     </ScrollArea>
-  )
+  );
 }

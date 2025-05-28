@@ -1,43 +1,45 @@
-import { useEffect, useState } from 'react'
-import { api } from '@/lib/api'
-import { Card } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Code } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Code } from 'lucide-react';
 
 interface StateTabProps {
-  appName: string
-  userId: string
-  sessionId: string
+  appName: string;
+  userId: string;
+  sessionId: string;
 }
 
 export function StateTab({ appName, userId, sessionId }: StateTabProps) {
-  const [state, setState] = useState<any>({})
-  const [loading, setLoading] = useState(false)
+  const [state, setState] = useState<any>({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
-      if (!sessionId) return
+      if (!sessionId) return;
 
-      setLoading(true)
+      setLoading(true);
       try {
-        const response = await api.get(`/apps/${appName}/users/${userId}/sessions/${sessionId}`)
-        setState(response.data.state || {})
+        const response = await api.get(
+          `/apps/${appName}/users/${userId}/sessions/${sessionId}`,
+        );
+        setState(response.data.state || {});
       } catch (error) {
-        console.error('Error fetching session:', error)
+        console.error('Error fetching session:', error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchSession()
-  }, [appName, userId, sessionId])
+    fetchSession();
+  }, [appName, userId, sessionId]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-[#a0a0a8]">Loading state...</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -60,5 +62,5 @@ export function StateTab({ appName, userId, sessionId }: StateTabProps) {
         </Card>
       </div>
     </ScrollArea>
-  )
+  );
 }

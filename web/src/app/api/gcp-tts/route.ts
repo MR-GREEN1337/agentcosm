@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { TextToSpeechClient } from '@google-cloud/text-to-speech'
+import { NextRequest, NextResponse } from 'next/server';
+import { TextToSpeechClient } from '@google-cloud/text-to-speech';
 
 const client = new TextToSpeechClient({
   credentials: {
@@ -7,32 +7,32 @@ const client = new TextToSpeechClient({
     private_key: process.env.GCP_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   },
   projectId: process.env.GCP_PROJECT_ID,
-})
+});
 
-const audioCache = new Map<string, { buffer: Buffer; timestamp: number }>()
-const CACHE_TTL = 1000 * 60 * 60
-const MAX_CACHE_SIZE = 100
+const audioCache = new Map<string, { buffer: Buffer; timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 60;
+const MAX_CACHE_SIZE = 100;
 function cleanCache() {
-  const now = Date.now()
+  const now = Date.now();
   for (const [key, value] of audioCache.entries()) {
     if (now - value.timestamp > CACHE_TTL) {
-      audioCache.delete(key)
+      audioCache.delete(key);
     }
   }
 
   if (audioCache.size > MAX_CACHE_SIZE) {
-    const entries = Array.from(audioCache.entries())
-    entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
-    const toDelete = entries.slice(0, audioCache.size - MAX_CACHE_SIZE)
-    toDelete.forEach(([key]) => audioCache.delete(key))
+    const entries = Array.from(audioCache.entries());
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toDelete = entries.slice(0, audioCache.size - MAX_CACHE_SIZE);
+    toDelete.forEach(([key]) => audioCache.delete(key));
   }
 }
 
 function generateCacheKey(text: string, voiceConfig: any): string {
-  const configString = JSON.stringify(voiceConfig)
-  const textHash = Buffer.from(text).toString('base64').slice(0, 50)
-  const configHash = Buffer.from(configString).toString('base64').slice(0, 20)
-  return `${textHash}-${configHash}`
+  const configString = JSON.stringify(voiceConfig);
+  const textHash = Buffer.from(text).toString('base64').slice(0, 50);
+  const configHash = Buffer.from(configString).toString('base64').slice(0, 20);
+  return `${textHash}-${configHash}`;
 }
 
 // Preprocessing for better TTS quality
@@ -40,10 +40,10 @@ function preprocessText(text: string): string {
   // Remove markdown formatting
   let processed = text
     .replace(/\*\*(.*?)\*\*/g, '$1') // Bold
-    .replace(/\*(.*?)\*/g, '$1')     // Italic
-    .replace(/`(.*?)`/g, '$1')       // Code
+    .replace(/\*(.*?)\*/g, '$1') // Italic
+    .replace(/`(.*?)`/g, '$1') // Code
     .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Links
-    .replace(/#{1,6}\s*(.*)/g, '$1') // Headers
+    .replace(/#{1,6}\s*(.*)/g, '$1'); // Headers
 
   // Handle abbreviations and technical terms
   processed = processed
@@ -54,7 +54,7 @@ function preprocessText(text: string): string {
     .replace(/\bSQL\b/g, 'S Q L')
     .replace(/\bHTML\b/g, 'H T M L')
     .replace(/\bCSS\b/g, 'C S S')
-    .replace(/\bJS\b/g, 'JavaScript')
+    .replace(/\bJS\b/g, 'JavaScript');
 
   // Add pauses for better pacing
   processed = processed
@@ -62,59 +62,61 @@ function preprocessText(text: string): string {
     .replace(/\? /g, '? <break time="0.4s"/>')
     .replace(/! /g, '! <break time="0.4s"/>')
     .replace(/: /g, ': <break time="0.2s"/>')
-    .replace(/; /g, '; <break time="0.2s"/>')
+    .replace(/; /g, '; <break time="0.2s"/>');
 
   // Limit length for reasonable audio duration (adjust as needed)
   if (processed.length > 1000) {
-    processed = processed.substring(0, 997) + '...'
+    processed = processed.substring(0, 997) + '...';
   }
 
-  return processed.trim()
+  return processed.trim();
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     // Parse request body with error handling
-    let body
+    let body;
     try {
-      const rawBody = await request.text()
+      const rawBody = await request.text();
       if (!rawBody.trim()) {
         return NextResponse.json(
           { error: 'Empty request body' },
-          { status: 400 }
-        )
+          { status: 400 },
+        );
       }
-      body = JSON.parse(rawBody)
+      body = JSON.parse(rawBody);
     } catch (parseError) {
-      console.error('JSON parsing error:', parseError)
+      console.error('JSON parsing error:', parseError);
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    const { input, voice, audioConfig } = body
+    const { input, voice, audioConfig } = body;
 
     if (!input?.text) {
       return NextResponse.json(
         { error: 'Text input is required' },
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
     // Preprocess text for better TTS quality
-    const processedText = preprocessText(input.text)
+    const processedText = preprocessText(input.text);
 
     // Generate cache key
-    const cacheKey = generateCacheKey(processedText, { voice, audioConfig })
+    const cacheKey = generateCacheKey(processedText, { voice, audioConfig });
 
     // Check cache first
-    cleanCache()
-    const cached = audioCache.get(cacheKey)
+    cleanCache();
+    const cached = audioCache.get(cacheKey);
     if (cached) {
-      console.log(`TTS cache hit for text: "${processedText.substring(0, 50)}..."`)
+      console.log(
+        `TTS cache hit for text: "${processedText.substring(0, 50)}..."`,
+      );
 
       return new NextResponse(cached.buffer, {
         status: 200,
@@ -123,9 +125,9 @@ export async function POST(request: NextRequest) {
           'Content-Length': cached.buffer.length.toString(),
           'Cache-Control': 'public, max-age=3600',
           'X-Cache': 'HIT',
-          'X-Response-Time': `${Date.now() - startTime}ms`
+          'X-Response-Time': `${Date.now() - startTime}ms`,
         },
-      })
+      });
     }
 
     // Default voice configuration optimized for conversational AI
@@ -133,50 +135,52 @@ export async function POST(request: NextRequest) {
       languageCode: 'en-US',
       name: 'en-US-Neural2-F', // High-quality neural voice
       ssmlGender: 'FEMALE',
-      ...voice
-    }
+      ...voice,
+    };
 
     // Default audio configuration optimized for low latency
     const defaultAudioConfig = {
       audioEncoding: 'LINEAR16',
       sampleRateHertz: 24000,
-      speakingRate: 1.1,       // Slightly faster for conversation
+      speakingRate: 1.1, // Slightly faster for conversation
       pitch: 0,
       volumeGainDb: 0,
       effectsProfileId: ['telephony-class-application'], // Optimized for voice apps
-      ...audioConfig
-    }
+      ...audioConfig,
+    };
 
     // Wrap text in SSML for better control
-    const ssmlText = `<speak>${processedText}</speak>`
+    const ssmlText = `<speak>${processedText}</speak>`;
 
     // Prepare the TTS request
     const ttsRequest = {
       input: { ssml: ssmlText },
       voice: defaultVoice,
       audioConfig: defaultAudioConfig,
-    }
+    };
 
-    console.log(`Generating TTS for: "${processedText.substring(0, 100)}..."`)
+    console.log(`Generating TTS for: "${processedText.substring(0, 100)}..."`);
 
     // Call Google Cloud TTS API
-    const [response] = await client.synthesizeSpeech(ttsRequest)
+    const [response] = await client.synthesizeSpeech(ttsRequest);
 
     if (!response.audioContent) {
-      throw new Error('No audio content received from GCP TTS')
+      throw new Error('No audio content received from GCP TTS');
     }
 
     // Convert to Buffer
-    const audioBuffer = Buffer.from(response.audioContent as Uint8Array)
+    const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
 
     // Cache the result
     audioCache.set(cacheKey, {
       buffer: audioBuffer,
-      timestamp: Date.now()
-    })
+      timestamp: Date.now(),
+    });
 
-    const processingTime = Date.now() - startTime
-    console.log(`TTS generated in ${processingTime}ms, audio size: ${audioBuffer.length} bytes`)
+    const processingTime = Date.now() - startTime;
+    console.log(
+      `TTS generated in ${processingTime}ms, audio size: ${audioBuffer.length} bytes`,
+    );
 
     // Return audio with appropriate headers
     return new NextResponse(audioBuffer, {
@@ -187,20 +191,19 @@ export async function POST(request: NextRequest) {
         'Cache-Control': 'public, max-age=3600',
         'X-Cache': 'MISS',
         'X-Response-Time': `${processingTime}ms`,
-        'X-Audio-Duration': `${Math.round(audioBuffer.length / (24000 * 2))}s` // Rough estimate
+        'X-Audio-Duration': `${Math.round(audioBuffer.length / (24000 * 2))}s`, // Rough estimate
       },
-    })
-
+    });
   } catch (error) {
-    console.error('GCP TTS API Error:', error)
+    console.error('GCP TTS API Error:', error);
 
     return NextResponse.json(
       {
         error: 'Failed to generate speech',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
@@ -213,30 +216,29 @@ export async function GET() {
       voice: {
         languageCode: 'en-US',
         name: 'en-US-Standard-A',
-        ssmlGender: 'FEMALE'
+        ssmlGender: 'FEMALE',
       },
       audioConfig: {
         audioEncoding: 'LINEAR16',
         sampleRateHertz: 16000,
       },
-    }
+    };
 
-    await client.synthesizeSpeech(testRequest as any)
+    await client.synthesizeSpeech(testRequest as any);
 
     return NextResponse.json({
       status: 'healthy',
       service: 'gcp-tts',
       cacheSize: audioCache.size,
-      timestamp: new Date().toISOString()
-    })
-
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
     return NextResponse.json(
       {
         status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 503 }
-    )
+      { status: 503 },
+    );
   }
 }

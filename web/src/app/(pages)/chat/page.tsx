@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { SessionManager } from '@/components/SessionManager'
-import { EventsTab } from '@/components/tabs/EventsTab'
-import { StateTab } from '@/components/tabs/StateTab'
-import { ArtifactsTab } from '@/components/tabs/ArtifactsTab'
-import { SessionsTab } from '@/components/tabs/SessionsTab'
-import { EvalTab } from '@/components/tabs/EvalTab'
-import { MessageInput } from '@/components/MessageInput'
-import { useSSE } from '@/hooks/use-sse'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Folder, FileText, Database, GitBranch, TestTube } from 'lucide-react'
-import { api } from '@/lib/api'
-import Link from 'next/link'
-import { PlanetIcon } from '@/components/PlanetIcon'
-import { ModeToggle } from '@/components/ThemeToggle'
-import { cn } from '@/lib/utils'
+import { useState, useEffect, useRef } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SessionManager } from '@/components/SessionManager';
+import { EventsTab } from '@/components/tabs/EventsTab';
+import { StateTab } from '@/components/tabs/StateTab';
+import { ArtifactsTab } from '@/components/tabs/ArtifactsTab';
+import { SessionsTab } from '@/components/tabs/SessionsTab';
+import { EvalTab } from '@/components/tabs/EvalTab';
+import { MessageInput } from '@/components/MessageInput';
+import { useSSE } from '@/hooks/use-sse';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Folder, FileText, Database, GitBranch, TestTube } from 'lucide-react';
+import { api } from '@/lib/api';
+import Link from 'next/link';
+import { PlanetIcon } from '@/components/PlanetIcon';
+import { ModeToggle } from '@/components/ThemeToggle';
+import { cn } from '@/lib/utils';
 
 // Import Shadcn Tooltip components
 import {
@@ -24,67 +24,70 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from '@/components/ui/tooltip';
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 export default function AgentDevUI() {
-  const [selectedApp, setSelectedApp] = useState<string>('cosm') // Default to "cosm"
-  const [currentSession, setCurrentSession] = useState<string>('')
-  const [userId, setUserId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('events')
-  const [sessionEvents, setSessionEvents] = useState<any[]>([])
-  const processedEventsRef = useRef<Set<string>>(new Set())
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const eventsTabRef = useRef<{ scrollToBottom: () => void }>(null)
-  const initialBusinessQuerySent = useRef<boolean>(false)
+  const [selectedApp, setSelectedApp] = useState<string>('cosm'); // Default to "cosm"
+  const [currentSession, setCurrentSession] = useState<string>('');
+  const [userId, setUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('events');
+  const [sessionEvents, setSessionEvents] = useState<any[]>([]);
+  const processedEventsRef = useRef<Set<string>>(new Set());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const eventsTabRef = useRef<{ scrollToBottom: () => void }>(null);
+  const initialBusinessQuerySent = useRef<boolean>(false);
   const [lastAiResponse, setLastAiResponse] = useState('');
 
-
-  const { sendMessage, events: sseEvents, isLoading } = useSSE(
+  const {
+    sendMessage,
+    events: sseEvents,
+    isLoading,
+  } = useSSE(
     selectedApp && currentSession && userId
       ? `${process.env.NEXT_PUBLIC_API_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}&modalities=TEXT`
-      : null
-  )
+      : null,
+  );
 
   // Auto-scroll function
   const scrollToBottom = () => {
     if (eventsTabRef.current?.scrollToBottom) {
-      eventsTabRef.current.scrollToBottom()
+      eventsTabRef.current.scrollToBottom();
     }
-  }
+  };
 
   useEffect(() => {
     if (!localStorage.getItem('userId')) {
-      localStorage.setItem('userId', crypto.randomUUID())
+      localStorage.setItem('userId', crypto.randomUUID());
     }
-    setUserId(localStorage.getItem('userId'))
-  }, [])
+    setUserId(localStorage.getItem('userId'));
+  }, []);
 
   // Process SSE events
   useEffect(() => {
-    if (sseEvents.length === 0) return
+    if (sseEvents.length === 0) return;
 
     // Get the latest event
-    const latestEvent = sseEvents[sseEvents.length - 1]
+    const latestEvent = sseEvents[sseEvents.length - 1];
 
     // Only process events with text content
-    const text = latestEvent.content?.parts?.[0]?.text
-    if (!text) return
+    const text = latestEvent.content?.parts?.[0]?.text;
+    if (!text) return;
 
-    setSessionEvents(prev => {
+    setSessionEvents((prev) => {
       // If this is a streaming event, update the last message
       if (latestEvent.isStreaming || latestEvent.partial) {
-        const lastIndex = prev.length - 1
+        const lastIndex = prev.length - 1;
         if (lastIndex >= 0 && prev[lastIndex].author === latestEvent.author) {
           // Update the last message with the new streaming content
-          const updated = [...prev]
+          const updated = [...prev];
           updated[lastIndex] = {
             ...updated[lastIndex],
             text: text,
-            isStreaming: true
-          }
-          return updated
+            isStreaming: true,
+          };
+          return updated;
         }
       }
 
@@ -96,52 +99,59 @@ export default function AgentDevUI() {
         timestamp: latestEvent.timestamp || Date.now() / 1000,
         isStreaming: latestEvent.isStreaming || false,
         function_calls: latestEvent.actions?.function_calls,
-        function_responses: latestEvent.function_responses
-      }
+        function_responses: latestEvent.function_responses,
+      };
 
       // If we were streaming and this is the final message, replace the last one
       if (!latestEvent.partial && !latestEvent.isStreaming) {
-        const lastIndex = prev.length - 1
-        if (lastIndex >= 0 &&
-            prev[lastIndex].author === eventToAdd.author &&
-            prev[lastIndex].isStreaming) {
+        const lastIndex = prev.length - 1;
+        if (
+          lastIndex >= 0 &&
+          prev[lastIndex].author === eventToAdd.author &&
+          prev[lastIndex].isStreaming
+        ) {
           // Replace the streaming message with the final one
-          const updated = [...prev]
+          const updated = [...prev];
           updated[lastIndex] = {
             ...eventToAdd,
-            isStreaming: false
-          }
-          return updated
+            isStreaming: false,
+          };
+          return updated;
         }
       }
 
       // Check if this exact text already exists from the same author
-      const exists = prev.some(e =>
-        e.author === eventToAdd.author &&
-        e.text === eventToAdd.text &&
-        !e.isStreaming
-      )
+      const exists = prev.some(
+        (e) =>
+          e.author === eventToAdd.author &&
+          e.text === eventToAdd.text &&
+          !e.isStreaming,
+      );
 
       if (exists) {
-        console.log('Skipping duplicate in state:', eventToAdd.text)
-        return prev
+        console.log('Skipping duplicate in state:', eventToAdd.text);
+        return prev;
       }
 
-      return [...prev, eventToAdd]
-    })
-  }, [sseEvents])
+      return [...prev, eventToAdd];
+    });
+  }, [sseEvents]);
 
   // Auto-scroll when session events change
   useEffect(() => {
     if (sessionEvents.length > 0) {
-      scrollToBottom()
+      scrollToBottom();
     }
-  }, [sessionEvents])
+  }, [sessionEvents]);
 
   useEffect(() => {
     if (sessionEvents.length > 0) {
       const lastEvent = sessionEvents[sessionEvents.length - 1];
-      if (lastEvent.author !== 'user' && lastEvent.text && !lastEvent.isStreaming) {
+      if (
+        lastEvent.author !== 'user' &&
+        lastEvent.text &&
+        !lastEvent.isStreaming
+      ) {
         setLastAiResponse(lastEvent.text);
       }
     }
@@ -161,7 +171,9 @@ export default function AgentDevUI() {
 
           try {
             // Create a new session in the backend
-            const newSessionResponse = await api.post(`/apps/${selectedApp}/users/${userId}/sessions`);
+            const newSessionResponse = await api.post(
+              `/apps/${selectedApp}/users/${userId}/sessions`,
+            );
             const newSessionId = newSessionResponse.data.id;
 
             // Update the current session state
@@ -173,8 +185,8 @@ export default function AgentDevUI() {
               const message = {
                 content: {
                   parts: [{ text: queryParam }],
-                  role: "user"
-                }
+                  role: 'user',
+                },
               };
 
               // Add the user message to the UI immediately
@@ -183,7 +195,7 @@ export default function AgentDevUI() {
                 author: 'user',
                 text: queryParam,
                 timestamp: Date.now() / 1000,
-                isStreaming: false
+                isStreaming: false,
               };
 
               setSessionEvents([userMessage]);
@@ -209,40 +221,42 @@ export default function AgentDevUI() {
   }, [userId, selectedApp, sendMessage]); // Add sendMessage to dependencies
 
   const handleSessionChange = async (sessionId: string) => {
-    setCurrentSession(sessionId)
-    setSessionEvents([])
-    processedEventsRef.current.clear()
+    setCurrentSession(sessionId);
+    setSessionEvents([]);
+    processedEventsRef.current.clear();
 
     // Load session events
     try {
-      const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions/${sessionId}`)
+      const response = await api.get(
+        `/apps/${selectedApp}/users/${userId}/sessions/${sessionId}`,
+      );
       if (response.data.events) {
-        setSessionEvents(response.data.events)
+        setSessionEvents(response.data.events);
         // Scroll to bottom after loading session events
-        setTimeout(scrollToBottom, 100)
+        setTimeout(scrollToBottom, 100);
       }
     } catch (error) {
-      console.error('Error loading session events:', error)
+      console.error('Error loading session events:', error);
     }
-  }
+  };
 
   const handleNewSession = () => {
-    const newSessionId = crypto.randomUUID()
-    setCurrentSession(newSessionId)
-    setSessionEvents([])
-    processedEventsRef.current.clear()
-  }
+    const newSessionId = crypto.randomUUID();
+    setCurrentSession(newSessionId);
+    setSessionEvents([]);
+    processedEventsRef.current.clear();
+  };
 
   const handleResendMessage = async (text: string) => {
     // Create a new message with the resent text
     const message = {
       content: {
         parts: [{ text }],
-        role: "user"
-      }
-    }
-    await handleSendMessage(message)
-  }
+        role: 'user',
+      },
+    };
+    await handleSendMessage(message);
+  };
 
   const handleSendMessage = async (message: any) => {
     // Add user message to events immediately
@@ -251,31 +265,29 @@ export default function AgentDevUI() {
       author: 'user',
       text: message.content.parts?.[0]?.text || '',
       timestamp: Date.now() / 1000,
-      isStreaming: false
-    }
+      isStreaming: false,
+    };
 
-    setSessionEvents(prev => [...prev, userMessage])
+    setSessionEvents((prev) => [...prev, userMessage]);
 
     // Scroll to bottom after adding user message
-    setTimeout(scrollToBottom, 50)
+    setTimeout(scrollToBottom, 50);
 
     // Send through SSE
-    await sendMessage(message)
-  }
+    await sendMessage(message);
+  };
 
   const handleEditMessage = async (messageId: string, newText: string) => {
     // Find the message and update it
-    setSessionEvents(prev =>
-      prev.map(event =>
-        event.id === messageId
-          ? { ...event, text: newText }
-          : event
-      )
-    )
+    setSessionEvents((prev) =>
+      prev.map((event) =>
+        event.id === messageId ? { ...event, text: newText } : event,
+      ),
+    );
 
     // Optionally resend the edited message
-    await handleResendMessage(newText)
-  }
+    await handleResendMessage(newText);
+  };
 
   // Initialize session on component mount
   useEffect(() => {
@@ -290,31 +302,35 @@ export default function AgentDevUI() {
       }
 
       try {
-        const response = await api.get(`/apps/${selectedApp}/users/${userId}/sessions`)
-        const sessions = response.data
+        const response = await api.get(
+          `/apps/${selectedApp}/users/${userId}/sessions`,
+        );
+        const sessions = response.data;
 
         if (sessions.length > 0) {
-          await handleSessionChange(sessions[0].id)
+          await handleSessionChange(sessions[0].id);
         } else {
-          const newSessionResponse = await api.post(`/apps/${selectedApp}/users/${userId}/sessions`)
-          await handleSessionChange(newSessionResponse.data.id)
+          const newSessionResponse = await api.post(
+            `/apps/${selectedApp}/users/${userId}/sessions`,
+          );
+          await handleSessionChange(newSessionResponse.data.id);
         }
       } catch (error) {
-        console.error('Error initializing session:', error)
+        console.error('Error initializing session:', error);
         // If there's an error, create a new session anyway
-        handleNewSession()
+        handleNewSession();
       }
-    }
+    };
 
     if (userId) {
-      initializeSession()
+      initializeSession();
     }
-  }, [userId, selectedApp]) // Only depends on userId and selectedApp
+  }, [userId, selectedApp]); // Only depends on userId and selectedApp
 
   // Clear processed events when changing sessions
   useEffect(() => {
-    processedEventsRef.current.clear()
-  }, [currentSession])
+    processedEventsRef.current.clear();
+  }, [currentSession]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -341,7 +357,10 @@ export default function AgentDevUI() {
                     <PlanetIcon className="relative z-10 transition-transform duration-500 group-hover:rotate-[15deg]" />
                   </div>
                   <h1 className="text-lg sm:text-[1.3rem] font-normal tracking-[0.02em] text-foreground hidden sm:block">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80 font-medium">agent</span> cosm
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80 font-medium">
+                      agent
+                    </span>{' '}
+                    cosm
                   </h1>
                 </Link>
               </div>
@@ -376,17 +395,20 @@ export default function AgentDevUI() {
                       <TabsTrigger
                         value="events"
                         className={cn(
-                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
-                          "text-muted-foreground hover:text-foreground",
-                          "hover:bg-primary/10 hover:shadow-sm",
-                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
-                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                          'w-full justify-center p-3 rounded-xl transition-all duration-300',
+                          'text-muted-foreground hover:text-foreground',
+                          'hover:bg-primary/10 hover:shadow-sm',
+                          'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
+                          'data-[state=active]:shadow-md data-[state=active]:shadow-primary/5',
                         )}
                       >
                         <Folder className="w-5 h-5" />
                       </TabsTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                    <TooltipContent
+                      side="right"
+                      className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white"
+                    >
                       Events
                     </TooltipContent>
                   </Tooltip>
@@ -397,17 +419,20 @@ export default function AgentDevUI() {
                       <TabsTrigger
                         value="state"
                         className={cn(
-                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
-                          "text-muted-foreground hover:text-foreground",
-                          "hover:bg-primary/10 hover:shadow-sm",
-                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
-                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                          'w-full justify-center p-3 rounded-xl transition-all duration-300',
+                          'text-muted-foreground hover:text-foreground',
+                          'hover:bg-primary/10 hover:shadow-sm',
+                          'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
+                          'data-[state=active]:shadow-md data-[state=active]:shadow-primary/5',
                         )}
                       >
                         <FileText className="w-5 h-5" />
                       </TabsTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                    <TooltipContent
+                      side="right"
+                      className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white"
+                    >
                       State
                     </TooltipContent>
                   </Tooltip>
@@ -418,17 +443,20 @@ export default function AgentDevUI() {
                       <TabsTrigger
                         value="artifacts"
                         className={cn(
-                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
-                          "text-muted-foreground hover:text-foreground",
-                          "hover:bg-primary/10 hover:shadow-sm",
-                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
-                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                          'w-full justify-center p-3 rounded-xl transition-all duration-300',
+                          'text-muted-foreground hover:text-foreground',
+                          'hover:bg-primary/10 hover:shadow-sm',
+                          'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
+                          'data-[state=active]:shadow-md data-[state=active]:shadow-primary/5',
                         )}
                       >
                         <Database className="w-5 h-5" />
                       </TabsTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                    <TooltipContent
+                      side="right"
+                      className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white"
+                    >
                       Artifacts
                     </TooltipContent>
                   </Tooltip>
@@ -439,17 +467,20 @@ export default function AgentDevUI() {
                       <TabsTrigger
                         value="sessions"
                         className={cn(
-                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
-                          "text-muted-foreground hover:text-foreground",
-                          "hover:bg-primary/10 hover:shadow-sm",
-                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
-                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                          'w-full justify-center p-3 rounded-xl transition-all duration-300',
+                          'text-muted-foreground hover:text-foreground',
+                          'hover:bg-primary/10 hover:shadow-sm',
+                          'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
+                          'data-[state=active]:shadow-md data-[state=active]:shadow-primary/5',
                         )}
                       >
                         <GitBranch className="w-5 h-5" />
                       </TabsTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                    <TooltipContent
+                      side="right"
+                      className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white"
+                    >
                       Sessions
                     </TooltipContent>
                   </Tooltip>
@@ -460,17 +491,20 @@ export default function AgentDevUI() {
                       <TabsTrigger
                         value="eval"
                         className={cn(
-                          "w-full justify-center p-3 rounded-xl transition-all duration-300",
-                          "text-muted-foreground hover:text-foreground",
-                          "hover:bg-primary/10 hover:shadow-sm",
-                          "data-[state=active]:bg-primary/15 data-[state=active]:text-primary",
-                          "data-[state=active]:shadow-md data-[state=active]:shadow-primary/5"
+                          'w-full justify-center p-3 rounded-xl transition-all duration-300',
+                          'text-muted-foreground hover:text-foreground',
+                          'hover:bg-primary/10 hover:shadow-sm',
+                          'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
+                          'data-[state=active]:shadow-md data-[state=active]:shadow-primary/5',
                         )}
                       >
                         <TestTube className="w-5 h-5" />
                       </TabsTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white">
+                    <TooltipContent
+                      side="right"
+                      className="bg-background/80 backdrop-blur-sm border-primary/10 text-sm font-medium text-black dark:text-white"
+                    >
                       Evaluation
                     </TooltipContent>
                   </Tooltip>
@@ -485,7 +519,10 @@ export default function AgentDevUI() {
 
               {activeTab === 'events' ? (
                 <>
-                  <div className="flex-1 overflow-hidden" ref={scrollContainerRef}>
+                  <div
+                    className="flex-1 overflow-hidden"
+                    ref={scrollContainerRef}
+                  >
                     <div className="h-full custom-scrollbar pb-4">
                       <EventsTab
                         ref={eventsTabRef as any}
@@ -599,8 +636,16 @@ export default function AgentDevUI() {
             width: 100%;
             height: 100%;
             background-image:
-              radial-gradient(circle at 25% 25%, rgba(var(--primary-rgb), 0.1) 1px, transparent 1px),
-              radial-gradient(circle at 75% 75%, rgba(var(--secondary-rgb), 0.1) 1px, transparent 1px);
+              radial-gradient(
+                circle at 25% 25%,
+                rgba(var(--primary-rgb), 0.1) 1px,
+                transparent 1px
+              ),
+              radial-gradient(
+                circle at 75% 75%,
+                rgba(var(--secondary-rgb), 0.1) 1px,
+                transparent 1px
+              );
             background-size: 40px 40px;
             background-position: 0 0;
             animation: particlesDrift 60s linear infinite;
@@ -634,5 +679,5 @@ export default function AgentDevUI() {
         `}</style>
       </TooltipProvider>
     </QueryClientProvider>
-  )
+  );
 }
