@@ -2,12 +2,14 @@
 Trend Analyzer Agent - Identifies emerging market trends and patterns
 """
 
-from google.genai import Client, types
+from google.genai import Client
 from typing import Dict, List, Any
 import json
 
 from ..tools.market_research import search_web_real
-from cosm.config import MODEL_CONFIG as CONFIG
+from cosm.config import MODEL_CONFIG
+from litellm import completion
+from cosm.settings import settings
 
 client = Client()
 
@@ -209,12 +211,12 @@ def extract_trend_insights_with_gemini(
         Only return the JSON object, no other text.
         """
 
-        response = client.models.generate_content(
-            model=CONFIG["primary_model"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["trend_tracker"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -254,12 +256,12 @@ def extract_momentum_insights_with_gemini(
         Only return the JSON object, no other text.
         """
 
-        response = client.models.generate_content(
-            model=CONFIG["primary_model"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["trend_tracker"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:

@@ -1,25 +1,27 @@
 """
 Builder Agents - Create testable business assets from validated opportunities
+Updated with dynamic code generation for renderer service compatibility
 """
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from google.genai import Client, types
+from google.genai import Client
 from typing import Dict, List, Any, Optional
 import json
 import re
 from datetime import datetime
-
+from cosm.config import MODEL_CONFIG
 from cosm.prompts import (
     BRAND_CREATOR_PROMPT,
     COPY_WRITER_PROMPT,
-    LANDING_BUILDER_PROMPT,
 )
+from litellm import completion
+from cosm.settings import settings
 
 client = Client()
 
 # =============================================================================
-# BRAND CREATOR AGENT
+# BRAND CREATOR AGENT (unchanged)
 # =============================================================================
 
 
@@ -103,12 +105,12 @@ def generate_brand_with_ai(
         Focus on liminal market positioning - how this sits between existing categories.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.4
-            ),
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -193,7 +195,7 @@ def assess_trademark_risks(brand_name: str) -> List[str]:
 
 
 # =============================================================================
-# COPY WRITER AGENT
+# COPY WRITER AGENT (unchanged)
 # =============================================================================
 
 
@@ -287,12 +289,12 @@ def generate_core_copy_with_ai(
         Focus on liminal market positioning and immediate user benefits.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.4
-            ),
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -307,45 +309,70 @@ def generate_core_copy_with_ai(
 def generate_website_copy(
     brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
 ) -> Dict[str, str]:
-    """Generate website copy sections"""
+    """Generate website copy sections dynamically based on brand and opportunity"""
 
     brand_name = brand_data.get("brand_name", "Solution")
     value_prop = brand_data.get("value_proposition", "Transform your workflow")
+    target_audience = brand_data.get("target_audience", "teams")
 
-    website_copy = {
+    # Extract opportunity-specific context
+    opportunity_type = opportunity_data.get("type", "general")
+    pain_points = opportunity_data.get("pain_points", [])
+    benefits = opportunity_data.get("benefits", [])
+
+    # Generate dynamic copy based on context
+    try:
+        prompt = f"""
+        Generate website copy sections for this specific brand and opportunity:
+
+        Brand: {brand_name}
+        Value Proposition: {value_prop}
+        Target Audience: {target_audience}
+        Opportunity Type: {opportunity_type}
+        Pain Points: {pain_points}
+        Benefits: {benefits}
+
+        Create dynamic, brand-specific copy that avoids generic templates.
+        Generate JSON with these sections:
+        {{
+            "hero_headline": "Compelling headline that reflects the brand personality",
+            "hero_subheadline": "Supporting text that explains the value proposition",
+            "problem_section": "Section explaining the specific problems this audience faces",
+            "solution_section": "How this brand solves those problems uniquely",
+            "benefits_section": "Specific benefits formatted as bullet points",
+            "how_it_works": "Step-by-step process specific to this solution",
+            "cta_primary": "Primary call-to-action button text",
+            "cta_secondary": "Secondary CTA text"
+        }}
+
+        Make it specific to {brand_name} and avoid generic "workflow automation" language.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.text:
+            return json.loads(response.text)
+
+    except Exception as e:
+        print(f"Error generating dynamic website copy: {e}")
+
+    # Fallback to basic copy if AI generation fails
+    return {
         "hero_headline": f"Finally, {value_prop.lower()}",
         "hero_subheadline": f"{brand_name} bridges the gap between your existing tools to eliminate manual work and reduce errors.",
-        "problem_section": """
-        **The Problem Everyone Faces**
-
-        You're switching between multiple tools, copying data manually, and losing time on tasks that should be automated. Your workflow breaks down at the integration points, forcing you into inefficient workarounds.
-        """,
-        "solution_section": f"""
-        **How {brand_name} Works**
-
-        {brand_name} sits in the gap between your existing tools, automatically handling the connections and data transfers that currently require manual work. No complex setup, no workflow disruption - just intelligent automation where you need it most.
-        """,
-        "benefits_section": """
-        **What You'll Achieve**
-
-        - Eliminate manual data entry between systems
-        - Reduce errors from copy-paste workflows
-        - Save hours every week on repetitive tasks
-        - Keep using the tools you already know
-        - Scale your processes without scaling your effort
-        """,
-        "how_it_works": f"""
-        **Simple Integration**
-
-        1. **Connect**: Link {brand_name} to your existing tools (2-minute setup)
-        2. **Configure**: Set up the automated workflows you need
-        3. **Automate**: Watch as manual processes become seamless automation
-        """,
+        "problem_section": f"**The Problem {target_audience.title()} Face**\n\nYou're switching between multiple tools, copying data manually, and losing time on tasks that should be automated.",
+        "solution_section": f"**How {brand_name} Works**\n\n{brand_name} sits in the gap between your existing tools, automatically handling the connections and data transfers that currently require manual work.",
+        "benefits_section": "**What You'll Achieve**\n\n- Eliminate manual data entry between systems\n- Reduce errors from copy-paste workflows\n- Save hours every week on repetitive tasks",
+        "how_it_works": f"**Simple Integration**\n\n1. **Connect**: Link {brand_name} to your existing tools\n2. **Configure**: Set up the automated workflows you need\n3. **Automate**: Watch as manual processes become seamless automation",
         "cta_primary": "Start Automating Your Workflow",
         "cta_secondary": f"See {brand_name} in Action",
     }
-
-    return website_copy
 
 
 def generate_email_sequences(
@@ -418,7 +445,7 @@ def generate_social_copy(
 
 
 # =============================================================================
-# LANDING BUILDER AGENT
+# LANDING BUILDER AGENT (UPDATED FOR DYNAMIC GENERATION)
 # =============================================================================
 
 
@@ -428,7 +455,7 @@ def build_landing_page(
     opportunity_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Builds a complete landing page ready for deployment
+    Builds a complete landing page ready for deployment to the renderer service
     """
     landing_page = {
         "metadata": {
@@ -444,22 +471,32 @@ def build_landing_page(
         "deployment_config": {},
         "analytics_config": {},
         "conversion_tracking": {},
+        "deployment_payload": {},  # Added for renderer service
     }
 
     try:
+        # Generate design requirements first
+        design_requirements = generate_design_requirements(brand_data, opportunity_data)
+
         # Generate page metadata
         landing_page["metadata"] = generate_page_metadata(brand_data, copy_data)
 
-        # Generate HTML template
-        landing_page["html_template"] = generate_html_template()
+        # Generate dynamic HTML template (Jinja2 compatible)
+        landing_page["html_template"] = generate_html_template(
+            brand_data, copy_data, design_requirements
+        )
 
-        # Generate CSS styles
-        landing_page["css_styles"] = generate_css_styles(brand_data)
+        # Generate dynamic CSS styles
+        landing_page["css_styles"] = generate_css_styles(
+            brand_data, design_requirements
+        )
 
-        # Generate JavaScript
-        landing_page["javascript"] = generate_javascript_code()
+        # Generate dynamic JavaScript
+        landing_page["javascript"] = generate_javascript_code(
+            brand_data, design_requirements
+        )
 
-        # Prepare content data
+        # Prepare content data for renderer service
         landing_page["content_data"] = prepare_content_data(
             brand_data, copy_data, opportunity_data
         )
@@ -470,12 +507,739 @@ def build_landing_page(
         # Configure analytics
         landing_page["analytics_config"] = generate_analytics_config()
 
+        # Prepare complete deployment payload for renderer service
+        landing_page["deployment_payload"] = prepare_deployment_payload(
+            brand_data, copy_data, opportunity_data, landing_page
+        )
+
         return landing_page
 
     except Exception as e:
         print(f"Error building landing page: {e}")
         landing_page["error"] = str(e)
         return landing_page
+
+
+def generate_design_requirements(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Generate specific design requirements based on brand and opportunity"""
+
+    visual_identity = brand_data.get("visual_identity", {})
+    brand_personality = brand_data.get("brand_personality", {})
+    target_audience = brand_data.get("target_audience", "")
+
+    # Determine design style based on brand personality
+    personality_traits = brand_personality.get("personality_traits", [])
+    voice = brand_personality.get("voice", "professional")
+
+    # Map personality to design constraints
+    design_style = "modern-minimal"
+    if "innovative" in personality_traits or "cutting-edge" in voice.lower():
+        design_style = "futuristic-bold"
+    elif "friendly" in personality_traits or "approachable" in voice.lower():
+        design_style = "warm-friendly"
+    elif "premium" in personality_traits or "luxury" in voice.lower():
+        design_style = "premium-elegant"
+
+    # Determine layout complexity based on opportunity type
+    opportunity_type = opportunity_data.get("type", "standard")
+    complexity = "medium"
+    if opportunity_type in ["enterprise", "b2b"]:
+        complexity = "high"
+    elif opportunity_type in ["consumer", "simple"]:
+        complexity = "low"
+
+    return {
+        "design_style": design_style,
+        "layout_complexity": complexity,
+        "color_palette": visual_identity.get(
+            "color_palette", ["#2563eb", "#1e40af", "#3b82f6"]
+        ),
+        "typography_style": visual_identity.get("typography", "modern-sans"),
+        "brand_voice": voice,
+        "personality_traits": personality_traits,
+        "target_audience": target_audience,
+        "conversion_focus": "early_signup",
+        "mobile_priority": True,
+        "accessibility_level": "wcag_aa",
+        "animation_level": "subtle",
+        "sections_required": [
+            "hero",
+            "problem",
+            "solution",
+            "social_proof",
+            "cta",
+            "faq",
+        ],
+    }
+
+
+def generate_html_template(
+    brand_data: Dict[str, Any] = None,
+    copy_data: Dict[str, Any] = None,
+    design_requirements: Dict[str, Any] = None,
+) -> str:
+    """Generate dynamic HTML template with Jinja2 syntax for renderer service"""
+
+    if brand_data is None:
+        brand_data = {}
+    if copy_data is None:
+        copy_data = {}
+    if design_requirements is None:
+        design_requirements = generate_design_requirements(brand_data, {})
+
+    try:
+        prompt = f"""
+        Create a complete HTML template for the In-Memory Webpage Renderer service:
+
+        BRAND DATA:
+        {json.dumps(brand_data, indent=2)}
+
+        COPY DATA:
+        {json.dumps(copy_data, indent=2)}
+
+        DESIGN REQUIREMENTS:
+        {json.dumps(design_requirements, indent=2)}
+
+        CRITICAL REQUIREMENTS:
+
+        1. JINJA2 TEMPLATE FORMAT:
+        - Use {{{{ variable_name }}}} for all dynamic content
+        - Available variables: brand_name, tagline, headline, description, features, pricing_plans, testimonials, faqs, current_year, site_url
+        - Use {{% for feature in features %}} loops for dynamic lists
+
+        2. NO EMBEDDED CSS OR JAVASCRIPT:
+        - Do NOT include <style> or <script> tags
+        - Renderer service will inject CSS and JS separately
+
+        3. ANALYTICS READY:
+        - Add data-track attributes: data-track="cta-primary", data-track="feature-click", etc.
+        - Include onclick="trackEvent('event_name')" for key interactions
+
+        4. RESPONSIVE STRUCTURE:
+        - Semantic HTML5 elements
+        - Mobile-first structure
+        - Proper accessibility attributes
+
+        5. DESIGN STYLE: {design_requirements.get('design_style', 'modern-minimal')}
+        - Reflect this style in the HTML structure and class names
+
+        6. REQUIRED SECTIONS:
+        - Header with navigation
+        - Hero section with main CTA
+        - Features section using {{{{ features }}}} loop
+        - Testimonials using {{{{ testimonials }}}} loop
+        - Pricing using {{{{ pricing_plans }}}} loop (if applicable)
+        - FAQ using {{{{ faqs }}}} loop
+        - CTA section with form
+        - Footer
+
+        Generate complete HTML with proper Jinja2 templating syntax.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.text:
+            # Clean up any accidental CSS/JS inclusions
+            html = response.text.strip()
+            html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL)
+            html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL)
+            return html
+
+    except Exception as e:
+        print(f"Error generating dynamic HTML: {e}")
+
+    # Fallback template with Jinja2 syntax
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ headline }} | {{ brand_name }}</title>
+    <meta name="description" content="{{ description }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">{{ brand_name }}</div>
+            <button class="cta-nav" data-track="nav-cta">Get Started</button>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>{{ headline }}</h1>
+            <p>{{ description }}</p>
+            <button class="cta-primary" data-track="cta-primary" onclick="trackEvent('hero_cta_click')">Get Started</button>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="container">
+            <h2>Why Choose {{ brand_name }}?</h2>
+            <div class="features-grid">
+                {% for feature in features %}
+                <div class="feature-card" data-track="feature-click">
+                    <div class="feature-icon">{{ feature.icon }}</div>
+                    <h3>{{ feature.title }}</h3>
+                    <p>{{ feature.description }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="testimonials">
+        <div class="container">
+            <h2>What Our Users Say</h2>
+            <div class="testimonials-grid">
+                {% for testimonial in testimonials %}
+                <div class="testimonial-card">
+                    <p>"{{ testimonial.quote }}"</p>
+                    <div class="author">- {{ testimonial.author }}, {{ testimonial.title }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Ready to Get Started?</h2>
+            <form class="signup-form" data-track="form-submit">
+                <input type="email" placeholder="Enter your email" required>
+                <button type="submit">Start Free Trial</button>
+            </form>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; {{ current_year }} {{ brand_name }}. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>"""
+
+
+def generate_css_styles(
+    brand_data: Dict[str, Any], design_requirements: Dict[str, Any] = None
+) -> str:
+    """Generate dynamic CSS styles based on brand identity and design requirements"""
+
+    if design_requirements is None:
+        design_requirements = generate_design_requirements(brand_data, {})
+
+    visual_identity = brand_data.get("visual_identity", {})
+    colors = visual_identity.get("color_palette", ["#2563eb", "#1e40af", "#3b82f6"])
+    design_style = design_requirements.get("design_style", "modern-minimal")
+
+    try:
+        prompt = f"""
+        Create CSS styles for the In-Memory Webpage Renderer service:
+
+        BRAND DATA:
+        {json.dumps(brand_data, indent=2)}
+
+        DESIGN REQUIREMENTS:
+        {json.dumps(design_requirements, indent=2)}
+
+        CRITICAL REQUIREMENTS:
+
+        1. STANDALONE CSS (no <style> tags):
+        - Will be injected by renderer service
+        - Must work independently
+
+        2. BRAND-SPECIFIC STYLING:
+        - Primary color: {colors[0] if colors else '#2563eb'}
+        - Secondary colors: {colors[1:] if len(colors) > 1 else ['#1e40af']}
+        - Design style: {design_style}
+
+        3. DESIGN STYLE INTERPRETATION:
+        - "futuristic-bold": Gradients, geometric shapes, neon accents, bold shadows
+        - "warm-friendly": Rounded corners, soft shadows, warm colors, approachable fonts
+        - "premium-elegant": Minimalist, luxury typography, sophisticated colors, subtle effects
+        - "modern-minimal": Clean lines, ample whitespace, simple typography, restrained colors
+
+        4. ANALYTICS INTEGRATION:
+        - Style [data-track] elements with hover effects
+        - Prominent CTA button styling
+        - Form styling that encourages completion
+
+        5. RESPONSIVE DESIGN:
+        - Mobile-first approach
+        - Breakpoints: 768px, 1024px, 1440px
+        - CSS Grid and Flexbox
+
+        Generate complete CSS that reflects the brand personality and creates a unique visual identity.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.text:
+            return response.text.strip()
+
+    except Exception as e:
+        print(f"Error generating dynamic CSS: {e}")
+
+    # Fallback CSS
+    primary_color = colors[0] if colors else "#2563eb"
+    secondary_color = colors[1] if len(colors) > 1 else "#1e40af"
+
+    return f"""
+/* Dynamic CSS for {brand_data.get('brand_name', 'Brand')} */
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; }}
+.container {{ max-width: 1200px; margin: 0 auto; padding: 0 20px; }}
+
+/* Analytics-ready elements */
+[data-track] {{ cursor: pointer; transition: all 0.3s ease; }}
+[data-track]:hover {{ transform: translateY(-2px); }}
+
+/* Header */
+.header {{ background: white; padding: 1rem 0; border-bottom: 1px solid #e5e7eb; }}
+.header .container {{ display: flex; justify-content: space-between; align-items: center; }}
+.logo {{ font-size: 1.5rem; font-weight: 700; color: {primary_color}; }}
+
+/* CTA Buttons */
+.cta-primary, .cta-nav {{
+    background: {primary_color};
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}}
+.cta-primary:hover, .cta-nav:hover {{
+    background: {secondary_color};
+    transform: translateY(-2px);
+}}
+
+/* Hero */
+.hero {{ padding: 4rem 0; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }}
+.hero h1 {{ font-size: 3rem; margin-bottom: 1rem; color: #1f2937; }}
+.hero p {{ font-size: 1.25rem; color: #6b7280; margin-bottom: 2rem; }}
+
+/* Features */
+.features {{ padding: 4rem 0; }}
+.features-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }}
+.feature-card {{
+    padding: 2rem;
+    border-radius: 8px;
+    background: #f8fafc;
+    transition: all 0.3s ease;
+    border: 1px solid #e5e7eb;
+}}
+.feature-card:hover {{ transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }}
+
+/* Testimonials */
+.testimonials {{ padding: 4rem 0; background: #f8fafc; }}
+.testimonials-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; }}
+.testimonial-card {{
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 4px solid {primary_color};
+}}
+
+/* CTA Section */
+.cta-section {{
+    padding: 4rem 0;
+    background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%);
+    color: white;
+    text-align: center;
+}}
+.signup-form {{ max-width: 400px; margin: 0 auto; }}
+.signup-form input {{
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: none;
+    border-radius: 6px;
+}}
+
+/* Footer */
+.footer {{ background: #1f2937; color: white; padding: 2rem 0; text-align: center; }}
+
+/* Responsive */
+@media (max-width: 768px) {{
+    .hero h1 {{ font-size: 2rem; }}
+    .features-grid {{ grid-template-columns: 1fr; }}
+    .testimonials-grid {{ grid-template-columns: 1fr; }}
+}}
+"""
+
+
+def generate_javascript_code(
+    brand_data: Dict[str, Any], design_requirements: Dict[str, Any] = None
+) -> str:
+    """Generate dynamic JavaScript compatible with renderer service analytics"""
+
+    if design_requirements is None:
+        design_requirements = generate_design_requirements(brand_data, {})
+
+    try:
+        prompt = f"""
+        Create JavaScript for the In-Memory Webpage Renderer service:
+
+        BRAND DATA:
+        {json.dumps(brand_data, indent=2)}
+
+        DESIGN REQUIREMENTS:
+        {json.dumps(design_requirements, indent=2)}
+
+        CRITICAL REQUIREMENTS:
+
+        1. RENDERER SERVICE INTEGRATION:
+        - window.SITE_ID is provided by the service
+        - trackEvent(eventType, eventData) function is provided
+        - Do NOT redefine these functions
+        - Code will be injected before </body>
+
+        2. REQUIRED ANALYTICS:
+        - Auto-track all [data-track] element clicks
+        - Track form submissions with validation
+        - Track scroll depth (25%, 50%, 75%, 100%)
+        - Track engagement metrics
+
+        3. BRAND-SPECIFIC INTERACTIONS:
+        - Animation level: {design_requirements.get('animation_level', 'subtle')}
+        - Conversion focus: {design_requirements.get('conversion_focus', 'signup')}
+        - Design style: {design_requirements.get('design_style', 'modern-minimal')}
+
+        4. FORM HANDLING:
+        - Validate email addresses
+        - Provide user feedback
+        - Track conversion funnel
+
+        5. UX ENHANCEMENTS:
+        - Smooth scrolling
+        - Progressive enhancement
+        - Mobile-friendly interactions
+
+        Generate JavaScript that enhances the user experience and provides comprehensive analytics.
+        Do NOT include <script> tags.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.text:
+            js = response.text.strip()
+            # Clean up any script tags
+            js = re.sub(r"<script[^>]*>", "", js)
+            js = re.sub(r"</script>", "", js)
+            return js
+
+    except Exception as e:
+        print(f"Error generating dynamic JavaScript: {e}")
+
+    # Fallback JavaScript
+    return """
+// Auto-track data-track elements
+document.addEventListener('click', function(e) {
+    const trackElement = e.target.closest('[data-track]');
+    if (trackElement) {
+        const trackType = trackElement.getAttribute('data-track');
+        trackEvent(trackType + '_click', {
+            element: trackType,
+            text: trackElement.textContent.trim().substring(0, 50),
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Form handling with validation
+document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (form.matches('[data-track="form-submit"]')) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const email = formData.get('email');
+
+        // Basic email validation
+        if (!email || !email.includes('@')) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        const data = Object.fromEntries(formData.entries());
+
+        trackEvent('form_submit', {
+            form_type: 'signup',
+            has_email: !!email,
+            timestamp: new Date().toISOString()
+        });
+
+        // Form submission feedback
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Submitting...';
+        submitBtn.disabled = true;
+
+        setTimeout(() => {
+            submitBtn.textContent = 'Thank you!';
+            form.reset();
+            setTimeout(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }, 2000);
+        }, 1000);
+    }
+});
+
+// Scroll depth tracking
+let scrollThresholds = [25, 50, 75, 100];
+let trackedThresholds = new Set();
+
+window.addEventListener('scroll', function() {
+    const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+
+    scrollThresholds.forEach(threshold => {
+        if (scrollPercent >= threshold && !trackedThresholds.has(threshold)) {
+            trackedThresholds.add(threshold);
+            trackEvent('scroll_depth', {
+                percentage: threshold,
+                timestamp: new Date().toISOString()
+            });
+        }
+    });
+});
+
+// Smooth scrolling for anchor links
+document.addEventListener('click', function(e) {
+    const link = e.target.closest('a[href^="#"]');
+    if (link) {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+});
+
+// Enhanced hover effects for tracked elements
+document.querySelectorAll('[data-track]').forEach(el => {
+    el.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+    });
+
+    el.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+    });
+});
+"""
+
+
+def prepare_content_data(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Prepare content data for renderer service ContentData model"""
+
+    website_copy = copy_data.get("website_copy", {})
+
+    # Prepare features from opportunity data
+    features = []
+    opportunity_benefits = opportunity_data.get("benefits", [])
+    for i, benefit in enumerate(opportunity_benefits[:6]):
+        if isinstance(benefit, dict):
+            features.append(
+                {
+                    "title": benefit.get("title", f"Feature {i+1}"),
+                    "description": benefit.get("description", "Benefit description"),
+                    "icon": benefit.get("icon", "⚡"),
+                    "category": benefit.get("category", "benefit"),
+                }
+            )
+        else:
+            features.append(
+                {
+                    "title": f"Feature {i+1}",
+                    "description": str(benefit),
+                    "icon": "⚡",
+                    "category": "benefit",
+                }
+            )
+
+    # Default features if none exist
+    if not features:
+        features = [
+            {
+                "title": "Easy Integration",
+                "description": "Connect with your existing tools in minutes",
+                "icon": "🔗",
+                "category": "integration",
+            },
+            {
+                "title": "Save Time",
+                "description": "Automate repetitive tasks and focus on what matters",
+                "icon": "⏰",
+                "category": "productivity",
+            },
+            {
+                "title": "Secure & Reliable",
+                "description": "Enterprise-grade security and 99.9% uptime",
+                "icon": "🔒",
+                "category": "security",
+            },
+        ]
+
+    # Prepare testimonials
+    testimonials = [
+        {
+            "quote": "This solution transformed our workflow completely.",
+            "author": "Sarah Johnson",
+            "title": "Operations Manager",
+            "company": "TechCorp",
+            "rating": 5,
+        },
+        {
+            "quote": "We're saving 10+ hours per week on manual tasks.",
+            "author": "Mike Chen",
+            "title": "Team Lead",
+            "company": "StartupXYZ",
+            "rating": 5,
+        },
+    ]
+
+    # Prepare pricing plans
+    pricing_plans = opportunity_data.get("pricing", [])
+    if not pricing_plans:
+        pricing_plans = [
+            {
+                "name": "Starter",
+                "price": "Free",
+                "period": "",
+                "features": ["Basic automation", "2 integrations", "Email support"],
+                "cta": "Get Started",
+                "highlighted": False,
+            },
+            {
+                "name": "Professional",
+                "price": "$29",
+                "period": "/month",
+                "features": [
+                    "Advanced automation",
+                    "Unlimited integrations",
+                    "Priority support",
+                ],
+                "cta": "Start Free Trial",
+                "highlighted": True,
+            },
+        ]
+
+    # Prepare FAQs
+    faqs = [
+        {
+            "question": "How quickly can I get started?",
+            "answer": "Most teams are up and running within 15 minutes. Our setup is designed to be simple and non-disruptive.",
+        },
+        {
+            "question": "Do you integrate with my existing tools?",
+            "answer": "Yes, we support the most popular business tools and are constantly adding new integrations.",
+        },
+        {
+            "question": "Is my data secure?",
+            "answer": "Absolutely. We use enterprise-grade security and never store your sensitive data permanently.",
+        },
+    ]
+
+    return {
+        "brand_name": brand_data.get("brand_name", "Demo Site"),
+        "tagline": brand_data.get("tagline", ""),
+        "headline": website_copy.get(
+            "hero_headline", copy_data.get("headlines", ["Transform Your Workflow"])[0]
+        ),
+        "description": brand_data.get(
+            "value_proposition", "The best solution for your needs"
+        ),
+        "features": features,
+        "pricing_plans": pricing_plans,
+        "testimonials": testimonials,
+        "faqs": faqs,
+    }
+
+
+def prepare_deployment_payload(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+    landing_page: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Prepare complete deployment payload for renderer service"""
+
+    content_data = landing_page.get("content_data", {})
+
+    # Prepare website assets
+    assets = {
+        "html_template": landing_page.get("html_template", ""),
+        "css_styles": landing_page.get("css_styles", ""),
+        "javascript": landing_page.get("javascript", ""),
+        "config": {
+            "responsive": True,
+            "analytics_enabled": True,
+            "conversion_tracking": True,
+        },
+    }
+
+    # Prepare meta data
+    meta_data = {
+        "title": f"{content_data.get('brand_name', '')} - {content_data.get('tagline', '')}",
+        "description": content_data.get("description", "")[:160],
+        "keywords": [
+            content_data.get("brand_name", "").lower(),
+            "workflow automation",
+            "productivity tools",
+            "business integration",
+        ],
+        "og_title": content_data.get("headline", ""),
+        "og_description": content_data.get("description", ""),
+        "brand_style": brand_data.get("visual_identity", {}),
+        "opportunity_type": opportunity_data.get("type", "standard"),
+    }
+
+    # Prepare analytics config
+    analytics = {
+        "conversion_events": ["cta-primary", "cta-secondary", "form-submit"],
+        "engagement_tracking": True,
+        "scroll_tracking": True,
+        "exit_intent": True,
+    }
+
+    return {
+        "site_name": brand_data.get("brand_name", "Landing Page")
+        .lower()
+        .replace(" ", "-"),
+        "assets": assets,
+        "content_data": content_data,
+        "meta_data": meta_data,
+        "analytics": analytics,
+    }
 
 
 def generate_page_metadata(
@@ -504,837 +1268,6 @@ def generate_page_metadata(
         "og_title": primary_headline,
         "og_description": brand_data.get("value_proposition", ""),
         "og_image": "/images/og-image.jpg",
-    }
-
-
-def generate_html_template() -> str:
-    """Generate responsive HTML template"""
-    return """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <meta name="description" content="{{ description }}">
-    <meta name="keywords" content="{{ keywords|join(', ') }}">
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="{{ og_title }}">
-    <meta property="og:description" content="{{ og_description }}">
-    <meta property="og:image" content="{{ og_image }}">
-    <meta property="og:type" content="website">
-
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-    <!-- Header -->
-    <header class="header">
-        <div class="container">
-            <div class="nav">
-                <div class="logo">{{ brand_name }}</div>
-                <button class="cta-button-nav">{{ cta_primary }}</button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <div class="hero-content">
-                <h1 class="hero-headline">{{ hero_headline }}</h1>
-                <p class="hero-subheadline">{{ hero_subheadline }}</p>
-                <div class="hero-cta">
-                    <button class="cta-button-primary" onclick="scrollToDemo()">{{ cta_primary }}</button>
-                    <button class="cta-button-secondary" onclick="trackEvent('secondary_cta_click')">{{ cta_secondary }}</button>
-                </div>
-            </div>
-            <div class="hero-visual">
-                <div class="demo-placeholder">
-                    <div class="demo-screen">
-                        <div class="demo-content">
-                            <div class="tool-connection">
-                                <div class="tool-box">Tool A</div>
-                                <div class="connection-arrow">→</div>
-                                <div class="bridge-box">{{ brand_name }}</div>
-                                <div class="connection-arrow">→</div>
-                                <div class="tool-box">Tool B</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Problem Section -->
-    <section class="problem-section">
-        <div class="container">
-            <h2>The Problem Everyone Faces</h2>
-            <div class="problem-grid">
-                <div class="problem-item">
-                    <div class="problem-icon">⚡</div>
-                    <h3>Manual Data Entry</h3>
-                    <p>Copy-pasting between tools wastes hours every week</p>
-                </div>
-                <div class="problem-item">
-                    <div class="problem-icon">🔗</div>
-                    <h3>Broken Workflows</h3>
-                    <p>Your process stops working when tools don't connect</p>
-                </div>
-                <div class="problem-item">
-                    <div class="problem-icon">❌</div>
-                    <h3>Error-Prone Processes</h3>
-                    <p>Manual handoffs introduce mistakes and inconsistencies</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Solution Section -->
-    <section class="solution-section">
-        <div class="container">
-            <h2>How {{ brand_name }} Works</h2>
-            <div class="solution-content">
-                <div class="solution-text">
-                    <p>{{ brand_name }} sits in the gap between your existing tools, automatically handling the connections and data transfers that currently require manual work.</p>
-                    <ul class="benefits-list">
-                        {% for benefit in benefits %}
-                        <li>{{ benefit }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                <div class="solution-visual">
-                    <div class="workflow-demo">
-                        <div class="step">
-                            <div class="step-number">1</div>
-                            <div class="step-content">Connect your tools</div>
-                        </div>
-                        <div class="step">
-                            <div class="step-number">2</div>
-                            <div class="step-content">Configure workflows</div>
-                        </div>
-                        <div class="step">
-                            <div class="step-number">3</div>
-                            <div class="step-content">Automate everything</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Social Proof Section -->
-    <section class="social-proof">
-        <div class="container">
-            <h2>Join Early Adopters Already Saving Time</h2>
-            <div class="testimonials">
-                <div class="testimonial">
-                    <p>"Finally, a solution that connects our tools without disrupting our workflow."</p>
-                    <div class="testimonial-author">- Sarah K., Operations Manager</div>
-                </div>
-                <div class="testimonial">
-                    <p>"We're saving 10+ hours per week on manual data entry."</p>
-                    <div class="testimonial-author">- Mike R., Team Lead</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="cta-section" id="demo">
-        <div class="container">
-            <div class="cta-content">
-                <h2>Ready to Eliminate Manual Work?</h2>
-                <p>Join hundreds of teams already automating their workflows with {{ brand_name }}</p>
-
-                <div class="signup-form">
-                    <form id="early-access-form" onsubmit="handleFormSubmit(event)">
-                        <div class="form-group">
-                            <input type="email" id="email" placeholder="Enter your work email" required>
-                            <input type="text" id="company" placeholder="Company name" required>
-                        </div>
-                        <button type="submit" class="cta-button-large">Get Early Access</button>
-                    </form>
-                    <p class="form-note">No spam. Unsubscribe anytime. Get notified when we launch.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- FAQ Section -->
-    <section class="faq-section">
-        <div class="container">
-            <h2>Frequently Asked Questions</h2>
-            <div class="faq-grid">
-                <div class="faq-item">
-                    <h3>How quickly can I get started?</h3>
-                    <p>Most teams are up and running within 15 minutes. Our setup is designed to be simple and non-disruptive.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>Will this replace my existing tools?</h3>
-                    <p>No. {{ brand_name }} works with your existing tools to automate the connections between them.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>Is my data secure?</h3>
-                    <p>Yes. We use enterprise-grade security and never store your sensitive data permanently.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>What tools do you integrate with?</h3>
-                    <p>We support the most popular business tools and are constantly adding new integrations based on user requests.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-logo">{{ brand_name }}</div>
-                <div class="footer-links">
-                    <a href="#privacy">Privacy</a>
-                    <a href="#terms">Terms</a>
-                    <a href="#contact">Contact</a>
-                </div>
-            </div>
-        </div>
-    </footer>
-</body>
-</html>
-"""
-
-
-def generate_css_styles(brand_data: Dict[str, Any]) -> str:
-    """Generate CSS styles based on brand identity"""
-
-    visual_identity = brand_data.get("visual_identity", {})
-    colors = visual_identity.get("color_palette", ["#2563eb", "#1e40af", "#3b82f6"])
-
-    primary_color = colors[0] if colors else "#2563eb"
-    secondary_color = colors[1] if len(colors) > 1 else "#1e40af"
-
-    return f"""
-/* Reset and Base Styles */
-* {{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}}
-
-body {{
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    line-height: 1.6;
-    color: #1f2937;
-    background-color: #ffffff;
-}}
-
-.container {{
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-}}
-
-/* Header */
-.header {{
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}}
-
-.nav {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 0;
-}}
-
-.logo {{
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: {primary_color};
-}}
-
-/* Buttons */
-.cta-button-nav {{
-    background: {primary_color};
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}}
-
-.cta-button-primary {{
-    background: {primary_color};
-    color: white;
-    border: none;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.3);
-}}
-
-.cta-button-primary:hover {{
-    background: {secondary_color};
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.4);
-}}
-
-.cta-button-secondary {{
-    background: transparent;
-    color: {primary_color};
-    border: 2px solid {primary_color};
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-left: 1rem;
-}}
-
-.cta-button-secondary:hover {{
-    background: {primary_color};
-    color: white;
-}}
-
-.cta-button-large {{
-    background: {primary_color};
-    color: white;
-    border: none;
-    padding: 1.2rem 2.5rem;
-    border-radius: 8px;
-    font-size: 1.2rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    width: 100%;
-    max-width: 300px;
-}}
-
-/* Hero Section */
-.hero {{
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    padding: 4rem 0;
-    min-height: 70vh;
-    display: flex;
-    align-items: center;
-}}
-
-.hero .container {{
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    align-items: center;
-}}
-
-.hero-headline {{
-    font-size: 3rem;
-    font-weight: 700;
-    line-height: 1.2;
-    margin-bottom: 1rem;
-    color: #1f2937;
-}}
-
-.hero-subheadline {{
-    font-size: 1.25rem;
-    color: #6b7280;
-    margin-bottom: 2rem;
-    line-height: 1.6;
-}}
-
-.hero-cta {{
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}}
-
-/* Demo Visual */
-.demo-placeholder {{
-    background: white;
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-}}
-
-.demo-screen {{
-    background: #f8fafc;
-    border-radius: 8px;
-    padding: 1.5rem;
-    border: 1px solid #e5e7eb;
-}}
-
-.tool-connection {{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-}}
-
-.tool-box {{
-    background: #e5e7eb;
-    padding: 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    text-align: center;
-    flex: 1;
-}}
-
-.bridge-box {{
-    background: {primary_color};
-    color: white;
-    padding: 1rem;
-    border-radius: 6px;
-    font-weight: 600;
-    text-align: center;
-    flex: 1;
-}}
-
-.connection-arrow {{
-    font-size: 1.5rem;
-    color: {primary_color};
-    font-weight: bold;
-}}
-
-/* Problem Section */
-.problem-section {{
-    padding: 4rem 0;
-    background: white;
-}}
-
-.problem-section h2 {{
-    text-align: center;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 3rem;
-    color: #1f2937;
-}}
-
-.problem-grid {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-}}
-
-.problem-item {{
-    text-align: center;
-    padding: 2rem;
-    border-radius: 12px;
-    background: #f8fafc;
-    border: 1px solid #e5e7eb;
-}}
-
-.problem-icon {{
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}}
-
-.problem-item h3 {{
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    color: #1f2937;
-}}
-
-/* Solution Section */
-.solution-section {{
-    padding: 4rem 0;
-    background: #f8fafc;
-}}
-
-.solution-section h2 {{
-    text-align: center;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 3rem;
-    color: #1f2937;
-}}
-
-.solution-content {{
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    align-items: center;
-}}
-
-.benefits-list {{
-    list-style: none;
-    margin-top: 1.5rem;
-}}
-
-.benefits-list li {{
-    padding: 0.5rem 0;
-    position: relative;
-    padding-left: 1.5rem;
-}}
-
-.benefits-list li:before {{
-    content: "✓";
-    position: absolute;
-    left: 0;
-    color: {primary_color};
-    font-weight: bold;
-}}
-
-.workflow-demo {{
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-}}
-
-.step {{
-    display: flex;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}}
-
-.step-number {{
-    background: {primary_color};
-    color: white;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    margin-right: 1rem;
-}}
-
-/* Social Proof */
-.social-proof {{
-    padding: 4rem 0;
-    background: white;
-}}
-
-.social-proof h2 {{
-    text-align: center;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 3rem;
-    color: #1f2937;
-}}
-
-.testimonials {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
-}}
-
-.testimonial {{
-    background: #f8fafc;
-    padding: 2rem;
-    border-radius: 12px;
-    border-left: 4px solid {primary_color};
-}}
-
-.testimonial p {{
-    font-size: 1.1rem;
-    font-style: italic;
-    margin-bottom: 1rem;
-}}
-
-.testimonial-author {{
-    font-weight: 600;
-    color: #6b7280;
-}}
-
-/* CTA Section */
-.cta-section {{
-    padding: 4rem 0;
-    background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%);
-    color: white;
-    text-align: center;
-}}
-
-.cta-content h2 {{
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-}}
-
-.cta-content p {{
-    font-size: 1.25rem;
-    margin-bottom: 2rem;
-    opacity: 0.9;
-}}
-
-.signup-form {{
-    max-width: 500px;
-    margin: 0 auto;
-}}
-
-.form-group {{
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}}
-
-.form-group input {{
-    padding: 1rem;
-    border: none;
-    border-radius: 6px;
-    font-size: 1rem;
-}}
-
-.form-note {{
-    font-size: 0.9rem;
-    opacity: 0.8;
-    margin-top: 1rem;
-}}
-
-/* FAQ Section */
-.faq-section {{
-    padding: 4rem 0;
-    background: #f8fafc;
-}}
-
-.faq-section h2 {{
-    text-align: center;
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 3rem;
-    color: #1f2937;
-}}
-
-.faq-grid {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-}}
-
-.faq-item {{
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}}
-
-.faq-item h3 {{
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #1f2937;
-}}
-
-/* Footer */
-.footer {{
-    background: #1f2937;
-    color: white;
-    padding: 2rem 0;
-}}
-
-.footer-content {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}}
-
-.footer-logo {{
-    font-size: 1.25rem;
-    font-weight: 600;
-}}
-
-.footer-links {{
-    display: flex;
-    gap: 2rem;
-}}
-
-.footer-links a {{
-    color: #d1d5db;
-    text-decoration: none;
-    transition: color 0.2s;
-}}
-
-.footer-links a:hover {{
-    color: white;
-}}
-
-/* Responsive Design */
-@media (max-width: 768px) {{
-    .hero .container {{
-        grid-template-columns: 1fr;
-        text-align: center;
-    }}
-
-    .hero-headline {{
-        font-size: 2rem;
-    }}
-
-    .solution-content {{
-        grid-template-columns: 1fr;
-    }}
-
-    .testimonials {{
-        grid-template-columns: 1fr;
-    }}
-
-    .hero-cta {{
-        justify-content: center;
-    }}
-
-    .cta-button-secondary {{
-        margin-left: 0;
-        margin-top: 1rem;
-    }}
-
-    .form-group {{
-        flex-direction: column;
-    }}
-}}
-"""
-
-
-def generate_javascript_code() -> str:
-    """Generate JavaScript for interactions and analytics"""
-    return """
-// Smooth scrolling and interactions
-function scrollToDemo() {
-    document.getElementById('demo').scrollIntoView({
-        behavior: 'smooth'
-    });
-    trackEvent('hero_cta_click');
-}
-
-// Form handling
-function handleFormSubmit(event) {
-    event.preventDefault();
-
-    const email = document.getElementById('email').value;
-    const company = document.getElementById('company').value;
-
-    // Basic validation
-    if (!email || !company) {
-        alert('Please fill in all fields');
-        return;
-    }
-
-    // Track form submission
-    trackEvent('form_submit', {
-        email: email,
-        company: company
-    });
-
-    // Simulate API call
-    const submitButton = event.target.querySelector('button[type="submit"]');
-    const originalText = submitButton.textContent;
-
-    submitButton.textContent = 'Submitting...';
-    submitButton.disabled = true;
-
-    setTimeout(() => {
-        submitButton.textContent = 'Thank you! We\\'ll be in touch.';
-        document.getElementById('early-access-form').reset();
-
-        // Show success message
-        setTimeout(() => {
-            submitButton.textContent = originalText;
-            submitButton.disabled = false;
-        }, 3000);
-    }, 1000);
-}
-
-// Analytics and event tracking
-function trackEvent(eventName, eventData = {}) {
-    // Google Analytics 4
-    if (typeof gtag !== 'undefined') {
-        gtag('event', eventName, eventData);
-    }
-
-    // Custom analytics
-    if (window.analytics) {
-        window.analytics.track(eventName, eventData);
-    }
-
-    // Console log for development
-    console.log('Event tracked:', eventName, eventData);
-}
-
-// Scroll animations
-function observeElements() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }
-        });
-    });
-
-    document.querySelectorAll('.problem-item, .testimonial, .faq-item').forEach(el => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(20px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        observer.observe(el);
-    });
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    observeElements();
-    trackEvent('page_view');
-});
-
-// Track exit intent
-document.addEventListener('mouseout', function(e) {
-    if (e.toElement === null && e.relatedTarget === null) {
-        trackEvent('exit_intent');
-    }
-});
-"""
-
-
-def prepare_content_data(
-    brand_data: Dict[str, Any],
-    copy_data: Dict[str, Any],
-    opportunity_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Prepare all content data for template rendering"""
-
-    website_copy = copy_data.get("website_copy", {})
-
-    return {
-        "brand_name": brand_data.get("brand_name", "Solution"),
-        "title": f"{brand_data.get('brand_name', 'Solution')} - {brand_data.get('tagline', 'Workflow Automation')}",
-        "description": brand_data.get(
-            "value_proposition", "Automate your workflow and eliminate manual processes"
-        ),
-        "keywords": [
-            "workflow automation",
-            "productivity",
-            "integration",
-            "business tools",
-        ],
-        "og_title": website_copy.get("hero_headline", "Transform Your Workflow"),
-        "og_description": brand_data.get("value_proposition", ""),
-        "og_image": "/images/og-image.jpg",
-        "hero_headline": website_copy.get(
-            "hero_headline", "Finally, workflow automation that works"
-        ),
-        "hero_subheadline": website_copy.get(
-            "hero_subheadline", "Connect your tools and eliminate manual work"
-        ),
-        "cta_primary": website_copy.get("cta_primary", "Get Early Access"),
-        "cta_secondary": website_copy.get("cta_secondary", "See Demo"),
-        "benefits": [
-            "Eliminate manual data entry between systems",
-            "Reduce errors from copy-paste workflows",
-            "Save hours every week on repetitive tasks",
-            "Keep using the tools you already know",
-            "Scale your processes without scaling effort",
-        ],
     }
 
 
@@ -1374,10 +1307,10 @@ def generate_analytics_config() -> Dict[str, Any]:
     }
 
 
-# Create the builder agents
+# Create the builder agents (updated landing builder agent)
 brand_creator_agent = LlmAgent(
     name="brand_creator_agent",
-    model="gemini-2.0-flash",
+    model=MODEL_CONFIG["primary_model"],
     instruction=BRAND_CREATOR_PROMPT,
     description="Creates compelling brand identities for liminal market opportunities",
     tools=[
@@ -1390,7 +1323,7 @@ brand_creator_agent = LlmAgent(
 
 copy_writer_agent = LlmAgent(
     name="copy_writer_agent",
-    model="gemini-2.0-flash",
+    model=MODEL_CONFIG["primary_model"],
     instruction=COPY_WRITER_PROMPT,
     description="Generates high-converting copy for early-stage market validation",
     tools=[
@@ -1404,14 +1337,45 @@ copy_writer_agent = LlmAgent(
 
 landing_builder_agent = LlmAgent(
     name="landing_builder_agent",
-    model="gemini-2.0-flash",
-    instruction=LANDING_BUILDER_PROMPT,
-    description="Builds high-converting landing pages for rapid market validation",
+    model=MODEL_CONFIG.get("openai_model"),
+    instruction="""
+    You are a Landing Builder Agent that creates custom, high-converting landing pages for the In-Memory Webpage Renderer service.
+
+    CRITICAL SERVICE COMPATIBILITY:
+    - Generate Jinja2 HTML templates with {{variable}} syntax
+    - Create standalone CSS (no <style> tags - injected by service)
+    - Create standalone JavaScript (no <script> tags - injected by service)
+    - Use ContentData model variables: brand_name, tagline, headline, description, features, pricing_plans, testimonials, faqs
+    - Include data-track attributes for analytics integration
+    - Prepare complete deployment payload for the renderer API
+
+    Your role:
+    1. Analyze brand identity and opportunity data
+    2. Generate design requirements matching brand personality
+    3. Create Jinja2 HTML templates with proper variable usage
+    4. Generate CSS that works with the renderer's injection system
+    5. Create JavaScript that integrates with the service's analytics
+    6. Prepare deployment payload in the exact format expected by the API
+
+    Key principles:
+    - Every landing page reflects the specific brand personality and colors
+    - Design matches target audience expectations and market positioning
+    - Code is renderer-service compatible and conversion-optimized
+    - Mobile-first responsive design is mandatory
+    - Analytics integration uses the service's trackEvent function
+    - All content uses Jinja2 template variables for dynamic rendering
+
+    Focus on creating unique, premium designs that convert while being fully compatible with the renderer service architecture.
+    """,
+    description="Builds renderer-service compatible landing pages with dynamic code generation",
     tools=[
         FunctionTool(func=build_landing_page),
+        FunctionTool(func=generate_design_requirements),
         FunctionTool(func=generate_html_template),
         FunctionTool(func=generate_css_styles),
         FunctionTool(func=generate_javascript_code),
+        FunctionTool(func=prepare_content_data),
+        FunctionTool(func=prepare_deployment_payload),
     ],
     output_key="landing_page",
 )

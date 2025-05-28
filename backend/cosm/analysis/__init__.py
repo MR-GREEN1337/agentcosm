@@ -15,7 +15,7 @@ from ..tools.tavily import (
 from typing import Dict, Any
 import re
 from datetime import datetime
-
+from cosm.config import MODEL_CONFIG
 from ..tools.market_research import (
     analyze_market_size,
     research_competition,
@@ -188,7 +188,7 @@ def extract_demographic_insights(content: str, target_market: str) -> Dict[str, 
 # Create the market analyzer agent
 market_analyzer_agent = LlmAgent(
     name="market_analyzer_agent",
-    model="gemini-2.0-flash",
+    model=MODEL_CONFIG["primary_model"],
     instruction=MARKET_ANALYZER_PROMPT,
     description=(
         "Validates market opportunities through comprehensive analysis of "

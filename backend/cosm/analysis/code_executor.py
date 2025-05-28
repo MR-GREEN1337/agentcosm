@@ -4,7 +4,7 @@ Code Executor Agent - Executes Python code using subprocess with temp files
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from google.genai import Client, types
+from google.genai import Client
 from typing import Dict, Any
 import json
 import tempfile
@@ -14,6 +14,10 @@ import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
+
+from litellm import completion
+from cosm.config import MODEL_CONFIG
+from cosm.settings import settings
 
 client = Client()
 
@@ -211,10 +215,12 @@ def analyze_data_with_code(
         Return only the Python code, no explanations or markdown formatting.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.2),
+        response = completion(
+            model=MODEL_CONFIG["code_executor"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.2,
         )
 
         if not response or not response.text:
@@ -418,7 +424,7 @@ else:
 # Create the code executor agent
 code_executor_agent = LlmAgent(
     name="code_executor_agent",
-    model="gemini-2.0-flash",
+    model=MODEL_CONFIG["primary_model"],
     instruction=CODE_EXECUTOR_PROMPT,
     description=(
         "Executes Python code for data analysis, visualization, and "

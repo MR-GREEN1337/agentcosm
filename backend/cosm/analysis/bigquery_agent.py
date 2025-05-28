@@ -13,6 +13,9 @@ from datetime import datetime
 import pandas as pd
 from ..tools.tavily import tavily_market_research
 from ..config import MODEL_CONFIG
+from cosm.settings import settings
+
+from litellm import completion
 
 # Initialize clients
 bq_client = bigquery.Client()
@@ -469,12 +472,12 @@ def _generate_bigquery_insights(
         }}
         """
 
-        response = genai_client.models.generate_content(
-            model=MODEL_CONFIG["primary_model"],
-            contents=insights_prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["bigquery_agent"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": insights_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:

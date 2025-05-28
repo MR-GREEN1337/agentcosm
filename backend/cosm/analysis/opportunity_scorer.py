@@ -8,6 +8,7 @@ from google.genai import Client, types
 from typing import Dict, List, Any
 import json
 from datetime import datetime
+from cosm.config import MODEL_CONFIG
 
 client = Client()
 
@@ -68,7 +69,7 @@ def analyze_market_dynamics_with_gemini(market_data: Dict[str, Any]) -> Dict[str
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=MODEL_CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.2
@@ -124,7 +125,7 @@ def analyze_competitive_landscape_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=MODEL_CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -179,7 +180,7 @@ def analyze_demand_signals_with_gemini(demand_data: Dict[str, Any]) -> Dict[str,
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=MODEL_CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.2
@@ -233,7 +234,7 @@ def analyze_market_trends_with_gemini(trend_data: Dict[str, Any]) -> Dict[str, A
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=MODEL_CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -298,7 +299,7 @@ def analyze_execution_risks_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=MODEL_CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.2
@@ -360,7 +361,7 @@ def generate_strategic_recommendation_with_gemini(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=MODEL_CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -563,7 +564,7 @@ def _generate_ai_portfolio_analysis(
         """
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=MODEL_CONFIG["primary_model"],
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json", temperature=0.3
@@ -582,7 +583,7 @@ def _generate_ai_portfolio_analysis(
 # Create the enhanced AI-powered opportunity scorer agent
 opportunity_scorer_agent = LlmAgent(
     name="ai_opportunity_scorer_agent",
-    model="gemini-2.0-flash",
+    model=MODEL_CONFIG["primary_model"],
     instruction=OPPORTUNITY_SCORER_PROMPT,
     description=(
         "Advanced AI-powered market opportunity scorer that uses Gemini's intelligence "

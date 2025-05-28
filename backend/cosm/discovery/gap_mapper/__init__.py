@@ -5,10 +5,13 @@ Enhanced Gap Mapper Agent with Gemini-powered extraction
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search  # noqa: F401
 from google.adk.tools.load_web_page import load_web_page  # noqa: F401
-from google.genai import Client, types
+from google.genai import Client
 from typing import Dict, List, Any
 import json
 from datetime import datetime
+from litellm import completion
+from cosm.config import MODEL_CONFIG
+from cosm.settings import settings
 
 # Initialize Gemini client
 client = Client()
@@ -46,12 +49,12 @@ def extract_signal_themes_with_gemini(signals: List[Dict[str, Any]]) -> Dict[str
         Only return the JSON object, no other text.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -116,12 +119,12 @@ def identify_workflow_intersections_with_gemini(
         Only return the JSON array, no other text.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -180,12 +183,12 @@ def find_technology_gaps_with_gemini(
         Only return the JSON array, no other text.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -226,12 +229,12 @@ def identify_liminal_spaces_with_gemini(
         Only return the JSON array, no other text.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.4
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.4,
         )
 
         if response and response.text:
@@ -280,12 +283,12 @@ def analyze_convergence_opportunities_with_gemini(
         Only return the JSON object, no other text.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -416,7 +419,7 @@ def calculate_enhanced_opportunity_score(connection_map: Dict[str, Any]) -> floa
 # Enhanced Gap Mapper Agent with Gemini
 gap_mapper_agent = LlmAgent(
     name="gap_mapper_agent",
-    model="gemini-2.0-flash",
+    model=MODEL_CONFIG["primary_model"],
     instruction="""
     You are an advanced Gap Mapper Agent specializing in identifying liminal market opportunities using AI-powered analysis.
 

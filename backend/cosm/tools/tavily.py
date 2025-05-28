@@ -12,7 +12,7 @@ from cosm.settings import settings
 # Initialize Tavily client
 def get_tavily_client():
     """Get Tavily client with API key from environment"""
-    api_key = settings.TAVI_API_KEY
+    api_key = settings.TAVILY_API_KEY
     if not api_key:
         raise ValueError("TAVILY_API_KEY environment variable is required")
     return TavilyClient(api_key=api_key)

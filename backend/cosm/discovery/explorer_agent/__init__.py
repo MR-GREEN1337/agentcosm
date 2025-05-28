@@ -4,10 +4,14 @@ Market Explorer Agent - Updated with Tavily search integration
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from google.genai import Client, types
+from google.genai import Client
 from typing import Dict, List, Any
 from datetime import datetime
 import json
+from litellm import completion
+from cosm.config import MODEL_CONFIG
+from google.adk.models.lite_llm import LiteLlm
+from cosm.settings import settings
 
 # Import Tavily search tools
 from ...tools.tavily import (
@@ -371,12 +375,12 @@ def analyze_signals_with_ai(
         Focus on finding genuine market gaps and unmet needs, especially those that exist between established product categories.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=analysis_prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["market_explorer"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": analysis_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -486,12 +490,12 @@ def analyze_competitive_gaps_with_ai(
         Focus on finding genuine gaps where new solutions could create significant value.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=competitive_prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["market_explorer"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": competitive_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -542,7 +546,8 @@ def validate_signals_cross_platform(signals_data: Dict[str, Any]) -> Dict[str, A
 # Create the hybrid market explorer agent
 market_explorer_agent = LlmAgent(
     name="market_explorer_agent",
-    model="gemini-2.0-flash",
+    model=LiteLlm(model=MODEL_CONFIG["market_explorer"]),
+    api_key=settings.GROQ_API_KEY,
     instruction=EXPLORER_AGENT_PROMPT,
     description=(
         "Hybrid market signal explorer that combines web scraping with AI-powered "

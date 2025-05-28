@@ -5,10 +5,13 @@ AI-Native Trend Analyzer - Uses Gemini for intelligent content analysis
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search
 from google.adk.tools.load_web_page import load_web_page
-from google.genai import Client, types
+from google.genai import Client
 from typing import Dict, List, Any
 import json
 from datetime import datetime
+from litellm import completion
+from cosm.config import MODEL_CONFIG
+from cosm.settings import settings
 
 # Initialize Gemini client
 client = Client()
@@ -162,12 +165,12 @@ def analyze_content_with_gemini(
         Focus on liminal opportunities - gaps between established markets where new solutions could emerge.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=analysis_prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": analysis_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -324,12 +327,12 @@ def analyze_industry_with_gemini(
         }}
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=momentum_prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": momentum_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -476,12 +479,12 @@ def analyze_convergence_with_gemini(
         Focus on identifying genuine market gaps that exist between these domains.
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=convergence_prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=MODEL_CONFIG["gap_mapper"],
+            api_key=settings.GROQ_API_KEY,
+            messages=[{"role": "user", "content": convergence_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -503,7 +506,7 @@ def analyze_convergence_with_gemini(
 # Create the AI-native trend analyzer agent
 trend_analyzer_agent = LlmAgent(
     name="trend_analyzer_agent",
-    model="gemini-2.0-flash",
+    model=MODEL_CONFIG["primary_model"],
     instruction=TREND_ANALYZER_PROMPT,
     description=(
         "AI-powered trend analyzer that identifies emerging opportunities in liminal "

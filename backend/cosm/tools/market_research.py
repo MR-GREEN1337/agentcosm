@@ -13,6 +13,8 @@ from bs4 import BeautifulSoup
 import time
 from collections import Counter
 from cosm.config import MODEL_CONFIG as CONFIG
+from litellm import completion
+from cosm.settings import settings
 
 # Initialize Gemini client
 client = Client()
@@ -334,12 +336,12 @@ def extract_pain_signals_with_gemini(
         Only return the JSON object, no other text.
         """
 
-        response = client.models.generate_content(
-            model=CONFIG["primary_model"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=CONFIG["market_research"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -378,12 +380,12 @@ def extract_competitors_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = client.models.generate_content(
-                model=CONFIG["primary_model"],
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", temperature=0.3
-                ),
+            response = completion(
+                model=CONFIG["market_research"],
+                api_key=settings.OPENAI_API_KEY,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
             )
 
             if response and response.text:
@@ -464,12 +466,12 @@ def extract_trends_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = client.models.generate_content(
-                model=CONFIG["primary_model"],
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", temperature=0.3
-                ),
+            response = completion(
+                model=CONFIG["market_research"],
+                api_key=settings.OPENAI_API_KEY,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
             )
 
             if response and response.text:
@@ -560,12 +562,12 @@ def generate_insights_with_gemini(research_data: Dict[str, Any]) -> List[str]:
         Return a JSON array of insights, each as a string that is specific, actionable, and based on the data.
         """
 
-        response = client.models.generate_content(
-            model=CONFIG["primary_model"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.4
-            ),
+        response = completion(
+            model=CONFIG["market_research"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.4,
         )
 
         if response and response.text:
@@ -1555,12 +1557,12 @@ def assess_market_risks(
         Base your analysis on the actual data provided, not general assumptions.
         """
 
-        response = client.models.generate_content(
-            model=CONFIG["primary_model"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.3
-            ),
+        response = completion(
+            model=CONFIG["market_research"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
         )
 
         if response and response.text:
@@ -1711,12 +1713,12 @@ def generate_recommendation(
         Consider multiple scenarios and provide flexible strategies.
         """
 
-        response = client.models.generate_content(
-            model=CONFIG["primary_model"],
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", temperature=0.4
-            ),
+        response = completion(
+            model=CONFIG["market_research"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.4,
         )
 
         if response and response.text:

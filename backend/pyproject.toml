@@ -46,6 +46,7 @@ dependencies = [
     "httpx-sse==0.4.0",
     "idna==3.10",
     "importlib-metadata==8.6.1",
+    "litellm>=1.71.1",
     "matplotlib>=3.10.3",
     "mcp==1.8.1",
     "numpy==2.2.5",
