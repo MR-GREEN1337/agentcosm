@@ -12,6 +12,7 @@ const client = new TextToSpeechClient({
 const audioCache = new Map<string, { buffer: Buffer; timestamp: number }>();
 const CACHE_TTL = 1000 * 60 * 60;
 const MAX_CACHE_SIZE = 100;
+
 function cleanCache() {
   const now = Date.now();
   for (const [key, value] of audioCache.entries()) {
@@ -37,13 +38,17 @@ function generateCacheKey(text: string, voiceConfig: any): string {
 
 // Preprocessing for better TTS quality
 function preprocessText(text: string): string {
-  // Remove markdown formatting
+  // Remove markdown formatting characters that would be pronounced
   let processed = text
     .replace(/\*\*(.*?)\*\*/g, '$1') // Bold
     .replace(/\*(.*?)\*/g, '$1') // Italic
     .replace(/`(.*?)`/g, '$1') // Code
-    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Links
-    .replace(/#{1,6}\s*(.*)/g, '$1'); // Headers
+    .replace(/_{2,}(.*?)_{2,}/g, '$1') // Underline
+    .replace(/~{2}(.*?)~{2}/g, '$1') // Strikethrough
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Links - keep link text only
+    .replace(/#{1,6}\s*/g, '') // Remove header markers
+    .replace(/^\s*[-*+]\s+/gm, '') // Remove bullet points
+    .replace(/^\s*\d+\.\s+/gm, ''); // Remove numbered list markers
 
   // Handle abbreviations and technical terms
   processed = processed
@@ -142,7 +147,7 @@ export async function POST(request: NextRequest) {
     const defaultAudioConfig = {
       audioEncoding: 'LINEAR16',
       sampleRateHertz: 24000,
-      speakingRate: 1.1, // Slightly faster for conversation
+      speakingRate: 1.2, // Slightly faster for conversation
       pitch: 0,
       volumeGainDb: 0,
       effectsProfileId: ['telephony-class-application'], // Optimized for voice apps

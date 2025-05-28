@@ -84,7 +84,7 @@ class MarketOpportunityAgent:
             description="Performs deep analysis including BigQuery intelligence",
             sub_agents=[
                 market_analyzer_agent,
-                self.bigquery_agent,  # NEW: Add BigQuery agent
+                self.bigquery_agent,
                 code_executor_agent,
                 opportunity_scorer_agent,
             ],
