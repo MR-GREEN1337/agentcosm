@@ -982,7 +982,7 @@ def calculate_tam_sam_som(
         # Add assumptions
         tam_sam_som["assumptions"] = [
             f"TAM calculated from {len(tam_values)} market size data points",
-            f"SAM estimated as {int(sam_multiplier*100)}% of TAM based on target focus",
+            f"SAM estimated as {int(sam_multiplier*100)}% of based on target focus",
             f"SOM estimated as {int(som_multiplier*100)}% of SAM for new market entrant",
             "Calculations assume current market conditions and growth rates",
         ]

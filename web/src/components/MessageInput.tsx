@@ -367,12 +367,13 @@ export function MessageInput({
 
   return (
     <>
-      {/* Container - completely transparent, no background interference */}
-      <div className="w-full px-2 sm:px-4 py-2 sm:py-4 pointer-events-none">
-        <div className="max-w-3xl mx-auto pointer-events-none">
+      {/* Container - COMPLETELY transparent parent */}
+      <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
+        <div className="max-w-3xl mx-auto">
+          {/* Main input container with floating glass effect */}
           <div
             className={cn(
-              "relative backdrop-blur-xl rounded-2xl pointer-events-auto",
+              "relative backdrop-blur-xl rounded-2xl",
               "border shadow-lg",
               "transition-all duration-300 ease-in-out",
               "overflow-hidden",
@@ -391,17 +392,17 @@ export function MessageInput({
             )}
             style={{
               transform: "translateY(0)",
-              animation: "float 6s ease-in-out infinite",
+              animation: isInputFocused || isListening ? "none" : "float 6s ease-in-out infinite",
             }}
           >
-            {/* Voice indicator */}
+            {/* Voice indicator - purely decorative overlay */}
             {isListening && (
               <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-pink-500/10 to-red-500/10 dark:from-red-500/20 dark:via-pink-500/20 dark:to-red-500/20 pointer-events-none">
                 <div className="absolute inset-0 animate-pulse bg-red-500/5 dark:bg-red-500/10"></div>
               </div>
             )}
 
-            {/* Subtle glow effect */}
+            {/* Subtle glow effect - purely decorative */}
             <div className={cn(
               "absolute inset-0 pointer-events-none opacity-30",
               isListening
@@ -439,6 +440,7 @@ export function MessageInput({
               </div>
             )}
 
+            {/* Main input area */}
             <div className="flex items-end bg-transparent">
               <div className="flex-1 bg-transparent">
                 <Textarea
@@ -471,6 +473,7 @@ export function MessageInput({
                 />
               </div>
 
+              {/* Action buttons */}
               <div className="flex items-center gap-1.5 px-3 pb-3">
                 <button
                   type="button"
@@ -540,6 +543,7 @@ export function MessageInput({
                 >
                   <Camera className="w-4 h-4" />
                 </button>
+
                 <button
                   type="button"
                   onClick={() => handleSend()}
