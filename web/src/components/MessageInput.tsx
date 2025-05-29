@@ -85,7 +85,7 @@ class TTSCache {
   set(text: string, audioBuffer: ArrayBuffer) {
     if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      this.cache.delete(firstKey as any);
     }
     this.cache.set(this.hashText(text), audioBuffer);
   }
@@ -201,7 +201,7 @@ export function MessageInput({
     const initAudio = () => {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext ||
-          window.webkitAudioContext)();
+          (window as any).webkitAudioContext)();
       }
     };
 
@@ -230,7 +230,8 @@ export function MessageInput({
     }
 
     const SpeechRecognition =
-      window.webkitSpeechRecognition || window.SpeechRecognition;
+      (window as any).webkitSpeechRecognition ||
+      (window as any).SpeechRecognition;
     const recognition = new SpeechRecognition();
 
     recognition.continuous = true;
@@ -242,7 +243,7 @@ export function MessageInput({
       setIsListening(true);
     };
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: any) => {
       let finalTranscript = '';
       let interimTranscript = '';
 
@@ -287,7 +288,7 @@ export function MessageInput({
       }
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: any) => {
       console.error('🚨 Speech recognition error:', event.error);
       setIsListening(false);
       setTranscript('');
@@ -478,7 +479,7 @@ export function MessageInput({
       try {
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext ||
-            window.webkitAudioContext)();
+            window.AudioContext)();
         }
 
         const audioContext = audioContextRef.current;

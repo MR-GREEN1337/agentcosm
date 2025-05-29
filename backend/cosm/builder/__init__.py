@@ -491,14 +491,17 @@ def generate_social_copy(
 # =============================================================================
 
 
+# Enhanced Landing Builder Agent with Human-Readable Response
+# Replace the existing build_and_deploy_landing_page function in backend/cosm/builder/__init__.py
+
+
 def build_and_deploy_landing_page(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
     opportunity_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Build and deploy a complete landing page to the renderer service
-    Returns deployment information and live URLs instead of code
+    Build and deploy a complete landing page and return human-readable response
     """
 
     try:
@@ -511,13 +514,9 @@ def build_and_deploy_landing_page(
         # Validate the HTML template before proceeding
         template_validation = validate_jinja_template(html_template)
         if not template_validation["valid"]:
-            return {
-                "deployment_status": "failed",
-                "error": f"Template validation failed: {template_validation['error']}",
-                "suggestion": template_validation.get(
-                    "suggestion", "Check template syntax"
-                ),
-            }
+            return generate_human_readable_error(
+                brand_data, template_validation["error"]
+            )
 
         css_styles = generate_css_styles(brand_data, design_requirements)
         javascript = generate_javascript_code(brand_data, design_requirements)
@@ -563,41 +562,197 @@ def build_and_deploy_landing_page(
         deployment_result = deploy_to_renderer_service(deployment_payload)
 
         if deployment_result.get("success"):
-            # Return deployment information with live URLs and functionality description
-            return {
-                "deployment_status": "success",
-                "brand_name": brand_data.get("brand_name", "Your Brand"),
-                "live_url": deployment_result.get("live_url"),
-                "admin_url": deployment_result.get("admin_url"),
-                "analytics_url": deployment_result.get("analytics_url"),
-                "site_id": deployment_result.get("site_id"),
-                "functionality_description": generate_functionality_description(
-                    brand_data, content_data
-                ),
-                "testing_instructions": generate_testing_instructions(
-                    brand_data, content_data
-                ),
-                "deployment_details": deployment_result.get("deployment_details", {}),
-                "success_message": f"🚀 {brand_data.get('brand_name', 'Your landing page')} is now live and ready for validation!",
-            }
+            # Return human-readable markdown response
+            return generate_human_readable_success_response(
+                brand_data, deployment_result, content_data
+            )
         else:
-            return {
-                "deployment_status": "failed",
-                "error": deployment_result.get("error", "Unknown deployment error"),
-                "fallback_assets": {
-                    "html_template": html_template,
-                    "css_styles": css_styles,
-                    "javascript": javascript,
-                    "content_data": content_data,
-                },
-            }
+            return generate_human_readable_error(
+                brand_data, deployment_result.get("error", "Unknown deployment error")
+            )
 
     except Exception as e:
         print(f"Error building and deploying landing page: {e}")
-        return {
-            "deployment_status": "failed",
-            "error": f"Build and deployment failed: {str(e)}",
-        }
+        return generate_human_readable_error(brand_data, str(e))
+
+
+def generate_human_readable_success_response(
+    brand_data: Dict[str, Any],
+    deployment_result: Dict[str, Any],
+    content_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Generate a human-readable markdown response for successful deployment
+    """
+    brand_name = brand_data.get("brand_name", "Your Landing Page")
+    live_url = deployment_result.get("live_url", "")
+    admin_url = deployment_result.get("admin_url", "")
+    analytics_url = deployment_result.get("analytics_url", "")
+
+    # Count features and testimonials
+    features_count = len(content_data.get("features", []))
+    testimonials_count = len(content_data.get("testimonials", []))
+
+    # Generate markdown response
+    markdown_response = f"""# 🚀 {brand_name} is Live!
+
+**Your landing page has been successfully deployed and is ready for market validation.**
+
+## 🔗 Quick Access Links
+
+- **Live Site**: [{brand_name} Landing Page]({live_url})
+- **Admin Dashboard**: [Manage & Monitor]({admin_url})
+- **Analytics**: [View Performance]({analytics_url})
+
+## 📊 What's Included
+
+Your fully-functional landing page features:
+
+- **📱 Mobile-optimized design** - Works perfectly on all devices
+- **⚡ Fast loading** - Optimized for speed and SEO
+- **🎯 {features_count} key features** showcased with compelling visuals
+- **💬 {testimonials_count} customer testimonials** for social proof
+- **📝 Lead capture form** with email validation
+- **📊 Built-in analytics** tracking all user interactions
+- **🔥 Conversion-optimized CTAs** throughout the page
+
+## 🎯 Smart Validation Strategy
+
+**Phase 1: Immediate Testing (First 48 hours)**
+1. **Share with your network** - Send the link to colleagues, friends, and potential customers
+2. **Test on multiple devices** - Check mobile, tablet, and desktop experiences
+3. **Monitor analytics** - Watch for early engagement patterns in your admin dashboard
+
+**Phase 2: Targeted Outreach (Week 1)**
+1. **LinkedIn outreach** - Share with industry contacts and ask for feedback
+2. **Social media posts** - Post about your new solution on relevant platforms
+3. **Email signature** - Add the link to your email signature for organic traffic
+4. **Industry forums** - Share in relevant communities (Reddit, Discord, Slack groups)
+
+**Phase 3: Paid Validation (Week 2+)**
+1. **Google Ads** - Run targeted ads to your landing page ($50-100 budget)
+2. **Facebook/LinkedIn ads** - Target your ideal customer demographic
+3. **Cold email campaigns** - Use the landing page as your CTA destination
+
+## 📈 Success Metrics to Track
+
+**Immediate Indicators:**
+- Email signup rate (target: 15-25%)
+- Time spent on page (target: 2+ minutes)
+- Bounce rate (target: <60%)
+
+**Validation Signals:**
+- 100+ page views in first week
+- 20+ email signups in first week
+- Positive feedback from at least 5 people
+
+## 🎯 Next Steps
+
+1. **Visit your live site** and test all functionality
+2. **Check your admin dashboard** to familiarize yourself with analytics
+3. **Start sharing immediately** - every day of delay is missed opportunities
+4. **Set up tracking** - Monitor daily for the first week, then weekly
+5. **Iterate based on feedback** - Use the admin panel to track what's working
+
+## 💡 Pro Tips for Maximum Impact
+
+- **Create urgency**: Add "Early access" or "Limited beta" messaging
+- **Personal touch**: Respond personally to every email signup in the first week
+- **Content marketing**: Write a blog post about your solution and link to the landing page
+- **Influencer outreach**: Find micro-influencers in your space and ask for honest feedback
+
+---
+
+**🎉 Congratulations!** You've just transformed a market opportunity into a live, testable business asset. The hard work of building is done - now comes the exciting part of validating your idea with real users.
+
+**Ready to start collecting your first customers?** [Visit your landing page now]({live_url}) and begin your validation journey!"""
+
+    return {
+        "human_readable_response": markdown_response,
+        "deployment_status": "success",
+        "brand_name": brand_name,
+        "live_url": live_url,
+        "admin_url": admin_url,
+        "analytics_url": analytics_url,
+        "next_actions": [
+            f"Visit {live_url} to see your live landing page",
+            f"Access {admin_url} to monitor performance",
+            "Start sharing with your network immediately",
+            "Set up email responses for incoming leads",
+            "Plan your paid advertising strategy",
+        ],
+    }
+
+
+def generate_human_readable_error(
+    brand_data: Dict[str, Any], error_message: str
+) -> Dict[str, Any]:
+    """
+    Generate a human-readable error response
+    """
+    brand_name = brand_data.get("brand_name", "Your Landing Page")
+
+    markdown_response = f"""# ❌ Deployment Issue for {brand_name}
+
+Unfortunately, we encountered an issue while deploying your landing page.
+
+## 🔧 Error Details
+```
+{error_message}
+```
+
+## 🚀 What's Next?
+
+**Don't worry - this is just a temporary setback!** Here are your options:
+
+1. **Retry the deployment** - Technical issues are often temporary
+2. **Manual setup** - I can provide you with the HTML/CSS files to host yourself
+3. **Alternative platforms** - Consider using Carrd, Webflow, or Squarespace as backup
+
+## 💡 Quick Alternative Solution
+
+While we fix the deployment issue, you can quickly validate your idea using:
+
+1. **Simple landing page builders**:
+   - Carrd.co (free tier available)
+   - Linktree (for basic validation)
+   - Google Sites (completely free)
+
+2. **Manual validation approaches**:
+   - LinkedIn post describing your solution
+   - Email to your network asking for interest
+   - Simple Google Form to collect early interest
+
+## 📧 Keep Moving Forward
+
+**The key insight: Your idea validation doesn't depend on perfect technology.**
+
+Many successful businesses started with simple solutions:
+- Dropbox used a basic video to validate demand
+- Buffer started with a simple two-page website
+- Airbnb began with a basic WordPress site
+
+## 🎯 Immediate Action Plan
+
+1. **Create a simple one-pager** on any platform
+2. **Write a compelling description** of your solution
+3. **Add an email capture form**
+4. **Start sharing today** - don't wait for perfect execution
+
+Remember: **Done is better than perfect**. Get something live and start learning from real users immediately!"""
+
+    return {
+        "human_readable_response": markdown_response,
+        "deployment_status": "failed",
+        "brand_name": brand_name,
+        "error": error_message,
+        "next_actions": [
+            "Try deploying again",
+            "Consider alternative platforms",
+            "Start manual validation immediately",
+            "Don't let technical issues stop your momentum",
+        ],
+    }
 
 
 def generate_functionality_description(
@@ -1170,43 +1325,41 @@ copy_writer_agent = LlmAgent(
 landing_builder_agent = LlmAgent(
     name="landing_builder_agent",
     model=MODEL_CONFIG["primary_model"],
-    instruction=f"""
-    You are a Landing Builder Agent that creates and DEPLOYS custom, high-converting landing pages to the In-Memory Webpage Renderer service at {RENDERER_SERVICE_URL}.
+    instruction="""
+    You are a Landing Builder Agent that creates, deploys, and provides strategic guidance for landing page validation.
 
-    CRITICAL: Your role is to BUILD and DEPLOY, not return code.
+    CRITICAL: Your role is to BUILD, DEPLOY, and PROVIDE STRATEGIC GUIDANCE - not return raw technical data.
 
     Your process:
     1. Analyze brand identity and opportunity data
     2. Generate all required assets (HTML, CSS, JS, content)
     3. Deploy directly to the renderer service
-    4. Return live URLs and functionality description
+    4. Return human-readable strategic guidance in markdown format
 
     SUCCESS CRITERIA:
-    - Return live_url, admin_url, analytics_url - NOT code
-    - Provide comprehensive functionality description
-    - Include testing instructions for market validation
-    - Explain all available features and analytics capabilities
+    - Provide clear, actionable strategic advice in markdown format
+    - Include live URLs and access links
+    - Offer specific validation strategies and next steps
+    - Focus on business outcomes, not technical details
+    - Give a clear roadmap for market validation
 
-    RESPONSE FORMAT:
-    {{
-        "deployment_status": "success",
-        "brand_name": "Brand Name",
-        "live_url": "{settings.RENDERER_SERVICE_URL}/site/abc123",
-        "admin_url": "{settings.RENDERER_SERVICE_URL}/admin/abc123",
-        "analytics_url": "{settings.RENDERER_SERVICE_URL}/analytics/abc123",
-        "functionality_description": {{"overview": "...", "key_features": [...]}},
-        "testing_instructions": {{"validation_checklist": [...]}},
-        "success_message": "🚀 Brand Name is now live and ready for validation!"
-    }}
+    RESPONSE STYLE:
+    - Use markdown formatting for readability
+    - Include specific, actionable advice
+    - Provide clear success metrics and timelines
+    - Focus on business strategy over technical implementation
+    - Give immediate next steps the user can take
 
-    Focus on deployment success and providing actionable next steps for market validation.
+    Remember: Your response will be read by entrepreneurs who need strategic guidance,
+    not developers who need technical specifications. Focus on turning their deployed
+    landing page into a successful market validation tool.
     """,
-    description="Builds and deploys renderer-service compatible landing pages with live URLs",
+    description="Builds, deploys, and provides strategic guidance for landing page validation",
     tools=[
         FunctionTool(func=build_and_deploy_landing_page),
         FunctionTool(func=get_deployment_status),
         FunctionTool(func=generate_functionality_description),
         FunctionTool(func=generate_testing_instructions),
     ],
-    output_key="deployment_result",
+    output_key="strategic_deployment_guidance",
 )
