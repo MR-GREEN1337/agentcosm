@@ -49,7 +49,7 @@ def analyze_search_trends_with_ai(keywords: List[str]) -> Dict[str, Any]:
 
         for keyword in keywords[:3]:  # Limit for API efficiency
             search_queries = [
-                f"{keyword} market trends 2024 emerging opportunities",
+                f"{keyword} market trends 2025 emerging opportunities",
                 f"{keyword} industry analysis growth patterns",
                 f"{keyword} future predictions technology convergence",
                 f"{keyword} startup investment funding trends",
@@ -173,8 +173,8 @@ def analyze_content_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            analysis_result = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            analysis_result = json.loads(response.choices[0].message.content)
             analysis_result["analysis_timestamp"] = datetime.now().isoformat()
             analysis_result["keywords"] = keywords
             return analysis_result
@@ -335,8 +335,8 @@ def analyze_industry_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            analysis = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            analysis = json.loads(response.choices[0].message.content)
             analysis["industry"] = industry
             analysis["focus_areas"] = focus_areas
             analysis["analysis_timestamp"] = datetime.now().isoformat()
@@ -487,8 +487,8 @@ def analyze_convergence_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            analysis = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            analysis = json.loads(response.choices[0].message.content)
             analysis["domains"] = domains
             analysis["analysis_timestamp"] = datetime.now().isoformat()
             return analysis

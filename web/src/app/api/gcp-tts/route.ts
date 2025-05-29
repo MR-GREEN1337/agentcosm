@@ -61,13 +61,21 @@ function preprocessText(text: string): string {
     .replace(/\bCSS\b/g, 'C S S')
     .replace(/\bJS\b/g, 'JavaScript');
 
-  // Add pauses for better pacing
+  // Escape XML special characters for SSML
   processed = processed
-    .replace(/\. /g, '. <break time="0.3s"/>')
-    .replace(/\? /g, '? <break time="0.4s"/>')
-    .replace(/! /g, '! <break time="0.4s"/>')
-    .replace(/: /g, ': <break time="0.2s"/>')
-    .replace(/; /g, '; <break time="0.2s"/>');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '')
+    .replace(/'/g, '&apos;');
+
+  // Add pauses for better pacing using proper SSML break tags
+  processed = processed
+    .replace(/\. /g, '. <break time="300ms"/>')
+    .replace(/\? /g, '? <break time="400ms"/>')
+    .replace(/! /g, '! <break time="400ms"/>')
+    .replace(/: /g, ': <break time="200ms"/>')
+    .replace(/; /g, '; <break time="200ms"/>');
 
   // Limit length for reasonable audio duration (adjust as needed)
   if (processed.length > 1000) {
@@ -75,6 +83,27 @@ function preprocessText(text: string): string {
   }
 
   return processed.trim();
+}
+
+// Validate SSML before sending to GCP
+function validateSSML(ssml: string): boolean {
+  try {
+    // Basic SSML validation
+    const xmlParser = new DOMParser();
+    const doc = xmlParser.parseFromString(ssml, 'application/xml');
+
+    // Check for parsing errors
+    const parserError = doc.querySelector('parsererror');
+    if (parserError) {
+      console.error('SSML parsing error:', parserError.textContent);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('SSML validation error:', error);
+    return false;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -157,6 +186,17 @@ export async function POST(request: NextRequest) {
     // Wrap text in SSML for better control
     const ssmlText = `<speak>${processedText}</speak>`;
 
+    // Validate SSML before sending
+    if (typeof window !== 'undefined' && !validateSSML(ssmlText)) {
+      console.warn('Invalid SSML detected, falling back to plain text');
+      // Fallback to plain text if SSML is invalid
+      const ttsRequest = {
+        input: { text: input.text },
+        voice: defaultVoice,
+        audioConfig: defaultAudioConfig,
+      };
+    }
+
     // Prepare the TTS request
     const ttsRequest = {
       input: { ssml: ssmlText },
@@ -165,6 +205,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log(`Generating TTS for: "${processedText.substring(0, 100)}..."`);
+    console.log(`SSML: ${ssmlText.substring(0, 200)}...`);
 
     // Call Google Cloud TTS API
     const [response] = await client.synthesizeSpeech(ttsRequest);
@@ -201,6 +242,47 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('GCP TTS API Error:', error);
+
+    // If it's an SSML error, try with plain text as fallback
+    if (error instanceof Error && error.message.includes('Invalid SSML')) {
+      try {
+        console.log('Retrying with plain text fallback...');
+        const body = await request.json();
+
+        const ttsRequest = {
+          input: { text: body.input.text },
+          voice: {
+            languageCode: 'en-US',
+            name: 'en-US-Neural2-F',
+            ssmlGender: 'FEMALE',
+            ...body.voice,
+          },
+          audioConfig: {
+            audioEncoding: 'LINEAR16',
+            sampleRateHertz: 24000,
+            speakingRate: 1.2,
+            pitch: 0,
+            volumeGainDb: 0,
+            effectsProfileId: ['telephony-class-application'],
+            ...body.audioConfig,
+          },
+        };
+
+        const [response] = await client.synthesizeSpeech(ttsRequest);
+        const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
+
+        return new NextResponse(audioBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'audio/wav',
+            'Content-Length': audioBuffer.length.toString(),
+            'X-Fallback': 'plain-text',
+          },
+        });
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+      }
+    }
 
     return NextResponse.json(
       {

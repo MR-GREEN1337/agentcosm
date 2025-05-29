@@ -94,11 +94,12 @@ def setup_bigquery_tables(dataset_id: str = "agentcosm_market"):
 
 
 def collect_and_analyze_market_data(
-    keywords: List[str], project_id: str, dataset_id: str = "agentcosm_market"
+    keywords: List[str], dataset_id: str = "agentcosm_market"
 ) -> Dict[str, Any]:
     """
     Collect market data via Tavily and analyze with BigQuery
     """
+    project_id = settings.GOOGLE_CLOUD_PROJECT_ID
     analysis_result = {
         "keywords": keywords,
         "timestamp": datetime.now().isoformat(),
@@ -279,13 +280,13 @@ def collect_and_analyze_market_data(
 
 def get_historical_trend_analysis(
     keywords: List[str],
-    project_id: str,
     dataset_id: str = "agentcosm_market",
     days_back: int = 30,
 ) -> Dict[str, Any]:
     """
     Analyze historical trends from BigQuery data
     """
+    project_id = settings.GOOGLE_CLOUD_PROJECT_ID
     try:
         trend_query = f"""
         WITH daily_trends AS (
@@ -491,8 +492,8 @@ def _generate_bigquery_insights(
             temperature=0.3,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"❌ Insights generation error: {e}")
@@ -523,9 +524,10 @@ def _analyze_overall_sentiment(bigquery_insights: Dict[str, Any]) -> Dict[str, A
 
 
 def _update_trend_tracking(
-    keywords: List[str], insights: Dict[str, Any], project_id: str, dataset_id: str
+    keywords: List[str], insights: Dict[str, Any], dataset_id: str = "agentcosm_market"
 ):
     """Update trend tracking table"""
+    project_id = settings.GOOGLE_CLOUD_PROJECT_ID
     try:
         trend_records = []
         current_date = datetime.now().date()

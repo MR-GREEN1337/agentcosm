@@ -46,7 +46,7 @@ def analyze_search_trends(keywords: List[str]) -> Dict[str, Any]:
         for keyword in keywords[:3]:  # Limit to prevent rate limiting
             # Search for trend-related information
             trend_queries = [
-                f"{keyword} search trends 2024 growing popular",
+                f"{keyword} search trends 2025 growing popular",
                 f"{keyword} market trends analysis report",
                 f"{keyword} interest over time statistics",
                 f"{keyword} trending topics related searches",
@@ -105,7 +105,7 @@ def track_industry_momentum(industry: str, keywords: List[str]) -> Dict[str, Any
     try:
         # Search for industry momentum indicators
         momentum_queries = [
-            f"{industry} industry growth 2024 market size",
+            f"{industry} industry growth 2025 market size",
             f"{industry} investment funding trends venture capital",
             f"{industry} innovation breakthrough technologies",
             f"{industry} market disruption new players",
@@ -219,8 +219,8 @@ def extract_trend_insights_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error extracting trend insights: {e}")
@@ -264,8 +264,8 @@ def extract_momentum_insights_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error extracting momentum insights: {e}")

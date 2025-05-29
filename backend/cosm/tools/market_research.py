@@ -169,7 +169,7 @@ def validate_demand_real(keywords: List[str], target_audience: str) -> Dict[str,
         try:
             # Search for demand indicators
             demand_queries = [
-                f"{keyword} market size statistics 2024",
+                f"{keyword} market size statistics 2025",
                 f"{keyword} growing demand trends",
                 f"how many people use {keyword}",
                 f"{keyword} market research report",
@@ -344,8 +344,8 @@ def extract_pain_signals_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            pain_signal = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            pain_signal = json.loads(response.choices[0].message.content)
             pain_signal["source"] = search_result.get("url", "")
             pain_signal["keyword"] = keyword
             return pain_signal
@@ -388,8 +388,8 @@ def extract_competitors_with_gemini(
                 temperature=0.3,
             )
 
-            if response and response.text:
-                result_competitors = json.loads(response.text)
+            if response and response.choices[0].message.content:
+                result_competitors = json.loads(response.choices[0].message.content)
                 competitors.extend(result_competitors)
 
         except Exception as e:
@@ -474,8 +474,8 @@ def extract_trends_with_gemini(
                 temperature=0.3,
             )
 
-            if response and response.text:
-                trend_data = json.loads(response.text)
+            if response and response.choices[0].message.content:
+                trend_data = json.loads(response.choices[0].message.content)
                 trends.extend(trend_data)
 
         except Exception as e:
@@ -570,8 +570,8 @@ def generate_insights_with_gemini(research_data: Dict[str, Any]) -> List[str]:
             temperature=0.4,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error generating insights: {e}")
@@ -668,7 +668,7 @@ def analyze_market_size(
         # Search for market size data
         for keyword in keywords[:3]:  # Limit to prevent rate limiting
             market_queries = [
-                f"{keyword} market size 2024 billion",
+                f"{keyword} market size 2025 billion",
                 f"{keyword} industry size statistics global",
                 f"{keyword} TAM total addressable market",
                 f"{keyword} market research report value",
@@ -844,7 +844,7 @@ def validate_demand_signals(
             demand_queries = [
                 f"{keyword} search volume trends statistics",
                 f"{keyword} job market demand hiring trends",
-                f"{keyword} startup funding investment 2024",
+                f"{keyword} startup funding investment 2025",
                 f"{keyword} patent applications innovation",
                 f"{keyword} social media mentions discussions",
             ]
@@ -1565,8 +1565,8 @@ def assess_market_risks(
             temperature=0.3,
         )
 
-        if response and response.text:
-            risk_data = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            risk_data = json.loads(response.choices[0].message.content)
             risk_assessment.update(risk_data)
 
         return risk_assessment
@@ -1590,7 +1590,7 @@ def assess_market_risks(
 def generate_recommendation(
     opportunity_score: float,
     risk_assessment: Dict[str, Any],
-    market_data: Dict[str, Any] = None,
+    market_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Generates intelligent market entry recommendation using Gemini AI
@@ -1721,8 +1721,8 @@ def generate_recommendation(
             temperature=0.4,
         )
 
-        if response and response.text:
-            recommendation_data = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            recommendation_data = json.loads(response.choices[0].message.content)
             recommendation.update(recommendation_data)
 
         # Add summary recommendation based on score and risk
@@ -1787,9 +1787,9 @@ def generate_recommendation_summary(
 
 def validate_market_opportunity_comprehensive(
     keywords: list,
-    target_audience: str = "",
-    solution_type: str = "",
-    pain_points: list = None,
+    target_audience: str,
+    solution_type: str,
+    pain_points: list,
 ) -> Dict[str, Any]:
     """
     Comprehensive market opportunity validation combining all analysis functions

@@ -383,8 +383,8 @@ def analyze_signals_with_ai(
             temperature=0.3,
         )
 
-        if response and response.text:
-            ai_analysis = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            ai_analysis = json.loads(response.choices[0].message.content)
 
             # Merge AI analysis into signals structure
             signals.update(ai_analysis)
@@ -498,8 +498,8 @@ def analyze_competitive_gaps_with_ai(
             temperature=0.3,
         )
 
-        if response and response.text:
-            analysis = json.loads(response.text)
+        if response and response.choices[0].message.content:
+            analysis = json.loads(response.choices[0].message.content)
             gaps.update(analysis)
             return gaps
 

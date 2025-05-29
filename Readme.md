@@ -3,6 +3,7 @@
 ## Reintegrate adk builtin tools(google_Search) and understand utility of bigquery
 ## Improve code agent to be both robust and fast
 ## implement retry mechanism for failed model call
+## assistant sholuldn't ask itself should be answering
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 

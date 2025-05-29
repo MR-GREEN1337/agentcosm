@@ -7,6 +7,7 @@ from datetime import datetime
 from tavily import TavilyClient
 from google.adk.tools import FunctionTool
 from cosm.settings import settings
+from functools import partial
 
 
 # Initialize Tavily client
@@ -124,7 +125,7 @@ def tavily_market_research(
         # Define search strategies based on research type
         search_strategies = {
             "market_analysis": [
-                "{keyword} market size 2024 analysis",
+                "{keyword} market size 2025 analysis",
                 "{keyword} industry trends growth",
                 "{keyword} market research report",
             ],
@@ -134,7 +135,7 @@ def tavily_market_research(
                 "{keyword} competitive landscape analysis",
             ],
             "trends": [
-                "{keyword} trends 2024 emerging",
+                "{keyword} trends 2025 emerging",
                 "{keyword} future predictions growth",
                 "{keyword} innovation technology trends",
             ],
@@ -246,7 +247,7 @@ def tavily_competitive_intelligence(
         return competitive_data
 
 
-def tavily_trend_analysis(topics: List[str], timeframe: str = "2024") -> Dict[str, Any]:
+def tavily_trend_analysis(topics: List[str], timeframe: str = "2025") -> Dict[str, Any]:
     """
     Analyze trends using Tavily search
 
@@ -385,10 +386,33 @@ def calculate_research_confidence(research_data: Dict[str, Any]) -> float:
 
 
 # Create FunctionTool instances for use in agents
-tavily_search_tool = FunctionTool(func=tavily_search)
-tavily_market_research_tool = FunctionTool(func=tavily_market_research)
-tavily_competitive_intelligence_tool = FunctionTool(
-    func=tavily_competitive_intelligence
+tavily_search_tool = FunctionTool(
+    func=lambda query: partial(
+        tavily_search,
+        query=query,
+        max_results=3,
+        search_depth="basic",
+        include_answer=True,
+        topic="general",
+    )
 )
-tavily_trend_analysis_tool = FunctionTool(func=tavily_trend_analysis)
-tavily_pain_point_discovery_tool = FunctionTool(func=tavily_pain_point_discovery)
+tavily_market_research_tool = FunctionTool(
+    func=lambda keywords: partial(
+        tavily_market_research, keywords=keywords, research_type="market_analysis"
+    )
+)
+tavily_competitive_intelligence_tool = FunctionTool(
+    func=lambda company_names: partial(
+        tavily_competitive_intelligence, company_names=company_names, market_context=""
+    )
+)
+tavily_trend_analysis_tool = FunctionTool(
+    func=lambda topics: partial(tavily_trend_analysis, topics=topics, timeframe="2025")
+)
+tavily_pain_point_discovery_tool = FunctionTool(
+    func=lambda market_keywords, user_segments: partial(
+        tavily_pain_point_discovery,
+        market_keywords=market_keywords,
+        user_segments=user_segments,
+    )
+)

@@ -1,15 +1,15 @@
 # Model Configuration
 MODEL_CONFIG = {
     "primary_model": "gemini-2.5-flash-preview-05-20",  # Keep for Opportunity Scorer
-    "groq_model": "llama-3.3-70b-versatile",
+    "groq_model": "groq/llama3-70b-8192",
     "openai_model": "openai/gpt-4o-mini",
     # Agent routing
     "opportunity_scorer": "gemini-2.5-flash-preview-05-20",
-    "market_explorer": "llama-3.3-70b-versatile",
-    "gap_mapper": "llama-3.3-70b-versatile",
-    "trend_analyzer": "llama-3.3-70b-versatile",
-    "trend_tracker": "llama-3.3-70b-versatile",
-    "builder_agents": "llama-3.3-70b-versatile",
+    "market_explorer": "groq/llama3-70b-8192",
+    "gap_mapper": "groq/llama3-70b-8192",
+    "trend_analyzer": "groq/llama3-70b-8192",
+    "trend_tracker": "groq/llama3-70b-8192",
+    "builder_agents": "groq/llama3-70b-8192",
     "market_research": "openai/gpt-4o-mini",
     "bigquery_agent": "openai/gpt-4o-mini",
     "code_executor": "openai/gpt-4o-mini",

@@ -382,7 +382,7 @@ def calculate_ai_powered_opportunity_score(
     competition_data: Dict[str, Any],
     demand_data: Dict[str, Any],
     trend_data: Dict[str, Any],
-    opportunity_context: Dict[str, Any] = None,
+    opportunity_context: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Calculate comprehensive opportunity score using Gemini-powered analysis

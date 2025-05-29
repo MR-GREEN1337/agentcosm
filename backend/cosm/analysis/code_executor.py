@@ -223,10 +223,10 @@ def analyze_data_with_code(
             temperature=0.2,
         )
 
-        if not response or not response.text:
+        if not response or not response.choices[0].message.content:
             return {"error": "Failed to generate analysis code"}
 
-        generated_code = response.text.strip()
+        generated_code = response.choices[0].message.content.strip()
 
         # Clean up code if it contains markdown formatting
         if "```python" in generated_code:

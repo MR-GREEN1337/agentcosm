@@ -57,8 +57,8 @@ def extract_signal_themes_with_gemini(signals: List[Dict[str, Any]]) -> Dict[str
             temperature=0.3,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error in Gemini theme extraction: {e}")
@@ -127,8 +127,8 @@ def identify_workflow_intersections_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error in Gemini workflow intersection analysis: {e}")
@@ -191,8 +191,8 @@ def find_technology_gaps_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error in Gemini technology gap analysis: {e}")
@@ -237,8 +237,8 @@ def identify_liminal_spaces_with_gemini(
             temperature=0.4,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error in Gemini liminal space identification: {e}")
@@ -291,8 +291,8 @@ def analyze_convergence_opportunities_with_gemini(
             temperature=0.3,
         )
 
-        if response and response.text:
-            return json.loads(response.text)
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error in Gemini convergence analysis: {e}")

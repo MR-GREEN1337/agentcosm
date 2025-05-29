@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     GOOGLE_GENAI_USE_VERTEXAI: bool
     GOOGLE_CLOUD_PROJECT_ID: str
 
+    RENDERER_SERVICE_URL: str
+
     GROQ_API_KEY: str
     OPENAI_API_KEY: str
 
