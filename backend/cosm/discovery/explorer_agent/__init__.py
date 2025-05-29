@@ -377,7 +377,7 @@ def analyze_signals_with_ai(
 
         response = completion(
             model=MODEL_CONFIG["market_explorer"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": analysis_prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -492,7 +492,7 @@ def analyze_competitive_gaps_with_ai(
 
         response = completion(
             model=MODEL_CONFIG["market_explorer"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": competitive_prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -546,7 +546,9 @@ def validate_signals_cross_platform(signals_data: Dict[str, Any]) -> Dict[str, A
 # Create the hybrid market explorer agent
 market_explorer_agent = LlmAgent(
     name="market_explorer_agent",
-    model=LiteLlm(model=MODEL_CONFIG["market_explorer"], api_key=settings.GROQ_API_KEY),
+    model=LiteLlm(
+        model=MODEL_CONFIG["market_explorer"], api_key=settings.OPENAI_API_KEY
+    ),
     instruction=EXPLORER_AGENT_PROMPT,
     description=(
         "Hybrid market signal explorer that combines web scraping with AI-powered "

@@ -51,7 +51,7 @@ def extract_signal_themes_with_gemini(signals: List[Dict[str, Any]]) -> Dict[str
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -121,7 +121,7 @@ def identify_workflow_intersections_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -185,7 +185,7 @@ def find_technology_gaps_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -231,7 +231,7 @@ def identify_liminal_spaces_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.4,
@@ -285,7 +285,7 @@ def analyze_convergence_opportunities_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,

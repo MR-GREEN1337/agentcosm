@@ -58,6 +58,7 @@ dependencies = [
     "opentelemetry-semantic-conventions==0.54b0",
     "packaging==25.0",
     "pandas>=2.2.3",
+    "pandas-gbq>=0.29.0",
     "proto-plus==1.26.1",
     "protobuf==6.30.2",
     "pyasn1==0.6.1",

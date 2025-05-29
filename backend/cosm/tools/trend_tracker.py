@@ -6,7 +6,7 @@ from google.genai import Client
 from typing import Dict, List, Any
 import json
 
-from ..tools.market_research import search_web_real
+from ..tools.market_research import search_web
 from cosm.config import MODEL_CONFIG
 from litellm import completion
 from cosm.settings import settings
@@ -54,7 +54,7 @@ def analyze_search_trends(keywords: List[str]) -> Dict[str, Any]:
 
             for query in trend_queries:
                 try:
-                    search_results = search_web_real(query, max_results=3)
+                    search_results = search_web(query, max_results=3)
                     trend_insights = extract_trend_insights_with_gemini(
                         search_results, keyword
                     )
@@ -114,7 +114,7 @@ def track_industry_momentum(industry: str, keywords: List[str]) -> Dict[str, Any
 
         for query in momentum_queries:
             try:
-                search_results = search_web_real(query, max_results=3)
+                search_results = search_web(query, max_results=3)
                 momentum_insights = extract_momentum_insights_with_gemini(
                     search_results, industry
                 )
@@ -213,7 +213,7 @@ def extract_trend_insights_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["trend_tracker"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -258,7 +258,7 @@ def extract_momentum_insights_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["trend_tracker"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,

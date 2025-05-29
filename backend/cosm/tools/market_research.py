@@ -4,6 +4,8 @@ Uses web search and structured output for comprehensive market analysis
 """
 
 import json
+import asyncio
+import aiohttp
 import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional
@@ -11,6 +13,7 @@ from google.genai import Client, types
 import requests
 from bs4 import BeautifulSoup
 import time
+from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
 from cosm.config import MODEL_CONFIG as CONFIG
 from litellm import completion
@@ -19,8 +22,10 @@ from cosm.settings import settings
 # Initialize Gemini client
 client = Client()
 
+executor = ThreadPoolExecutor(max_workers=8)
 
-def comprehensive_market_research(
+
+async def comprehensive_market_research(
     keywords: List[str], target_audience: str = ""
 ) -> Dict[str, Any]:
     """
@@ -46,33 +51,41 @@ def comprehensive_market_research(
     }
 
     try:
-        # 1. Market Signals Discovery
-        print("Discovering market signals...")
-        research_report["market_signals"] = discover_market_signals_real(keywords)
+        # Execute all research phases in parallel
+        async with aiohttp.ClientSession() as session:
+            tasks = [
+                discover_market_signals(keywords, session),
+                analyze_competition(keywords, session),
+                validate_demand(keywords, target_audience, session),
+                analyze_trends(keywords, session),
+            ]
 
-        # 2. Competition Analysis
-        print("Analyzing competition...")
-        research_report["competition_analysis"] = analyze_competition_real(keywords)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # 3. Demand Validation
-        print("Validating demand...")
-        research_report["demand_validation"] = validate_demand_real(
-            keywords, target_audience
+            # Process results
+            research_report["market_signals"] = (
+                results[0] if not isinstance(results[0], Exception) else []
+            )
+            research_report["competition_analysis"] = (
+                results[1] if not isinstance(results[1], Exception) else {}
+            )
+            research_report["demand_validation"] = (
+                results[2] if not isinstance(results[2], Exception) else {}
+            )
+            research_report["trend_analysis"] = (
+                results[3] if not isinstance(results[3], Exception) else {}
+            )
+
+        # Calculate opportunity score and insights in parallel
+        score_task = asyncio.create_task(calculate_opportunity_score(research_report))
+        insights_task = asyncio.create_task(
+            generate_insights_with_gemini(research_report)
         )
 
-        # 4. Trend Analysis
-        print("Analyzing trends...")
-        research_report["trend_analysis"] = analyze_trends_real(keywords)
-
-        # 5. Calculate Opportunity Score
-        research_report["opportunity_score"] = calculate_opportunity_score_real(
-            research_report
-        )
-
-        # 6. Generate Actionable Insights
-        research_report["actionable_insights"] = generate_insights_with_gemini(
-            research_report
-        )
+        (
+            research_report["opportunity_score"],
+            research_report["actionable_insights"],
+        ) = await asyncio.gather(score_task, insights_task)
 
         return research_report
 
@@ -82,35 +95,63 @@ def comprehensive_market_research(
         return research_report
 
 
-def discover_market_signals_real(keywords: List[str]) -> List[Dict[str, Any]]:
-    """Discovers real market signals from web sources"""
+async def discover_market_signals(
+    keywords: List[str], session: aiohttp.ClientSession
+) -> List[Dict[str, Any]]:
+    """Async parallel market signals discovery"""
     signals = []
 
-    for keyword in keywords[:3]:  # Limit to prevent rate limiting
-        # Search for problems and pain points
+    # Batch queries for parallel execution
+    tasks = []
+    for keyword in keywords[:2]:  # Reduced from 3 to 2 for speed
         pain_queries = [
             f"{keyword} problems frustrating users",
-            f"{keyword} doesn't work complaints",
             f"alternatives to {keyword} needed",
             f"{keyword} market gaps opportunities",
         ]
 
         for query in pain_queries:
-            try:
-                search_results = search_web_real(query, max_results=3)
-                for result in search_results:
-                    signal = extract_pain_signals_with_gemini(result, keyword)
-                    if signal:
-                        signals.append(signal)
-                time.sleep(0.5)  # Rate limiting
-            except Exception as e:
-                print(f"Error searching for {query}: {e}")
-                continue
+            tasks.append(search_and_extract_signals(query, keyword, session))
 
-    return signals
+    # Execute all searches in parallel
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Collect valid results
+    for result in results:
+        if not isinstance(result, Exception) and result:
+            signals.extend(result)
+
+    return signals[:10]
 
 
-def analyze_competition_real(keywords: List[str]) -> Dict[str, Any]:
+async def search_and_extract_signals(
+    query: str, keyword: str, session: aiohttp.ClientSession
+) -> List[Dict[str, Any]]:
+    """Async search and signal extraction"""
+    try:
+        search_results = await search_web(
+            query, session, max_results=2
+        )  # Reduced from 3
+        signals = []
+
+        # Process results in parallel
+        tasks = [
+            extract_pain_signals_with_gemini(result, keyword)
+            for result in search_results
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in results:
+            if not isinstance(result, Exception) and result:
+                signals.append(result)
+
+        return signals
+    except Exception as e:
+        print(f"Error in search_and_extract_signals_async: {e}")
+        return []
+
+
+def analyze_competition(keywords: List[str]) -> Dict[str, Any]:
     """Analyzes real competition data"""
     competition_data = {
         "direct_competitors": [],
@@ -131,7 +172,7 @@ def analyze_competition_real(keywords: List[str]) -> Dict[str, Any]:
 
             all_competitors = []
             for query in comp_queries:
-                search_results = search_web_real(query, max_results=3)
+                search_results = search_web(query, max_results=3)
                 competitors = extract_competitors_with_gemini(search_results, keyword)
                 all_competitors.extend(competitors)
                 time.sleep(0.5)
@@ -155,7 +196,7 @@ def analyze_competition_real(keywords: List[str]) -> Dict[str, Any]:
     return competition_data
 
 
-def validate_demand_real(keywords: List[str], target_audience: str) -> Dict[str, Any]:
+def validate_demand(keywords: List[str], target_audience: str) -> Dict[str, Any]:
     """Validates market demand using real data"""
     demand_data = {
         "search_volume_indicators": [],
@@ -176,7 +217,7 @@ def validate_demand_real(keywords: List[str], target_audience: str) -> Dict[str,
             ]
 
             for query in demand_queries:
-                search_results = search_web_real(query, max_results=2)
+                search_results = search_web(query, max_results=2)
                 demand_indicators = extract_demand_with_gemini(search_results, keyword)
                 demand_data["search_volume_indicators"].extend(demand_indicators)
                 time.sleep(0.5)
@@ -190,7 +231,7 @@ def validate_demand_real(keywords: List[str], target_audience: str) -> Dict[str,
     return demand_data
 
 
-def analyze_trends_real(keywords: List[str]) -> Dict[str, Any]:
+def analyze_trends(keywords: List[str]) -> Dict[str, Any]:
     """Analyzes real market trends"""
     trend_data = {
         "trend_direction": "stable",
@@ -210,7 +251,7 @@ def analyze_trends_real(keywords: List[str]) -> Dict[str, Any]:
             ]
 
             for query in trend_queries:
-                search_results = search_web_real(query, max_results=2)
+                search_results = search_web(query, max_results=2)
                 trends = extract_trends_with_gemini(search_results, keyword)
                 trend_data["growth_indicators"].extend(trends)
                 time.sleep(0.5)
@@ -234,52 +275,43 @@ def analyze_trends_real(keywords: List[str]) -> Dict[str, Any]:
     return trend_data
 
 
-def search_web_real(query: str, max_results: int = 5) -> List[Dict[str, str]]:
-    """
-    Performs real web search using requests and BeautifulSoup
-    Searches DuckDuckGo to avoid API requirements
-    """
+async def search_web(
+    query: str, session: aiohttp.ClientSession, max_results: int = 3
+) -> List[Dict[str, str]]:
+    """Async web search using aiohttp"""
     results = []
 
     try:
-        # Use DuckDuckGo HTML search
         search_url = f"https://html.duckduckgo.com/html/?q={query}"
-
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
 
-        response = requests.get(search_url, headers=headers, timeout=10)
-        response.raise_for_status()
+        async with session.get(
+            search_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+        ) as response:
+            if response.status == 200:
+                content = await response.text()
 
-        soup = BeautifulSoup(response.text, "html.parser")
+                # Parse results (simplified for performance)
+                import re
 
-        # Extract search results
-        result_links = soup.find_all("a", class_="result__a")
+                url_pattern = r'href="([^"]*)" class="result__a"[^>]*>([^<]*)</a>'
+                matches = re.findall(url_pattern, content)
 
-        for i, link in enumerate(result_links[:max_results]):
-            try:
-                title = link.get_text().strip()
-                url = link.get("href", "")
-
-                if url and title:
-                    # Get snippet from result
-                    snippet = extract_snippet_from_url(url)
-
-                    results.append(
-                        {
-                            "title": title,
-                            "url": url,
-                            "snippet": snippet,
-                            "source": "web_search",
-                        }
-                    )
-            except Exception as e:
-                print(f"Error processing search result: {e}")
-                continue
+                for url, title in matches[:max_results]:
+                    if url and title:
+                        results.append(
+                            {
+                                "title": title.strip(),
+                                "url": url,
+                                "snippet": "",  # Skip snippet extraction for speed
+                                "source": "web_search",
+                            }
+                        )
 
     except Exception as e:
-        print(f"Error in web search for '{query}': {e}")
+        print(f"Error in async web search: {e}")
 
     return results
 
@@ -485,7 +517,7 @@ def extract_trends_with_gemini(
     return trends
 
 
-def calculate_opportunity_score_real(research_data: Dict[str, Any]) -> float:
+def calculate_opportunity_score(research_data: Dict[str, Any]) -> float:
     """Calculates opportunity score based on real data"""
     score = 0.0
 
@@ -585,7 +617,7 @@ def analyze_competitive_landscape(
     """
     Analyzes competitive landscape for given keywords
     """
-    return analyze_competition_real(keywords)
+    return analyze_competition(keywords)
 
 
 def check_domain_availability(domain_name: str) -> Dict[str, Any]:
@@ -678,7 +710,7 @@ def analyze_market_size(
 
             for query in market_queries:
                 try:
-                    search_results = search_web_real(query, max_results=3)
+                    search_results = search_web(query, max_results=3)
                     size_data = extract_market_size_with_gemini(search_results, keyword)
                     if size_data:
                         market_data_points.extend(size_data)
@@ -762,7 +794,7 @@ def research_competition(
 
             for query in competitor_queries:
                 try:
-                    search_results = search_web_real(query, max_results=3)
+                    search_results = search_web(query, max_results=3)
                     competitors = extract_competitors_with_gemini(
                         search_results, keyword
                     )
@@ -853,7 +885,7 @@ def validate_demand_signals(
 
             for query in demand_queries:
                 try:
-                    search_results = search_web_real(query, max_results=2)
+                    search_results = search_web(query, max_results=2)
                     signals = extract_demand_signals_with_gemini(
                         search_results, keyword
                     )
@@ -876,7 +908,7 @@ def validate_demand_signals(
 
             for query in pain_queries:
                 try:
-                    search_results = search_web_real(query, max_results=2)
+                    search_results = search_web(query, max_results=2)
                     pain_validation = extract_pain_validation_with_gemini(
                         search_results, pain_point
                     )
@@ -1810,7 +1842,7 @@ def validate_market_opportunity_comprehensive(
         analyze_market_size,
         research_competition,
         validate_demand_signals,
-        calculate_opportunity_score_real,
+        calculate_opportunity_score,
     )
 
     validation_report = {
@@ -1868,7 +1900,7 @@ def validate_market_opportunity_comprehensive(
 
         # 6. Calculate Opportunity Score
         print("Calculating opportunity score...")
-        validation_report["opportunity_score"] = calculate_opportunity_score_real(
+        validation_report["opportunity_score"] = calculate_opportunity_score(
             {
                 "market_signals": validation_report["demand_validation"].get(
                     "demand_sources", []

@@ -167,7 +167,7 @@ def analyze_content_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": analysis_prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -329,7 +329,7 @@ def analyze_industry_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": momentum_prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,
@@ -481,7 +481,7 @@ def analyze_convergence_with_gemini(
 
         response = completion(
             model=MODEL_CONFIG["gap_mapper"],
-            api_key=settings.GROQ_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": convergence_prompt}],
             response_format={"type": "json_object"},
             temperature=0.3,

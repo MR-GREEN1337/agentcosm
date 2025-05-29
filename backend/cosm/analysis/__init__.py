@@ -21,7 +21,7 @@ from ..tools.market_research import (
     research_competition,
     validate_demand_signals,
     assess_market_risks,
-    calculate_opportunity_score_real,
+    calculate_opportunity_score,
     generate_recommendation,
 )
 from ..tools.trend_tracker import analyze_search_trends
@@ -85,7 +85,7 @@ def comprehensive_market_validation(opportunity_data: Dict[str, Any]) -> Dict[st
         )
 
         # 6. Calculate Opportunity Score
-        validation_report["opportunity_score"] = calculate_opportunity_score_real(
+        validation_report["opportunity_score"] = calculate_opportunity_score(
             validation_report
         )
 

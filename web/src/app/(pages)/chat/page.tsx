@@ -40,6 +40,9 @@ export default function AgentDevUI() {
   const initialBusinessQuerySent = useRef<boolean>(false);
   const [lastAiResponse, setLastAiResponse] = useState('');
 
+  // Add new ref to track the most recent complete AI message
+  const latestCompleteAiMessageRef = useRef<string>('');
+
   const {
     sendMessage,
     events: sseEvents,
@@ -116,6 +119,21 @@ export default function AgentDevUI() {
             ...eventToAdd,
             isStreaming: false,
           };
+
+          // 🔥 CRITICAL FIX: Update the latest complete AI message immediately
+          if (
+            eventToAdd.author !== 'user' &&
+            eventToAdd.text &&
+            !eventToAdd.isStreaming
+          ) {
+            console.log(
+              '🎵 Setting latest complete AI message:',
+              eventToAdd.text.substring(0, 50) + '...',
+            );
+            latestCompleteAiMessageRef.current = eventToAdd.text;
+            setLastAiResponse(eventToAdd.text);
+          }
+
           return updated;
         }
       }
@@ -133,6 +151,20 @@ export default function AgentDevUI() {
         return prev;
       }
 
+      // 🔥 CRITICAL FIX: Also update for new complete messages
+      if (
+        eventToAdd.author !== 'user' &&
+        eventToAdd.text &&
+        !eventToAdd.isStreaming
+      ) {
+        console.log(
+          '🎵 Setting latest complete AI message (new):',
+          eventToAdd.text.substring(0, 50) + '...',
+        );
+        latestCompleteAiMessageRef.current = eventToAdd.text;
+        setLastAiResponse(eventToAdd.text);
+      }
+
       return [...prev, eventToAdd];
     });
   }, [sseEvents]);
@@ -144,18 +176,7 @@ export default function AgentDevUI() {
     }
   }, [sessionEvents]);
 
-  useEffect(() => {
-    if (sessionEvents.length > 0) {
-      const lastEvent = sessionEvents[sessionEvents.length - 1];
-      if (
-        lastEvent.author !== 'user' &&
-        lastEvent.text &&
-        !lastEvent.isStreaming
-      ) {
-        setLastAiResponse(lastEvent.text);
-      }
-    }
-  }, [sessionEvents]);
+  // 🔥 REMOVED THE PROBLEMATIC useEffect - We now set lastAiResponse directly in the SSE processing
 
   // Parse query parameter and create a new session if there's a query
   useEffect(() => {
@@ -225,13 +246,33 @@ export default function AgentDevUI() {
     setSessionEvents([]);
     processedEventsRef.current.clear();
 
+    // 🔥 CRITICAL FIX: Clear the latest AI message when switching sessions
+    latestCompleteAiMessageRef.current = '';
+    setLastAiResponse('');
+
     // Load session events
     try {
       const response = await api.get(
         `/apps/${selectedApp}/users/${userId}/sessions/${sessionId}`,
       );
       if (response.data.events) {
-        setSessionEvents(response.data.events);
+        const events = response.data.events;
+        setSessionEvents(events);
+
+        // 🔥 CRITICAL FIX: Find the last complete AI message from loaded events
+        for (let i = events.length - 1; i >= 0; i--) {
+          const event = events[i];
+          if (event.author !== 'user' && event.text && !event.isStreaming) {
+            console.log(
+              '🎵 Found last AI message in loaded session:',
+              event.text.substring(0, 50) + '...',
+            );
+            latestCompleteAiMessageRef.current = event.text;
+            setLastAiResponse(event.text);
+            break;
+          }
+        }
+
         // Scroll to bottom after loading session events
         setTimeout(scrollToBottom, 100);
       }
@@ -245,6 +286,10 @@ export default function AgentDevUI() {
     setCurrentSession(newSessionId);
     setSessionEvents([]);
     processedEventsRef.current.clear();
+
+    // 🔥 CRITICAL FIX: Clear the latest AI message for new session
+    latestCompleteAiMessageRef.current = '';
+    setLastAiResponse('');
   };
 
   const handleResendMessage = async (text: string) => {
@@ -543,6 +588,7 @@ export default function AgentDevUI() {
                         events={sessionEvents}
                         onResendMessage={handleResendMessage}
                         onEditMessage={handleEditMessage}
+                        isLoading={isLoading}
                       />
                     </div>
                   </div>
@@ -551,7 +597,7 @@ export default function AgentDevUI() {
                     <MessageInput
                       onSendMessage={handleSendMessage}
                       disabled={false}
-                      lastAiMessage={lastAiResponse}
+                      lastAiMessage={lastAiResponse} // 🔥 This now gets the correct latest message
                     />
                   </div>
                 </>

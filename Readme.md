@@ -1,5 +1,4 @@
 # agentcosm
-## Combine gemini and groq to distribute token usage -- Done
 ## Reintegrate adk builtin tools(google_Search) and understand utility of bigquery --> Englobe agents that englobe builtin adk tools and set em as subagents
 ## Improve code agent to be both robust and fast
 ## implement retry mechanism for failed model call
@@ -9,8 +8,7 @@
 ## Audio reads previous ai messages@
 ## Abstract instructions, ai is to user an in-between business ideas finder -- Done
 ## Add loading state while no messagee streamed
-## Fix lambda issue
-##
+
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 
 ![App](App.png)

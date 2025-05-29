@@ -27,7 +27,141 @@ interface EventsTabProps {
   events: any[];
   onResendMessage?: (text: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
+  isLoading?: boolean; // Add this prop to track SSE loading state
 }
+
+// Loading component with animated dots
+const LoadingMessage = () => {
+  const [dots, setDots] = useState('');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots((prev) => {
+        if (prev === '...') return '';
+        return prev + '.';
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
+      <div className="flex-shrink-0">
+        <div className="w-8 h-8 rounded-lg overflow-hidden">
+          <img
+            src="/face.png"
+            alt="AI Assistant"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1 max-w-[70%]">
+        <div className="flex items-end gap-2">
+          <div className="rounded-2xl px-4 py-3 relative bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
+            <div className="flex items-center gap-2">
+              {/* Animated thinking indicator */}
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
+              </div>
+              <span className="text-gray-600 dark:text-gray-400 text-sm">
+                Thinking{dots}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced loading component with more visual flair
+const EnhancedLoadingMessage = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const steps = [
+    'Processing your request',
+    'Analyzing context',
+    'Generating response',
+    'Almost ready',
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentStep((prev) => (prev + 1) % steps.length);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
+      <div className="flex-shrink-0">
+        <div className="w-8 h-8 rounded-lg overflow-hidden relative">
+          <img
+            src="/face.png"
+            alt="AI Assistant"
+            className="w-full h-full object-cover"
+          />
+          {/* Pulsing overlay */}
+          <div className="absolute inset-0 bg-blue-500/20 rounded-lg animate-pulse"></div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1 max-w-[70%]">
+        <div className="flex items-end gap-2">
+          <div className="rounded-2xl px-4 py-3 relative bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200 text-gray-900 dark:from-[#1a1a1f] dark:to-[#1e1e23] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
+            <div className="flex flex-col gap-2">
+              {/* Progress bar */}
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-blue-500 h-1.5 rounded-full animate-pulse transition-all duration-1000 w-3/4"></div>
+              </div>
+
+              {/* Dynamic status text */}
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                </div>
+                <span className="text-sm font-medium transition-all duration-500">
+                  {steps[currentStep]}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Minimal elegant loading
+const MinimalLoadingMessage = () => (
+  <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
+    <div className="flex-shrink-0">
+      <div className="w-8 h-8 rounded-lg overflow-hidden">
+        <img
+          src="/face.png"
+          alt="AI Assistant"
+          className="w-full h-full object-cover"
+        />
+      </div>
+    </div>
+
+    <div className="flex flex-col gap-1 max-w-[70%]">
+      <div className="flex items-end gap-2">
+        <div className="rounded-2xl px-4 py-3 relative bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full animate-ping"></div>
+            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full animate-ping [animation-delay:0.2s]"></div>
+            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full animate-ping [animation-delay:0.4s]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 // Simple markdown parser for basic formatting
 const parseMarkdown = (text: string) => {
@@ -106,18 +240,19 @@ export function EventsTab({
   events = [],
   onResendMessage,
   onEditMessage,
+  isLoading = false, // Add this prop
 }: EventsTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or when loading state changes
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [events]);
+  }, [events, isLoading]);
 
   const handleCopy = async (text: string, messageId: string) => {
     try {
@@ -185,7 +320,10 @@ export function EventsTab({
     }
   };
 
-  if (events.length === 0) {
+  // Show loading message if SSE is active but no events yet
+  const shouldShowLoading = isLoading && events.length === 0;
+
+  if (events.length === 0 && !isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -470,6 +608,17 @@ export function EventsTab({
             </div>
           );
         })}
+
+        {/* Show loading message when SSE is active but no events yet */}
+        {shouldShowLoading && (
+          <div className="space-y-4">
+            {/* You can choose which loading style you prefer */}
+            <EnhancedLoadingMessage />
+            {/* Alternative loading styles: */}
+            {/* <LoadingMessage /> */}
+            {/* <MinimalLoadingMessage /> */}
+          </div>
+        )}
       </div>
     </ScrollArea>
   );

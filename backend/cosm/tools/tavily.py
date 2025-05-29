@@ -2,12 +2,11 @@
 Tavily Search Tool - Production-ready web search for market research
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 from tavily import TavilyClient
 from google.adk.tools import FunctionTool
 from cosm.settings import settings
-from functools import partial
 
 
 # Initialize Tavily client
@@ -36,11 +35,15 @@ def tavily_search(
         search_depth: "basic" or "advanced" search depth
         include_answer: Whether to include AI-generated answer
         include_raw_content: Whether to include raw HTML content
-        topic: Topic context for better search results
+        topic: Topic context - must be 'general' or 'news'
 
     Returns:
         Search results with metadata
     """
+    # Validate topic parameter
+    if topic not in ["general", "news"]:
+        topic = "general"  # Default to 'general' if invalid topic provided
+
     search_results = {
         "query": query,
         "topic": topic,
@@ -162,13 +165,13 @@ def tavily_market_research(
             for query_template in queries:
                 query = query_template.format(keyword=keyword)
 
-                # Perform Tavily search
+                # Perform Tavily search - FIXED: Use 'general' instead of 'business'
                 search_result = tavily_search(
                     query=query,
                     max_results=3,
                     search_depth="advanced",
                     include_answer=True,
-                    topic="business",
+                    topic="general",  # FIXED: Changed from 'business' to 'general'
                 )
 
                 if not search_result.get("error"):
@@ -226,12 +229,13 @@ def tavily_competitive_intelligence(
             }
 
             for query in company_queries:
+                # FIXED: Use 'general' instead of 'business'
                 search_result = tavily_search(
                     query=query,
                     max_results=2,
                     search_depth="advanced",
                     include_answer=True,
-                    topic="business",
+                    topic="general",  # FIXED: Changed from 'business' to 'general'
                 )
 
                 if not search_result.get("error"):
@@ -279,12 +283,13 @@ def tavily_trend_analysis(topics: List[str], timeframe: str = "2025") -> Dict[st
             topic_trends = {"topic": topic, "search_results": []}
 
             for query in trend_queries:
+                # FIXED: Use 'general' instead of 'business'
                 search_result = tavily_search(
                     query=query,
                     max_results=3,
                     search_depth="advanced",
                     include_answer=True,
-                    topic="business",
+                    topic="general",  # FIXED: Changed from 'business' to 'general'
                 )
 
                 if not search_result.get("error"):
@@ -301,7 +306,7 @@ def tavily_trend_analysis(topics: List[str], timeframe: str = "2025") -> Dict[st
 
 
 def tavily_pain_point_discovery(
-    market_keywords: List[str], user_segments: List[str]
+    market_keywords: List[str], user_segments: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Discover user pain points using Tavily search
@@ -313,9 +318,12 @@ def tavily_pain_point_discovery(
     Returns:
         Pain point discovery results
     """
+    if user_segments is None:
+        user_segments = []
+
     pain_point_data = {
         "market_keywords": market_keywords,
-        "user_segments": user_segments or [],
+        "user_segments": user_segments,
         "timestamp": datetime.now().isoformat(),
         "pain_point_signals": [],
         "frustration_indicators": [],
@@ -338,7 +346,7 @@ def tavily_pain_point_discovery(
             )
 
         # Add user segment specific queries
-        for segment in (user_segments or [])[:2]:
+        for segment in user_segments[:2]:
             for keyword in market_keywords[:2]:
                 pain_queries.append(f"{segment} {keyword} problems challenges")
 
@@ -385,34 +393,47 @@ def calculate_research_confidence(research_data: Dict[str, Any]) -> float:
         return 0.5  # Default moderate confidence
 
 
-# Create FunctionTool instances for use in agents
-tavily_search_tool = FunctionTool(
-    func=lambda query: partial(
-        tavily_search,
+# FIXED: Create proper wrapper functions instead of lambdas
+def tavily_basic_search(query: str) -> Dict[str, Any]:
+    """Basic Tavily search wrapper for ADK compatibility"""
+    return tavily_search(
         query=query,
         max_results=3,
         search_depth="basic",
         include_answer=True,
         topic="general",
     )
-)
-tavily_market_research_tool = FunctionTool(
-    func=lambda keywords: partial(
-        tavily_market_research, keywords=keywords, research_type="market_analysis"
+
+
+def tavily_market_analysis(keywords: List[str]) -> Dict[str, Any]:
+    """Market analysis wrapper for ADK compatibility"""
+    return tavily_market_research(keywords=keywords, research_type="market_analysis")
+
+
+def tavily_competitive_analysis(company_names: List[str]) -> Dict[str, Any]:
+    """Competitive analysis wrapper for ADK compatibility"""
+    return tavily_competitive_intelligence(
+        company_names=company_names, market_context=""
     )
-)
-tavily_competitive_intelligence_tool = FunctionTool(
-    func=lambda company_names: partial(
-        tavily_competitive_intelligence, company_names=company_names, market_context=""
+
+
+def tavily_trend_research(topics: List[str]) -> Dict[str, Any]:
+    """Trend research wrapper for ADK compatibility"""
+    return tavily_trend_analysis(topics=topics, timeframe="2025")
+
+
+def tavily_pain_points(
+    market_keywords: List[str], user_segments: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """Pain point discovery wrapper for ADK compatibility"""
+    return tavily_pain_point_discovery(
+        market_keywords=market_keywords, user_segments=user_segments or []
     )
-)
-tavily_trend_analysis_tool = FunctionTool(
-    func=lambda topics: partial(tavily_trend_analysis, topics=topics, timeframe="2025")
-)
-tavily_pain_point_discovery_tool = FunctionTool(
-    func=lambda market_keywords, user_segments: partial(
-        tavily_pain_point_discovery,
-        market_keywords=market_keywords,
-        user_segments=user_segments,
-    )
-)
+
+
+# Create FunctionTool instances with proper wrapper functions
+tavily_search_tool = FunctionTool(func=tavily_basic_search)
+tavily_market_research_tool = FunctionTool(func=tavily_market_analysis)
+tavily_competitive_intelligence_tool = FunctionTool(func=tavily_competitive_analysis)
+tavily_trend_analysis_tool = FunctionTool(func=tavily_trend_research)
+tavily_pain_point_discovery_tool = FunctionTool(func=tavily_pain_points)
