@@ -781,7 +781,7 @@ export const Page = ({ className }: PageProps) => {
                   agent cosm
                 </h1>
                 <h1 className="text-[1.2rem] text-white/70 font-light">
-                  Discover Your Next Market -{'>'} Launch Your Mini-Business.
+                  Discover Your Next Market -{'>'} Launch Your Business.
                 </h1>
               </div>
 

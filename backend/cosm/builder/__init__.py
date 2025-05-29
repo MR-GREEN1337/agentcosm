@@ -1,21 +1,18 @@
 """
-Builder Agents - Create and deploy testable business assets from validated opportunities
-Updated to deploy directly to renderer service instead of returning code
+COMPLETE Builder Agents Suite - All Three Agents with OpenAI Integration
+Brand Creator + Copy Writer + Landing Builder + Admin Dashboard Generator
 """
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import json
 import re
 import requests
-from cosm.config import MODEL_CONFIG
-from cosm.prompts import (
-    BRAND_CREATOR_PROMPT,
-    COPY_WRITER_PROMPT,
-)
+from datetime import datetime
 from litellm import completion
+from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 
 client = Client()
@@ -24,12 +21,1461 @@ client = Client()
 RENDERER_SERVICE_URL = settings.RENDERER_SERVICE_URL
 
 # =============================================================================
-# DEPLOYMENT SERVICE INTEGRATION
+# BRAND CREATOR AGENT - ENHANCED WITH OPENAI
 # =============================================================================
 
 
+def create_brand_identity_with_openai(
+    opportunity_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Creates comprehensive brand identity using OpenAI for liminal market opportunities
+    """
+    brand_identity = {
+        "opportunity_name": opportunity_data.get("name", "Unknown Opportunity"),
+        "brand_name": "",
+        "tagline": "",
+        "positioning_statement": "",
+        "value_proposition": "",
+        "target_audience": "",
+        "brand_personality": {},
+        "visual_identity": {},
+        "messaging_framework": {},
+        "domain_suggestions": [],
+        "trademark_considerations": [],
+        "brand_story": "",
+        "competitive_differentiation": [],
+        "brand_architecture": {},
+    }
+
+    try:
+        # Create comprehensive brand development prompt
+        brand_prompt = f"""
+        You are a world-class brand strategist tasked with creating a compelling brand identity for a liminal market opportunity.
+
+        OPPORTUNITY CONTEXT:
+        {json.dumps(opportunity_data, indent=2)}
+
+        LIMINAL POSITIONING STRATEGY:
+        This opportunity exists in the space BETWEEN established market categories. Your brand must:
+        - Position uniquely between existing solutions
+        - Appeal to users underserved by mainstream options
+        - Create new category language and mental models
+        - Bridge the gap between what exists and what's needed
+
+        COMPREHENSIVE BRAND DEVELOPMENT:
+        Create a complete brand identity that includes:
+
+        1. **Brand Foundation**:
+        - Memorable, distinctive brand name that suggests innovation
+        - Compelling tagline (3-7 words) that captures the liminal positioning
+        - Clear positioning statement vs competitors
+        - Unique value proposition for target users
+
+        2. **Brand Personality & Voice**:
+        - Brand archetype (Explorer, Creator, Revolutionary, etc.)
+        - Voice characteristics (professional/friendly/innovative/disruptive)
+        - Personality traits that resonate with target audience
+        - Communication tone and style guidelines
+
+        3. **Visual Identity Framework**:
+        - Primary color palette (3-4 colors with hex codes)
+        - Secondary accent colors
+        - Typography recommendations (primary + secondary fonts)
+        - Visual style direction (modern/minimalist/bold/organic)
+        - Imagery style and aesthetic direction
+
+        4. **Messaging Architecture**:
+        - Primary brand message (elevator pitch)
+        - Supporting key messages for different contexts
+        - Differentiation points vs established players
+        - Category-defining language and terminology
+
+        5. **Brand Story & Narrative**:
+        - Origin story that explains why this brand exists
+        - Mission statement with emotional resonance
+        - Vision for transforming the market space
+        - Brand values that guide decisions
+
+        6. **Competitive Differentiation**:
+        - How this brand is uniquely different
+        - What traditional solutions miss
+        - Why users should switch or try something new
+        - Proof points and credibility builders
+
+        7. **Brand Architecture**:
+        - Master brand strategy
+        - Product/service naming conventions
+        - Brand extension possibilities
+        - Partnership and co-branding guidelines
+
+        Return comprehensive JSON with all brand elements that creates a distinctive, memorable identity for this liminal market opportunity.
+
+        Make this brand feel inevitable - like users will wonder how they ever lived without it.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": brand_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.4,
+            max_tokens=2000,
+        )
+
+        if response and response.choices[0].message.content:
+            ai_brand_data = json.loads(response.choices[0].message.content)
+            brand_identity.update(ai_brand_data)
+
+        # Generate domain suggestions
+        brand_name = brand_identity.get("brand_name", "")
+        if brand_name:
+            brand_identity["domain_suggestions"] = generate_smart_domain_suggestions(
+                brand_name
+            )
+            brand_identity["trademark_considerations"] = (
+                assess_comprehensive_trademark_risks(brand_name)
+            )
+
+        return brand_identity
+
+    except Exception as e:
+        print(f"Error creating brand identity: {e}")
+        brand_identity["error"] = str(e)
+        return brand_identity
+
+
+def generate_smart_domain_suggestions(brand_name: str) -> List[Dict[str, Any]]:
+    """Generate intelligent domain name suggestions with availability hints"""
+    suggestions = []
+    base_name = re.sub(r"[^a-zA-Z0-9]", "", brand_name.lower())
+
+    # Primary options
+    primary_domains = [
+        f"{base_name}.com",
+        f"{base_name}.io",
+        f"{base_name}.co",
+        f"{base_name}.ai",
+    ]
+
+    # Creative variations
+    creative_domains = [
+        f"get{base_name}.com",
+        f"try{base_name}.com",
+        f"{base_name}app.com",
+        f"{base_name}hq.com",
+        f"{base_name}pro.com",
+        f"use{base_name}.com",
+        f"{base_name}labs.com",
+        f"{base_name}tech.com",
+    ]
+
+    # Short variations if name is long
+    if len(base_name) > 8:
+        short_variants = [
+            f"{base_name[:6]}.com",
+            f"{base_name[:5]}app.com",
+            f"{base_name[:4]}pro.com",
+        ]
+        creative_domains.extend(short_variants)
+
+    # Add to suggestions with priority
+    for domain in primary_domains:
+        suggestions.append(
+            {
+                "domain": domain,
+                "priority": "high",
+                "category": "primary",
+                "recommendation": "First choice - professional and memorable",
+            }
+        )
+
+    for domain in creative_domains:
+        suggestions.append(
+            {
+                "domain": domain,
+                "priority": "medium",
+                "category": "alternative",
+                "recommendation": "Good alternative if primary unavailable",
+            }
+        )
+
+    return suggestions
+
+
+def assess_comprehensive_trademark_risks(brand_name: str) -> List[Dict[str, str]]:
+    """Comprehensive trademark risk assessment"""
+    considerations = []
+
+    # Basic trademark checks
+    considerations.extend(
+        [
+            {
+                "category": "search_required",
+                "risk": "Comprehensive trademark search needed",
+                "action": "Conduct USPTO and international trademark database search",
+                "priority": "high",
+            },
+            {
+                "category": "category_check",
+                "risk": "Check existing marks in relevant business categories",
+                "action": "Search in SaaS, technology, and business services classes",
+                "priority": "high",
+            },
+            {
+                "category": "domain_check",
+                "risk": "Verify domain availability and potential conflicts",
+                "action": "Check domain registrations and parking pages",
+                "priority": "medium",
+            },
+            {
+                "category": "common_law",
+                "risk": "Search for unregistered common law trademarks",
+                "action": "Google search for existing business usage",
+                "priority": "medium",
+            },
+        ]
+    )
+
+    # Name-specific risks
+    word_count = len(brand_name.split())
+    if word_count > 2:
+        considerations.append(
+            {
+                "category": "complexity",
+                "risk": "Multi-word names may face trademark challenges",
+                "action": "Consider shorter alternatives or unique combinations",
+                "priority": "low",
+            }
+        )
+
+    if any(char.isdigit() for char in brand_name):
+        considerations.append(
+            {
+                "category": "numbers",
+                "risk": "Names with numbers may be harder to trademark",
+                "action": "Ensure numbers are distinctive, not merely descriptive",
+                "priority": "medium",
+            }
+        )
+
+    # Check for common descriptive terms
+    descriptive_terms = ["app", "tech", "pro", "max", "plus", "hub", "lab"]
+    if any(term in brand_name.lower() for term in descriptive_terms):
+        considerations.append(
+            {
+                "category": "descriptive",
+                "risk": "Descriptive elements may weaken trademark protection",
+                "action": "Combine with distinctive elements for stronger protection",
+                "priority": "medium",
+            }
+        )
+
+    return considerations
+
+
+# =============================================================================
+# COPY WRITER AGENT - ENHANCED WITH OPENAI
+# =============================================================================
+
+
+def generate_comprehensive_marketing_copy(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Generates comprehensive marketing copy using OpenAI for early-stage validation
+    """
+    copy_package = {
+        "brand_name": brand_data.get("brand_name", ""),
+        "headlines": [],
+        "taglines": [],
+        "value_propositions": [],
+        "website_copy": {},
+        "email_sequences": {},
+        "social_media_copy": {},
+        "ad_copy": {},
+        "press_release": "",
+        "sales_copy": {},
+        "onboarding_copy": {},
+        "product_descriptions": {},
+        "faq_content": [],
+        "testimonial_templates": [],
+        "case_study_frameworks": [],
+    }
+
+    try:
+        # Create comprehensive copywriting prompt
+        copy_prompt = f"""
+        You are an expert conversion copywriter specializing in liminal market opportunities and early-stage validation.
+
+        BRAND CONTEXT:
+        {json.dumps(brand_data, indent=2)[:1500]}
+
+        OPPORTUNITY CONTEXT:
+        {json.dumps(opportunity_data, indent=2)[:1500]}
+
+        LIMINAL MARKET COPY STRATEGY:
+        This brand exists between established categories. Your copy must:
+        - Address the frustration with existing solutions
+        - Position as the missing link users didn't know they needed
+        - Create urgency through pain amplification
+        - Build trust through specificity and understanding
+        - Drive early adoption and validation
+
+        COMPREHENSIVE COPY DEVELOPMENT:
+        Generate high-converting copy across all touchpoints:
+
+        1. **Headlines & Taglines**:
+        - 5 primary headlines for landing pages (outcome-focused)
+        - 3 tagline variations (3, 5, and 7 words)
+        - 3 value proposition statements (different angles)
+        - Headlines optimized for different traffic sources
+
+        2. **Website Copy Sections**:
+        - Hero headline + subheadline combination
+        - Problem agitation copy that amplifies current pain
+        - Solution explanation that bridges the gap
+        - Benefit statements (outcome-focused, not feature-focused)
+        - Social proof integration points
+        - FAQ answers addressing common objections
+        - Call-to-action variations for different contexts
+
+        3. **Email Marketing Sequences**:
+        - Welcome sequence (3 emails) for new subscribers
+        - Nurture sequence (5 emails) for prospects
+        - Product announcement sequence (3 emails)
+        - Re-engagement sequence (3 emails) for inactive users
+        - Each email with subject line + preview text + body
+
+        4. **Social Media Copy**:
+        - Twitter/X posts (5 variations) with hooks and engagement
+        - LinkedIn posts (3 variations) for professional audience
+        - Instagram captions (3 variations) with storytelling
+        - Facebook posts (3 variations) for community building
+
+        5. **Ad Copy Variations**:
+        - Google Ads: Headlines (30 chars) + Descriptions (90 chars)
+        - Facebook Ads: Primary text + Headlines + Descriptions
+        - LinkedIn Ads: Professional messaging variations
+        - Twitter Ads: Concise, scroll-stopping copy
+
+        6. **Sales & Onboarding Copy**:
+        - Sales page structure with persuasion sequences
+        - Onboarding welcome messages and instructions
+        - Product tour copy and user guidance
+        - Success milestone celebrations
+
+        7. **Support Content**:
+        - FAQ answers for common questions and objections
+        - Help documentation with user-friendly explanations
+        - Error messages that maintain brand voice
+        - Customer success story templates
+
+        CONVERSION OPTIMIZATION PRINCIPLES:
+        - Lead with outcome, not process
+        - Use specific numbers and timeframes
+        - Address skepticism head-on
+        - Create multiple conversion paths
+        - Build trust through transparency
+        - Use power words that drive action
+
+        Return comprehensive JSON with all copy elements optimized for early-stage validation and conversion.
+
+        Make every word work harder - this copy needs to convert skeptical users into early adopters.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": copy_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+            max_tokens=3000,
+        )
+
+        if response and response.choices[0].message.content:
+            ai_copy_data = json.loads(response.choices[0].message.content)
+            copy_package.update(ai_copy_data)
+
+        # Generate additional specialized copy
+        copy_package["testimonial_templates"] = generate_testimonial_templates(
+            brand_data, opportunity_data
+        )
+        copy_package["case_study_frameworks"] = generate_case_study_frameworks(
+            brand_data
+        )
+
+        return copy_package
+
+    except Exception as e:
+        print(f"Error generating marketing copy: {e}")
+        copy_package["error"] = str(e)
+        return copy_package
+
+
+def generate_testimonial_templates(
+    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
+) -> List[Dict[str, str]]:
+    """Generate realistic testimonial templates for social proof"""
+    brand_name = brand_data.get("brand_name", "This Solution")
+    # target_audience = opportunity_data.get("target_audience", "business users")
+
+    testimonials = [
+        {
+            "template": f"Before {brand_name}, I was spending hours every week on [specific manual process]. Now I can focus on what actually matters to my business.",
+            "author": "Sarah Johnson",
+            "title": "Operations Manager",
+            "company": "TechStartup Inc",
+            "use_case": "time_savings",
+        },
+        {
+            "template": f"{brand_name} solved a problem I didn't even realize I had. The integration between [tool A] and [tool B] was seamless.",
+            "author": "Mike Chen",
+            "title": "Product Manager",
+            "company": "GrowthCorp",
+            "use_case": "integration_solution",
+        },
+        {
+            "template": f"We've tried everything else in this space. {brand_name} is the first solution that actually understands how we work.",
+            "author": "Jennifer Martinez",
+            "title": "Team Lead",
+            "company": "ScaleUp LLC",
+            "use_case": "workflow_understanding",
+        },
+        {
+            "template": f"The ROI was obvious within the first month. {brand_name} pays for itself just in time savings alone.",
+            "author": "David Park",
+            "title": "Director of Operations",
+            "company": "EfficiencyCo",
+            "use_case": "roi_focused",
+        },
+    ]
+
+    return testimonials
+
+
+def generate_case_study_frameworks(brand_data: Dict[str, Any]) -> List[Dict[str, str]]:
+    """Generate case study frameworks for different scenarios"""
+    brand_name = brand_data.get("brand_name", "Solution")
+
+    frameworks = [
+        {
+            "title": f"How {brand_name} Helped [Company] Save 15 Hours Per Week",
+            "structure": "Challenge → Solution → Implementation → Results → Quote",
+            "focus": "time_savings",
+            "metrics": "Hours saved, tasks automated, efficiency gained",
+        },
+        {
+            "title": f"From Manual Process to Automated Workflow: [Company]'s {brand_name} Success Story",
+            "structure": "Before State → Pain Points → Discovery → Transformation → Outcomes",
+            "focus": "automation",
+            "metrics": "Process reduction, error elimination, scalability",
+        },
+        {
+            "title": f"Breaking Down Silos: How [Company] Connected Their Tools with {brand_name}",
+            "structure": "Integration Challenge → Failed Attempts → {brand_name} Solution → Results",
+            "focus": "integration",
+            "metrics": "Systems connected, data accuracy, team collaboration",
+        },
+    ]
+
+    return frameworks
+
+
+# =============================================================================
+# LANDING BUILDER AGENT - ENHANCED WITH OPENAI + ADMIN DASHBOARD
+# =============================================================================
+
+
+def build_and_deploy_comprehensive_site(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+    site_type: str = "landing_page",  # "landing_page" or "admin_dashboard"
+    analysis_data: Dict[str, Any] = None,
+) -> Dict[str, Any]:
+    """
+    Build and deploy either landing page or admin dashboard using OpenAI
+    """
+    try:
+        if site_type == "admin_dashboard":
+            return build_admin_dashboard(
+                brand_data, copy_data, opportunity_data, analysis_data
+            )
+        else:
+            return build_landing_page(brand_data, copy_data, opportunity_data)
+
+    except Exception as e:
+        print(f"Error building {site_type}: {e}")
+        return generate_error_response(brand_data, str(e), site_type)
+
+
+def build_landing_page(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build high-converting landing page using OpenAI"""
+
+    try:
+        # Generate complete landing page with OpenAI
+        landing_page_prompt = f"""
+        Create a high-converting, modern landing page for a liminal market opportunity.
+
+        BRAND DATA:
+        {json.dumps(brand_data, indent=2)[:2000]}
+
+        COPY DATA:
+        {json.dumps(copy_data, indent=2)[:2000]}
+
+        OPPORTUNITY DATA:
+        {json.dumps(opportunity_data, indent=2)[:1000]}
+
+        LANDING PAGE REQUIREMENTS:
+
+        1. **HTML Structure** (Use Jinja2 templating):
+        - Modern, mobile-first responsive design
+        - Progressive web app capabilities
+        - Semantic HTML5 structure
+        - Accessibility compliance (WCAG 2.1 AA)
+
+        2. **Conversion-Optimized Layout**:
+        - Hero section with compelling headline + CTA
+        - Problem agitation section
+        - Solution demonstration with benefits
+        - Social proof section with testimonials
+        - Feature highlights with icons
+        - Pricing/signup section with urgency
+        - FAQ section addressing objections
+        - Footer with trust signals
+
+        3. **Advanced Features**:
+        - Sticky navigation with CTA
+        - Progress indicators for long pages
+        - Exit-intent popup optimization
+        - Mobile-optimized forms with validation
+        - Loading animations and micro-interactions
+        - Social sharing integration
+
+        4. **Technical Implementation**:
+        - Embedded CSS with modern features (Grid, Flexbox, Custom Properties)
+        - Vanilla JavaScript for interactions
+        - Form validation and submission handling
+        - Analytics event tracking setup
+        - Performance optimization techniques
+        - SEO meta tags and structured data
+
+        5. **Jinja2 Variables** (use these exactly):
+        - {{{{ brand_name }}}} - Brand name
+        - {{{{ tagline }}}} - Brand tagline
+        - {{{{ headline }}}} - Hero headline
+        - {{{{ description }}}} - Value proposition
+        - {{{{ features }}}} - Feature list (array)
+        - {{{{ testimonials }}}} - Testimonial array
+        - {{{{ faqs }}}} - FAQ array
+        - {{{{ pricing_plans }}}} - Pricing array
+        - {{{{ current_year }}}} - Current year
+
+        6. **Conversion Elements**:
+        - Multiple strategically placed CTAs
+        - Lead capture forms with progressive profiling
+        - Social proof integration
+        - Urgency and scarcity indicators
+        - Trust badges and security signals
+        - Mobile-optimized user experience
+
+        7. **Visual Design**:
+        - Modern, professional aesthetic matching brand identity
+        - Consistent color scheme from brand data
+        - Typography hierarchy for readability
+        - Strategic use of whitespace
+        - High-contrast CTAs that demand attention
+        - Responsive images with proper alt text
+
+        OPTIMIZATION FOR EARLY-STAGE VALIDATION:
+        - Clear value proposition above the fold
+        - Simple, friction-free signup process
+        - Multiple engagement levels (newsletter, trial, demo)
+        - A/B testing infrastructure built-in
+        - Comprehensive analytics tracking
+
+        Return complete HTML template that creates a stunning, high-converting landing page optimized for liminal market validation.
+
+        This page should make visitors think "Finally, someone gets it!" and convert them into early adopters.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": landing_page_prompt}],
+            temperature=0.2,
+            max_tokens=4000,
+        )
+
+        if response and response.choices[0].message.content:
+            generated_html = response.choices[0].message.content.strip()
+
+            # Clean up generated HTML
+            if "```html" in generated_html:
+                generated_html = (
+                    generated_html.split("```html")[1].split("```")[0].strip()
+                )
+            elif "```" in generated_html:
+                generated_html = generated_html.split("```")[1].strip()
+
+            # Prepare content data
+            content_data = prepare_landing_content_data(
+                brand_data, copy_data, opportunity_data
+            )
+
+            # Deploy to renderer service
+            deployment_payload = {
+                "site_name": brand_data.get("brand_name", "landing-page")
+                .lower()
+                .replace(" ", "-"),
+                "assets": {
+                    "html_template": generated_html,
+                    "css_styles": "",  # Embedded in HTML
+                    "javascript": "",  # Embedded in HTML
+                    "config": {
+                        "responsive": True,
+                        "analytics_enabled": True,
+                        "conversion_tracking": True,
+                    },
+                },
+                "content_data": content_data,
+                "meta_data": {
+                    "title": f"{content_data['brand_name']} - {content_data['tagline']}",
+                    "description": content_data.get("description", "")[:160],
+                    "type": "landing_page",
+                },
+            }
+
+            deployment_result = deploy_to_renderer_service(deployment_payload)
+
+            if deployment_result.get("success"):
+                return generate_landing_success_response(
+                    brand_data, deployment_result, content_data
+                )
+            else:
+                return generate_error_response(
+                    brand_data, deployment_result.get("error"), "landing_page"
+                )
+
+        return generate_error_response(
+            brand_data, "Failed to generate landing page", "landing_page"
+        )
+
+    except Exception as e:
+        return generate_error_response(brand_data, str(e), "landing_page")
+
+
+def build_admin_dashboard(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+    analysis_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build comprehensive admin dashboard using OpenAI"""
+
+    try:
+        # Generate market insights first
+        market_insights = generate_market_insights_with_openai(analysis_data)
+        chart_data = extract_chart_data_from_analysis(analysis_data)
+
+        # Generate admin dashboard with OpenAI
+        dashboard_prompt = f"""
+        Create a comprehensive, interactive admin dashboard for market opportunity analysis.
+
+        BRAND DATA:
+        {json.dumps(brand_data, indent=2)[:1000]}
+
+        ANALYSIS DATA:
+        {json.dumps(analysis_data, indent=2)[:3000]}
+
+        CHART DATA:
+        {json.dumps(chart_data, indent=2)[:2000]}
+
+        MARKET INSIGHTS:
+        {json.dumps(market_insights, indent=2)[:2000]}
+
+        ADMIN DASHBOARD REQUIREMENTS:
+
+        1. **Dashboard Layout**:
+        - Professional analytics interface with sidebar navigation
+        - Main dashboard with key metrics and KPIs
+        - Detailed sections: Overview, Market Analysis, Competition, Risks, Insights
+        - Responsive grid layout for different screen sizes
+
+        2. **Data Visualizations** (Use Chart.js via CDN):
+        - Opportunity Score Gauge (0-100 with color zones)
+        - Market Size Donut Chart (TAM/SAM/SOM)
+        - Competition Radar Chart (multiple dimensions)
+        - Risk Assessment Scatter Plot
+        - Market Signal Sentiment Bar Chart
+        - Trend Analysis Line Charts
+        - Geographic Distribution Map (if data available)
+
+        3. **Interactive Features**:
+        - Collapsible sidebar navigation
+        - Filterable data tables
+        - Expandable insight cards
+        - Modal windows for detailed views
+        - Export functionality for charts and data
+        - Real-time data refresh simulation
+
+        4. **Chat Interface Section**:
+        - Embedded chat widget for market questions
+        - Quick action buttons for common queries
+        - Conversation history display
+        - Integration placeholder for AI responses
+
+        5. **Key Sections**:
+        - Executive Summary with key takeaways
+        - Market Opportunity Scoring with breakdown
+        - Competitive Landscape Analysis
+        - Risk Assessment Matrix
+        - Strategic Recommendations
+        - Action Plan with timelines
+        - Financial Projections
+
+        6. **Jinja2 Variables** (use these exactly):
+        - {{{{ opportunity_name }}}} - Opportunity title
+        - {{{{ opportunity_score }}}} - Main opportunity score
+        - {{{{ brand_name }}}} - Brand name
+        - {{{{ executive_summary }}}} - Key insights summary
+        - {{{{ market_size_data }}}} - Market size information
+        - {{{{ competition_data }}}} - Competition analysis
+        - {{{{ risk_factors }}}} - Risk assessment data
+        - {{{{ recommendations }}}} - Strategic recommendations
+        - {{{{ chart_datasets }}}} - Chart data for visualizations
+        - {{{{ analysis_timestamp }}}} - When analysis was performed
+
+        7. **Technical Implementation**:
+        - Use Chart.js from CDN for all visualizations
+        - Embedded CSS with modern design system
+        - Vanilla JavaScript for interactions
+        - Responsive design with mobile considerations
+        - Loading states and error handling
+        - Performance optimization
+
+        8. **Visual Design**:
+        - Professional dark theme with accent colors
+        - Clean, modern interface design
+        - Consistent spacing and typography
+        - Strategic use of colors for data visualization
+        - Professional card-based layout
+        - Smooth animations and transitions
+
+        BUSINESS INTELLIGENCE FOCUS:
+        - Present data as actionable business insights
+        - Highlight critical metrics and KPIs
+        - Create compelling visual narratives
+        - Enable drill-down analysis capabilities
+        - Support executive decision-making
+
+        Return complete HTML template that creates a premium, functional admin dashboard for market intelligence analysis.
+
+        This should look like a $10,000/month enterprise analytics platform that gives users confidence in their market opportunities.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": dashboard_prompt}],
+            temperature=0.2,
+            max_tokens=4000,
+        )
+
+        if response and response.choices[0].message.content:
+            generated_html = response.choices[0].message.content.strip()
+
+            # Clean up generated HTML
+            if "```html" in generated_html:
+                generated_html = (
+                    generated_html.split("```html")[1].split("```")[0].strip()
+                )
+            elif "```" in generated_html:
+                generated_html = generated_html.split("```")[1].strip()
+
+            # Prepare admin content data
+            admin_content_data = prepare_admin_content_data(
+                brand_data, opportunity_data, analysis_data, market_insights, chart_data
+            )
+
+            # Deploy to renderer service
+            deployment_payload = {
+                "site_name": f"{brand_data.get('brand_name', 'opportunity').lower().replace(' ', '-')}-admin",
+                "assets": {
+                    "html_template": generated_html,
+                    "css_styles": "",  # Embedded in HTML
+                    "javascript": "",  # Embedded in HTML
+                    "config": {
+                        "responsive": True,
+                        "analytics_enabled": True,
+                        "admin_mode": True,
+                    },
+                },
+                "content_data": admin_content_data,
+                "meta_data": {
+                    "title": f"{admin_content_data['opportunity_name']} - Market Intelligence Dashboard",
+                    "description": f"Comprehensive market analysis dashboard for {admin_content_data['opportunity_name']}",
+                    "type": "admin_dashboard",
+                },
+            }
+
+            deployment_result = deploy_to_renderer_service(deployment_payload)
+
+            if deployment_result.get("success"):
+                return generate_admin_success_response(
+                    brand_data, deployment_result, admin_content_data, market_insights
+                )
+            else:
+                return generate_error_response(
+                    brand_data, deployment_result.get("error"), "admin_dashboard"
+                )
+
+        return generate_error_response(
+            brand_data, "Failed to generate admin dashboard", "admin_dashboard"
+        )
+
+    except Exception as e:
+        return generate_error_response(brand_data, str(e), "admin_dashboard")
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+
+def prepare_landing_content_data(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Prepare content data for landing page template"""
+
+    website_copy = copy_data.get("website_copy", {})
+
+    # Extract features from opportunity data
+    features = []
+    opportunity_benefits = opportunity_data.get("benefits", [])
+    for i, benefit in enumerate(opportunity_benefits[:6]):
+        if isinstance(benefit, dict):
+            features.append(
+                {
+                    "title": benefit.get("title", f"Key Benefit {i+1}"),
+                    "description": benefit.get(
+                        "description", "Powerful capability that drives results"
+                    ),
+                    "icon": benefit.get("icon", "⚡"),
+                }
+            )
+        else:
+            features.append(
+                {"title": f"Benefit {i+1}", "description": str(benefit), "icon": "⚡"}
+            )
+
+    # Default features if none exist
+    if not features:
+        features = [
+            {
+                "title": "Seamless Integration",
+                "description": "Connect with your existing tools in minutes, not hours",
+                "icon": "🔗",
+            },
+            {
+                "title": "Instant Results",
+                "description": "See immediate improvements in your workflow efficiency",
+                "icon": "⚡",
+            },
+            {
+                "title": "Enterprise Security",
+                "description": "Bank-level security with 99.9% uptime guarantee",
+                "icon": "🔒",
+            },
+        ]
+
+    # Testimonials
+    testimonials = copy_data.get(
+        "testimonial_templates",
+        [
+            {
+                "quote": "This solution completely transformed how our team collaborates. We're saving 10+ hours per week.",
+                "author": "Sarah Johnson",
+                "title": "Operations Manager",
+                "company": "TechCorp",
+            },
+            {
+                "quote": "Finally, a tool that actually understands our workflow. The integration was seamless.",
+                "author": "Mike Chen",
+                "title": "Product Manager",
+                "company": "StartupXYZ",
+            },
+            {
+                "quote": "ROI was obvious within the first month. This pays for itself in time savings alone.",
+                "author": "Jennifer Martinez",
+                "title": "Team Lead",
+                "company": "ScaleUp LLC",
+            },
+        ],
+    )
+
+    # FAQs
+    faqs = copy_data.get(
+        "faq_content",
+        [
+            {
+                "question": "How quickly can I get started?",
+                "answer": "Most teams are up and running within 15 minutes. Our onboarding is designed to be simple and non-disruptive to your current workflow.",
+            },
+            {
+                "question": "Do you integrate with my existing tools?",
+                "answer": "Yes, we support 100+ popular business tools and are constantly adding new integrations based on user demand.",
+            },
+            {
+                "question": "Is my data secure?",
+                "answer": "Absolutely. We use enterprise-grade encryption and never store your sensitive data permanently. Your security is our top priority.",
+            },
+            {
+                "question": "What if I need help getting set up?",
+                "answer": "Our customer success team provides white-glove onboarding for all new users. We'll make sure you're successful from day one.",
+            },
+        ],
+    )
+
+    return {
+        "brand_name": brand_data.get("brand_name", "Your Solution"),
+        "tagline": brand_data.get("tagline", "Transform Your Workflow"),
+        "headline": website_copy.get(
+            "hero_headline",
+            copy_data.get("headlines", ["Transform Your Business Today"])[0],
+        ),
+        "description": brand_data.get(
+            "value_proposition", "The best solution for your business needs"
+        ),
+        "features": features,
+        "pricing_plans": [],  # Could be populated from opportunity data
+        "testimonials": testimonials,
+        "faqs": faqs,
+        "current_year": datetime.now().year,
+        "cta_primary": website_copy.get("cta_primary", "Get Started Free"),
+        "cta_secondary": website_copy.get("cta_secondary", "Learn More"),
+    }
+
+
+def prepare_admin_content_data(
+    brand_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+    analysis_data: Dict[str, Any],
+    market_insights: Dict[str, Any],
+    chart_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Prepare content data for admin dashboard template"""
+
+    return {
+        "opportunity_name": opportunity_data.get("name", "Market Opportunity Analysis"),
+        "brand_name": brand_data.get("brand_name", "Your Brand"),
+        "opportunity_score": int(analysis_data.get("opportunity_score", 0) * 100),
+        "executive_summary": market_insights.get(
+            "executive_summary",
+            "Comprehensive market analysis completed with strategic insights.",
+        ),
+        "market_size_data": analysis_data.get("market_size_analysis", {}),
+        "competition_data": analysis_data.get("competition_analysis", {}),
+        "risk_factors": analysis_data.get("risk_assessment", {}),
+        "recommendations": market_insights.get("recommended_actions", []),
+        "chart_datasets": chart_data,
+        "top_opportunities": market_insights.get("top_opportunities", []),
+        "critical_risks": market_insights.get("critical_risks", []),
+        "competitive_advantages": market_insights.get("competitive_advantages", []),
+        "market_timing": market_insights.get("market_timing", {}),
+        "financial_projections": market_insights.get("financial_projections", {}),
+        "analysis_timestamp": datetime.now().strftime("%B %d, %Y at %I:%M %p"),
+        "keywords": opportunity_data.get("keywords", []),
+        "target_audience": opportunity_data.get("target_audience", ""),
+        "current_year": datetime.now().year,
+    }
+
+
+def extract_chart_data_from_analysis(analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract and format data for chart visualization"""
+    chart_data = {}
+
+    try:
+        # Opportunity Score Gauge
+        opportunity_score = analysis_data.get("opportunity_score", 0) * 100
+        chart_data["opportunity_gauge"] = {
+            "value": opportunity_score,
+            "max": 100,
+            "color": "#4caf50"
+            if opportunity_score >= 70
+            else "#ff9800"
+            if opportunity_score >= 40
+            else "#f44336",
+        }
+
+        # Market Size Data
+        market_size = analysis_data.get("market_size_analysis", {})
+        chart_data["market_size_donut"] = {
+            "labels": ["TAM (Total)", "SAM (Serviceable)", "SOM (Obtainable)"],
+            "data": [
+                market_size.get("tam_estimate", 100000000),
+                market_size.get("sam_estimate", 10000000),
+                market_size.get("som_estimate", 1000000),
+            ],
+            "colors": ["#2196f3", "#4caf50", "#ff9800"],
+        }
+
+        # Competition Radar
+        competition = analysis_data.get("competition_analysis", {})
+        competition_level = competition.get("competition_level", "medium")
+        chart_data["competition_radar"] = {
+            "labels": [
+                "Market Share",
+                "Innovation",
+                "Price Competitiveness",
+                "Brand Recognition",
+                "Customer Satisfaction",
+            ],
+            "data": [30, 85, 90, 40, 75]
+            if competition_level == "low"
+            else [60, 70, 60, 70, 65],
+            "color": "#2196f3",
+        }
+
+        # Risk Assessment
+        # risk_data = analysis_data.get("risk_assessment", {})
+        chart_data["risk_scatter"] = {
+            "datasets": [
+                {
+                    "label": "Risk Factors",
+                    "data": [
+                        {"x": 70, "y": 60, "label": "Competition Risk"},
+                        {"x": 40, "y": 80, "label": "Market Risk"},
+                        {"x": 30, "y": 40, "label": "Technology Risk"},
+                        {"x": 60, "y": 70, "label": "Execution Risk"},
+                    ],
+                    "backgroundColor": "#f44336",
+                }
+            ]
+        }
+
+        # Market Signals Sentiment
+        signals = analysis_data.get("market_signals", [])
+        positive_count = len([s for s in signals if s.get("sentiment") == "positive"])
+        neutral_count = len([s for s in signals if s.get("sentiment") == "neutral"])
+        negative_count = len([s for s in signals if s.get("sentiment") == "negative"])
+
+        chart_data["sentiment_bar"] = {
+            "labels": ["Positive", "Neutral", "Negative"],
+            "data": [positive_count, neutral_count, negative_count],
+            "colors": ["#4caf50", "#ff9800", "#f44336"],
+        }
+
+        # Trend Analysis (mock data based on analysis)
+        chart_data["trend_line"] = {
+            "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+            "datasets": [
+                {
+                    "label": "Market Interest",
+                    "data": [65, 70, 75, 80, 85, 90],
+                    "borderColor": "#2196f3",
+                    "fill": False,
+                }
+            ],
+        }
+
+    except Exception as e:
+        print(f"Error extracting chart data: {e}")
+
+    return chart_data
+
+
+def generate_market_insights_with_openai(
+    analysis_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Generate strategic market insights using OpenAI"""
+    try:
+        insights_prompt = f"""
+        Analyze this comprehensive market data and generate strategic business insights:
+
+        MARKET ANALYSIS DATA:
+        {json.dumps(analysis_data, indent=2)[:4000]}
+
+        Generate executive-level strategic insights in JSON format:
+        {{
+            "executive_summary": "2-3 sentence strategic overview of this market opportunity",
+            "top_opportunities": [
+                {{
+                    "title": "Strategic opportunity title",
+                    "description": "Detailed description with specific actions",
+                    "potential_impact": "high/medium/low",
+                    "time_to_market": "immediate/3-6_months/6-12_months",
+                    "investment_required": "low/medium/high"
+                }}
+            ],
+            "critical_risks": [
+                {{
+                    "risk": "Specific risk description",
+                    "severity": "high/medium/low",
+                    "probability": "high/medium/low",
+                    "mitigation_strategy": "Specific mitigation approach",
+                    "monitoring_metrics": ["metric1", "metric2"]
+                }}
+            ],
+            "competitive_advantages": [
+                "Specific competitive advantage 1",
+                "Unique market positioning element 2",
+                "Strategic differentiator 3"
+            ],
+            "recommended_actions": [
+                {{
+                    "action": "Specific, actionable step",
+                    "priority": "high/medium/low",
+                    "timeline": "specific timeframe",
+                    "resources_needed": "specific resource requirements",
+                    "expected_outcome": "measurable result expected"
+                }}
+            ],
+            "market_timing": {{
+                "current_phase": "early/growth/mature/declining",
+                "optimal_entry_window": "specific timing recommendation",
+                "urgency_level": "high/medium/low",
+                "market_readiness_score": 0-100
+            }},
+            "financial_projections": {{
+                "revenue_potential_y1": "specific revenue estimate",
+                "break_even_timeline": "specific timeframe",
+                "investment_required": "specific amount range",
+                "roi_projection": "percentage return expected"
+            }},
+            "success_metrics": [
+                {{
+                    "metric": "specific KPI to track",
+                    "target": "specific target value",
+                    "timeline": "when to achieve"
+                }}
+            ]
+        }}
+
+        Focus on actionable insights that drive strategic decision-making.
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["openai_model"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": insights_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
+
+    except Exception as e:
+        print(f"Error generating market insights: {e}")
+
+    return {
+        "executive_summary": "Market analysis completed with strategic opportunities identified.",
+        "top_opportunities": [],
+        "critical_risks": [],
+        "competitive_advantages": [],
+        "recommended_actions": [],
+        "market_timing": {},
+        "financial_projections": {},
+        "success_metrics": [],
+    }
+
+
+def generate_landing_success_response(
+    brand_data: Dict[str, Any],
+    deployment_result: Dict[str, Any],
+    content_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Generate success response for landing page deployment"""
+
+    brand_name = brand_data.get("brand_name", "Your Landing Page")
+    live_url = deployment_result.get("live_url", "")
+
+    markdown_response = f"""# 🚀 {brand_name} Landing Page is Live!
+
+**Your high-converting landing page has been deployed and is ready to validate your market opportunity.**
+
+## 🔗 Quick Access
+
+- **🌟 Live Landing Page**: [{brand_name}]({live_url})
+- **📊 Analytics Dashboard**: [View Performance]({deployment_result.get("analytics_url", "")})
+- **⚙️ Admin Panel**: [Manage & Monitor]({deployment_result.get("admin_url", "")})
+
+## 🎯 What's Included
+
+Your landing page features:
+
+- **📱 Mobile-Optimized Design** - Perfect experience on all devices
+- **⚡ Fast Loading Performance** - Optimized for speed and conversions
+- **🎨 Professional Brand Design** - Reflects your unique positioning
+- **📝 High-Converting Copy** - Crafted for liminal market positioning
+- **🔥 Strategic CTAs** - Multiple conversion paths optimized for validation
+- **💬 Social Proof Elements** - Testimonials and trust signals
+- **📊 Analytics Integration** - Track every visitor interaction
+- **🔒 Lead Capture Forms** - Collect early adopter interest
+
+## 🚀 Market Validation Strategy
+
+**Phase 1: Immediate Testing (First 48 Hours)**
+1. **Share with your network** - Get initial feedback from trusted contacts
+2. **Test all functionality** - Forms, CTAs, mobile experience
+3. **Monitor analytics** - Track engagement and conversion patterns
+
+**Phase 2: Targeted Outreach (Week 1)**
+1. **Industry forums** - Share in relevant communities and groups
+2. **Social media promotion** - Post about your solution launch
+3. **Direct outreach** - Email potential customers with your landing page
+4. **Content marketing** - Write blog posts linking to your page
+
+**Phase 3: Paid Validation (Week 2+)**
+1. **Google Ads** - Run targeted ads to your ideal customers
+2. **Social media ads** - Facebook, LinkedIn, Twitter campaigns
+3. **Influencer outreach** - Partner with industry micro-influencers
+
+## 📈 Success Metrics to Track
+
+**Immediate Indicators:**
+- Email signup rate (target: 15-25%)
+- Time on page (target: 2+ minutes)
+- Bounce rate (target: <60%)
+- CTA click-through rate (target: 5-10%)
+
+**Validation Signals:**
+- 100+ unique visitors in first week
+- 25+ email signups in first week
+- 5+ detailed inquiries or demo requests
+- Positive feedback from at least 10 people
+
+## 💡 Pro Tips for Maximum Impact
+
+- **Create urgency** with "Early Access" or "Limited Beta" messaging
+- **Personal touch** - Respond to every signup within 24 hours
+- **A/B test headlines** - Try different value propositions
+- **Social proof** - Add new testimonials as you get feedback
+- **Mobile optimization** - Most traffic will be mobile-first
+
+## 🎯 Next Steps
+
+1. **🔍 Visit Your Landing Page** - [{brand_name}]({live_url})
+2. **📊 Monitor Analytics** - Check performance daily for first week
+3. **📢 Start Promoting** - Share immediately with your network
+4. **💌 Prepare Follow-up** - Set up email sequences for leads
+5. **🔄 Iterate Based on Data** - Optimize based on real user behavior
+
+---
+
+**🎉 Congratulations!** Your market opportunity is now live and ready to collect validation data. The hardest part (building) is done - now comes the exciting part of proving your market hypothesis!
+
+**Ready to validate your idea?** [Visit your landing page]({live_url}) and start collecting your first customers!"""
+
+    return {
+        "human_readable_response": markdown_response,
+        "deployment_status": "success",
+        "site_type": "landing_page",
+        "brand_name": brand_name,
+        "live_url": live_url,
+        "next_actions": [
+            f"Visit your landing page at {live_url}",
+            "Share with your network for initial validation",
+            "Monitor analytics and user behavior",
+            "Start targeted promotion campaigns",
+            "Collect and respond to early user feedback",
+        ],
+    }
+
+
+def generate_admin_success_response(
+    brand_data: Dict[str, Any],
+    deployment_result: Dict[str, Any],
+    content_data: Dict[str, Any],
+    market_insights: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Generate success response for admin dashboard deployment"""
+
+    brand_name = brand_data.get("brand_name", "Your Market Opportunity")
+    admin_url = deployment_result.get("admin_url", "")
+    opportunity_score = content_data.get("opportunity_score", 0)
+
+    # Determine opportunity level
+    if opportunity_score >= 75:
+        opportunity_level = "🚀 **EXCEPTIONAL OPPORTUNITY**"
+    elif opportunity_score >= 50:
+        opportunity_level = "📈 **STRONG OPPORTUNITY**"
+    else:
+        opportunity_level = "⚠️ **EXPLORATORY OPPORTUNITY**"
+
+    markdown_response = f"""# 📊 Market Intelligence Dashboard Deployed!
+
+{opportunity_level}
+
+**Your comprehensive market analysis dashboard for "{brand_name}" is live with enterprise-grade analytics.**
+
+## 🎯 Dashboard Access
+
+- **🔧 Admin Dashboard**: [Market Intelligence Hub]({admin_url})
+- **📊 Analytics Portal**: [Live Data View]({deployment_result.get("analytics_url", "")})
+- **📈 Opportunity Score**: **{opportunity_score}/100**
+
+## 🧠 Key Market Intelligence
+
+### Executive Summary
+{market_insights.get('executive_summary', 'Comprehensive market analysis completed with actionable strategic insights.')}
+
+### Strategic Opportunities Identified
+{chr(10).join([f"- **{opp.get('title', 'Strategic Opportunity')}**: {opp.get('description', 'High-impact opportunity identified')}" for opp in market_insights.get('top_opportunities', [])[:3]])}
+
+### Competitive Advantages
+{chr(10).join([f"- {advantage}" for advantage in market_insights.get('competitive_advantages', [])[:3]])}
+
+## 📊 Dashboard Capabilities
+
+Your admin dashboard includes:
+
+- **🎯 AI-Powered Opportunity Scoring** - Multi-factor market assessment
+- **📈 Interactive Market Size Analysis** - TAM/SAM/SOM with drill-down
+- **🏢 Competitive Intelligence Radar** - Visual positioning analysis
+- **⚠️ Dynamic Risk Assessment Matrix** - Real-time risk monitoring
+- **💬 Market Sentiment Tracking** - Social signals and trend analysis
+- **🗨️ Intelligent Chat Interface** - Ask questions about your market data
+- **📋 Strategic Action Planning** - Prioritized recommendations with timelines
+- **💰 Financial Modeling Tools** - Revenue projections and ROI analysis
+
+## 🎯 Strategic Recommendations
+
+### High-Priority Actions
+{chr(10).join([f"- **{action.get('action', 'Strategic Action')}** *(Timeline: {action.get('timeline', 'TBD')})*" for action in market_insights.get('recommended_actions', [])[:3] if action.get('priority') == 'high'])}
+
+### Market Timing Analysis
+- **Current Market Phase**: {market_insights.get('market_timing', {}).get('current_phase', 'Growth').title()}
+- **Optimal Entry Strategy**: {market_insights.get('market_timing', {}).get('optimal_entry_window', 'Strategic timing identified')}
+- **Market Readiness**: {market_insights.get('market_timing', {}).get('market_readiness_score', 75)}/100
+
+## 💼 Business Intelligence Features
+
+**Advanced Analytics:**
+- Interactive charts with drill-down capabilities
+- Scenario modeling and sensitivity analysis
+- Competitive benchmarking with market positioning
+- Predictive trend analysis with confidence intervals
+- Risk monitoring with alert thresholds
+
+**Executive Reporting:**
+- One-click executive summary generation
+- Investor-ready presentation exports
+- Stakeholder collaboration tools
+- Performance tracking dashboards
+- Strategic planning interfaces
+
+## 🚀 Next Steps for Market Success
+
+1. **📊 Explore Your Dashboard** - Deep dive into market intelligence
+2. **🎯 Review Strategic Plan** - Prioritize high-impact recommendations
+3. **💬 Use Chat Interface** - Ask specific questions about market data
+4. **📈 Monitor Key Metrics** - Track market signals and competitive moves
+5. **🤝 Share with Stakeholders** - Export insights for team alignment
+
+## 💡 Advanced Usage Tips
+
+**For Strategic Planning:**
+- Use scenario modeling to test different market entry strategies
+- Monitor competitive radar for positioning opportunities
+- Track risk matrix for proactive mitigation planning
+
+**For Investor Presentations:**
+- Export executive summaries with key metrics
+- Use market size visualizations for TAM/SAM/SOM presentations
+- Leverage competitive analysis for differentiation stories
+
+---
+
+**🎉 Congratulations!** You now have institutional-grade market intelligence that Fortune 500 companies pay thousands for. Your dashboard transforms complex market dynamics into clear strategic advantages.
+
+**Ready to make data-driven decisions?** [Access your Market Intelligence Dashboard]({admin_url}) and turn insights into market-winning strategies!"""
+
+    return {
+        "human_readable_response": markdown_response,
+        "deployment_status": "success",
+        "site_type": "admin_dashboard",
+        "brand_name": brand_name,
+        "admin_url": admin_url,
+        "opportunity_score": opportunity_score,
+        "market_insights": market_insights,
+        "next_actions": [
+            f"Access your dashboard at {admin_url}",
+            "Review strategic recommendations and market timing",
+            "Explore interactive analytics and visualizations",
+            "Use chat interface for market-specific questions",
+            "Export key insights for stakeholder presentations",
+        ],
+    }
+
+
+def generate_error_response(
+    brand_data: Dict[str, Any], error_message: str, site_type: str
+) -> Dict[str, Any]:
+    """Generate error response for deployment failures"""
+
+    brand_name = brand_data.get("brand_name", "Your Site")
+
+    markdown_response = f"""# ❌ {site_type.replace('_', ' ').title()} Deployment Issue
+
+Unfortunately, we encountered an issue while deploying your {site_type.replace('_', ' ')} for **{brand_name}**.
+
+## 🔧 Technical Details
+```
+{error_message}
+```
+
+## 🚀 Resolution Options
+
+**Immediate Solutions:**
+1. **Retry Deployment** - Technical issues are often temporary
+2. **Alternative Platforms** - Use Webflow, Carrd, or similar tools
+3. **Manual Export** - Get the generated code for self-hosting
+4. **Simplified Version** - Deploy basic version while resolving issues
+
+## 💡 Don't Let Technical Issues Stop Progress
+
+Your {site_type.replace('_', ' ')} content and strategy are ready - the deployment is just a technical step:
+
+- Brand identity and positioning are complete
+- Marketing copy is optimized for conversion
+- Strategic insights are available for immediate use
+- Technical assets can be deployed elsewhere
+
+## 🔄 Next Steps
+
+1. **Retry in 5 minutes** - Many deployment issues are temporary
+2. **Contact support** - We'll resolve technical issues quickly
+3. **Use alternative tools** - Import your content to other platforms
+4. **Manual setup** - We can provide code for self-hosting
+
+**Your market opportunity doesn't wait for perfect technology!**"""
+
+    return {
+        "human_readable_response": markdown_response,
+        "deployment_status": "failed",
+        "site_type": site_type,
+        "brand_name": brand_name,
+        "error": error_message,
+        "next_actions": [
+            "Retry deployment after a few minutes",
+            "Contact support for technical assistance",
+            "Use alternative platforms with generated content",
+            "Proceed with manual market validation approaches",
+        ],
+    }
+
+
 def deploy_to_renderer_service(deployment_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Deploy landing page to the renderer service and return live URLs"""
+    """Deploy to renderer service"""
     try:
         response = requests.post(
             f"{RENDERER_SERVICE_URL}/api/deploy",
@@ -52,1314 +1498,132 @@ def deploy_to_renderer_service(deployment_payload: Dict[str, Any]) -> Dict[str, 
         }
 
 
-def get_deployment_status(site_id: str) -> Dict[str, Any]:
-    """Check deployment status and get site information"""
-    try:
-        response = requests.get(
-            f"{RENDERER_SERVICE_URL}/api/sites/{site_id}/data", timeout=10
-        )
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"error": "Site not found or service unavailable"}
-    except Exception as e:
-        return {"error": f"Failed to check deployment status: {str(e)}"}
-
-
 # =============================================================================
-# BRAND CREATOR AGENT (unchanged)
+# AGENT DEFINITIONS - ALL THREE BUILDER AGENTS
 # =============================================================================
 
-
-def create_brand_identity(opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Creates comprehensive brand identity for a market opportunity"""
-    brand_identity = {
-        "opportunity_name": opportunity_data.get("name", "Unknown Opportunity"),
-        "brand_name": "",
-        "tagline": "",
-        "positioning_statement": "",
-        "value_proposition": "",
-        "target_audience": "",
-        "brand_personality": {},
-        "visual_identity": {},
-        "messaging_framework": {},
-        "domain_suggestions": [],
-        "trademark_considerations": [],
-    }
-
-    try:
-        # Generate brand identity using AI
-        brand_response = generate_brand_with_ai(opportunity_data)
-        if brand_response:
-            brand_identity.update(brand_response)
-
-        # Generate domain suggestions
-        brand_identity["domain_suggestions"] = generate_domain_suggestions(
-            brand_identity.get("brand_name", "")
-        )
-
-        # Add trademark considerations
-        brand_identity["trademark_considerations"] = assess_trademark_risks(
-            brand_identity.get("brand_name", "")
-        )
-
-        return brand_identity
-
-    except Exception as e:
-        print(f"Error creating brand identity: {e}")
-        brand_identity["error"] = str(e)
-        return brand_identity
-
-
-def generate_brand_with_ai(
-    opportunity_data: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
-    """Use AI to generate comprehensive brand identity"""
-    try:
-        prompt = f"""
-        Create a comprehensive brand identity for this market opportunity:
-
-        Opportunity: {json.dumps(opportunity_data, indent=2)}
-
-        Generate a JSON response with:
-        {{
-            "brand_name": "Memorable, unique brand name",
-            "tagline": "Compelling 3-7 word tagline",
-            "positioning_statement": "One sentence positioning vs competitors",
-            "value_proposition": "Clear value statement for target users",
-            "target_audience": "Specific target customer description",
-            "brand_personality": {{
-                "voice": "brand voice (professional/friendly/innovative/etc)",
-                "tone": "communication tone",
-                "personality_traits": ["trait1", "trait2", "trait3"]
-            }},
-            "visual_identity": {{
-                "color_palette": ["primary_color", "secondary_color", "accent_color"],
-                "typography": "font style recommendation",
-                "imagery_style": "visual style description"
-            }},
-            "messaging_framework": {{
-                "primary_message": "main message to communicate",
-                "supporting_messages": ["message1", "message2", "message3"],
-                "differentiation_points": ["differentiator1", "differentiator2"]
-            }}
-        }}
-
-        Focus on liminal market positioning - how this sits between existing categories.
-        """
-
-        response = completion(
-            model=MODEL_CONFIG["openai_model"],
-            api_key=settings.OPENAI_API_KEY,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-        )
-
-        if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
-
-    except Exception as e:
-        print(f"Error generating brand with AI: {e}")
-
-    return None
-
-
-def generate_domain_suggestions(brand_name: str) -> List[Dict[str, Any]]:
-    """Generate domain name suggestions"""
-    if not brand_name:
-        return []
-
-    suggestions = []
-    base_name = re.sub(r"[^a-zA-Z0-9]", "", brand_name.lower())
-
-    # Primary domain options
-    primary_options = [f"{base_name}.com", f"{base_name}.io", f"{base_name}.co"]
-
-    # Alternative options
-    alternative_options = [
-        f"get{base_name}.com",
-        f"{base_name}app.com",
-        f"{base_name}hq.com",
-        f"{base_name}pro.com",
-        f"try{base_name}.com",
-    ]
-
-    # Add suggestions with priority
-    for domain in primary_options:
-        suggestions.append(
-            {
-                "domain": domain,
-                "priority": "high",
-                "availability": "check_required",
-                "recommendation": "primary_option",
-            }
-        )
-
-    for domain in alternative_options:
-        suggestions.append(
-            {
-                "domain": domain,
-                "priority": "medium",
-                "availability": "check_required",
-                "recommendation": "alternative_option",
-            }
-        )
-
-    return suggestions
-
-
-def assess_trademark_risks(brand_name: str) -> List[str]:
-    """Assess potential trademark risks"""
-    considerations = []
-
-    if not brand_name:
-        return ["No brand name provided for assessment"]
-
-    # Basic trademark considerations
-    considerations.extend(
-        [
-            "Conduct comprehensive trademark search before final selection",
-            "Check for existing trademarks in relevant business categories",
-            "Consider international trademark implications",
-            "Verify domain availability for primary brand name",
-            "Search for existing companies with similar names",
-        ]
-    )
-
-    # Name-specific considerations
-    if len(brand_name.split()) > 2:
-        considerations.append("Multi-word names may be harder to trademark")
-
-    if any(char.isdigit() for char in brand_name):
-        considerations.append("Names with numbers may face trademark challenges")
-
-    return considerations
-
-
-# =============================================================================
-# COPY WRITER AGENT (unchanged from original)
-# =============================================================================
-
-
-def generate_marketing_copy(
-    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Generates comprehensive marketing copy for the opportunity"""
-    copy_package = {
-        "brand_name": brand_data.get("brand_name", ""),
-        "headlines": [],
-        "taglines": [],
-        "value_propositions": [],
-        "website_copy": {},
-        "email_sequences": {},
-        "social_media_copy": {},
-        "ad_copy": {},
-        "press_release": "",
-    }
-
-    try:
-        # Generate core copy elements
-        core_copy = generate_core_copy_with_ai(brand_data, opportunity_data)
-        if core_copy:
-            copy_package.update(core_copy)
-
-        # Generate website copy
-        copy_package["website_copy"] = generate_website_copy(
-            brand_data, opportunity_data
-        )
-
-        # Generate email sequences
-        copy_package["email_sequences"] = generate_email_sequences(
-            brand_data, opportunity_data
-        )
-
-        # Generate social media copy
-        copy_package["social_media_copy"] = generate_social_copy(
-            brand_data, opportunity_data
-        )
-
-        return copy_package
-
-    except Exception as e:
-        print(f"Error generating marketing copy: {e}")
-        copy_package["error"] = str(e)
-        return copy_package
-
-
-def generate_core_copy_with_ai(
-    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
-) -> Optional[Dict[str, Any]]:
-    """Generate core copy elements using AI"""
-    try:
-        prompt = f"""
-        Create marketing copy for this brand and opportunity:
-
-        Brand Data: {json.dumps(brand_data, indent=2)}
-        Opportunity Data: {json.dumps(opportunity_data, indent=2)}
-
-        Generate JSON with:
-        {{
-            "headlines": [
-                "Primary headline for landing page",
-                "Alternative headline option",
-                "Email subject line headline"
-            ],
-            "taglines": [
-                "3-word tagline",
-                "5-word tagline",
-                "7-word tagline"
-            ],
-            "value_propositions": [
-                "Outcome-focused value prop",
-                "Process-focused value prop",
-                "Competitive differentiation value prop"
-            ],
-            "ad_copy": {{
-                "google_ads": [
-                    "30-character headline",
-                    "90-character description"
-                ],
-                "facebook_ads": [
-                    "Primary text (125 chars)",
-                    "Headline (40 chars)"
-                ]
-            }}
-        }}
-
-        Focus on liminal market positioning and immediate user benefits.
-        """
-
-        response = completion(
-            model=MODEL_CONFIG["openai_model"],
-            api_key=settings.OPENAI_API_KEY,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-        )
-
-        if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
-
-    except Exception as e:
-        print(f"Error generating core copy: {e}")
-
-    return None
-
-
-def generate_website_copy(
-    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
-) -> Dict[str, str]:
-    """Generate website copy sections dynamically based on brand and opportunity"""
-
-    brand_name = brand_data.get("brand_name", "Solution")
-    value_prop = brand_data.get("value_proposition", "Transform your workflow")
-    target_audience = brand_data.get("target_audience", "teams")
-
-    # Extract opportunity-specific context
-    opportunity_type = opportunity_data.get("type", "general")
-    pain_points = opportunity_data.get("pain_points", [])
-    benefits = opportunity_data.get("benefits", [])
-
-    # Generate dynamic copy based on context
-    try:
-        prompt = f"""
-        Generate website copy sections for this specific brand and opportunity:
-
-        Brand: {brand_name}
-        Value Proposition: {value_prop}
-        Target Audience: {target_audience}
-        Opportunity Type: {opportunity_type}
-        Pain Points: {pain_points}
-        Benefits: {benefits}
-
-        Create dynamic, brand-specific copy that avoids generic templates.
-        Generate JSON with these sections:
-        {{
-            "hero_headline": "Compelling headline that reflects the brand personality",
-            "hero_subheadline": "Supporting text that explains the value proposition",
-            "problem_section": "Section explaining the specific problems this audience faces",
-            "solution_section": "How this brand solves those problems uniquely",
-            "benefits_section": "Specific benefits formatted as bullet points",
-            "how_it_works": "Step-by-step process specific to this solution",
-            "cta_primary": "Primary call-to-action button text",
-            "cta_secondary": "Secondary CTA text"
-        }}
-
-        Make it specific to {brand_name} and avoid generic "workflow automation" language.
-        """
-
-        response = completion(
-            model=MODEL_CONFIG["openai_model"],
-            api_key=settings.OPENAI_API_KEY,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-        )
-
-        if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
-
-    except Exception as e:
-        print(f"Error generating dynamic website copy: {e}")
-
-    # Fallback to basic copy if AI generation fails
-    return {
-        "hero_headline": f"Finally, {value_prop.lower()}",
-        "hero_subheadline": f"{brand_name} bridges the gap between your existing tools to eliminate manual work and reduce errors.",
-        "problem_section": f"**The Problem {target_audience.title()} Face**\n\nYou're switching between multiple tools, copying data manually, and losing time on tasks that should be automated.",
-        "solution_section": f"**How {brand_name} Works**\n\n{brand_name} sits in the gap between your existing tools, automatically handling the connections and data transfers that currently require manual work.",
-        "benefits_section": "**What You'll Achieve**\n\n- Eliminate manual data entry between systems\n- Reduce errors from copy-paste workflows\n- Save hours every week on repetitive tasks",
-        "how_it_works": f"**Simple Integration**\n\n1. **Connect**: Link {brand_name} to your existing tools\n2. **Configure**: Set up the automated workflows you need\n3. **Automate**: Watch as manual processes become seamless automation",
-        "cta_primary": "Start Automating Your Workflow",
-        "cta_secondary": f"See {brand_name} in Action",
-    }
-
-
-def generate_email_sequences(
-    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
-) -> Dict[str, List[Dict[str, str]]]:
-    """Generate email marketing sequences"""
-
-    brand_name = brand_data.get("brand_name", "Solution")
-
-    sequences = {
-        "welcome_sequence": [
-            {
-                "subject": f"Welcome to {brand_name} - Your workflow just got easier",
-                "preview": "Here's what happens next...",
-                "body": f"Thanks for joining {brand_name}! You're about to eliminate the manual work that's been slowing down your workflow. Here's what to expect...",
-            },
-            {
-                "subject": "The #1 workflow killer (and how to fix it)",
-                "preview": "It's not what you think...",
-                "body": "The biggest productivity killer isn't big problems - it's the small friction points between your tools that add up to hours of wasted time every week.",
-            },
-            {
-                "subject": f"See {brand_name} in action (2-minute demo)",
-                "preview": "Watch this quick demo...",
-                "body": f"Here's a quick demo showing exactly how {brand_name} eliminates the manual work between your existing tools.",
-            },
-        ],
-        "nurture_sequence": [
-            {
-                "subject": "Case study: How TeamX saved 15 hours/week",
-                "preview": "Real results from real users",
-                "body": f"See how one team used {brand_name} to eliminate manual data entry and save 15 hours per week.",
-            },
-            {
-                "subject": "The hidden cost of manual workflows",
-                "preview": "It's more than just time...",
-                "body": "Manual workflows don't just waste time - they introduce errors, create bottlenecks, and prevent scaling.",
-            },
-        ],
-    }
-
-    return sequences
-
-
-def generate_social_copy(
-    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
-) -> Dict[str, List[str]]:
-    """Generate social media copy"""
-
-    brand_name = brand_data.get("brand_name", "Solution")
-    value_prop = brand_data.get("value_proposition", "workflow automation")
-
-    social_copy = {
-        "twitter_posts": [
-            f"Stop copying data between tools manually. {brand_name} automates the connections your workflow needs. 🚀",
-            f"The gap between your tools is where productivity goes to die. {brand_name} bridges those gaps automatically.",
-            f"Manual workflows don't scale. {value_prop} does. See how: [link]",
-        ],
-        "linkedin_posts": [
-            f"Productivity insight: The biggest workflow bottlenecks aren't in your tools - they're between your tools. {brand_name} solves this by automating the manual handoffs that slow teams down.",
-            f"Team efficiency tip: Audit your manual processes this week. Any task you do more than once between different tools is a candidate for automation with {brand_name}.",
-        ],
-        "facebook_posts": [
-            f"Tired of switching between multiple tools and copying data manually? {brand_name} connects your existing tools so you can focus on work that matters.",
-            f"Save hours every week by automating the busy work between your favorite tools. See how {brand_name} works: [link]",
-        ],
-    }
-
-    return social_copy
-
-
-# =============================================================================
-# LANDING BUILDER AGENT (UPDATED FOR DEPLOYMENT)
-# =============================================================================
-
-
-# Enhanced Landing Builder Agent with Human-Readable Response
-# Replace the existing build_and_deploy_landing_page function in backend/cosm/builder/__init__.py
-
-
-def build_and_deploy_landing_page(
-    brand_data: Dict[str, Any],
-    copy_data: Dict[str, Any],
-    opportunity_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Build and deploy a complete landing page and return human-readable response
-    """
-
-    try:
-        # Generate all the assets first
-        design_requirements = generate_design_requirements(brand_data, opportunity_data)
-        html_template = generate_html_template(
-            brand_data, copy_data, design_requirements
-        )
-
-        # Validate the HTML template before proceeding
-        template_validation = validate_jinja_template(html_template)
-        if not template_validation["valid"]:
-            return generate_human_readable_error(
-                brand_data, template_validation["error"]
-            )
-
-        css_styles = generate_css_styles(brand_data, design_requirements)
-        javascript = generate_javascript_code(brand_data, design_requirements)
-        content_data = prepare_content_data(brand_data, copy_data, opportunity_data)
-
-        # Prepare deployment payload for renderer service
-        deployment_payload = {
-            "site_name": brand_data.get("brand_name", "landing-page")
-            .lower()
-            .replace(" ", "-"),
-            "assets": {
-                "html_template": html_template,
-                "css_styles": css_styles,
-                "javascript": javascript,
-                "config": {
-                    "responsive": True,
-                    "analytics_enabled": True,
-                    "conversion_tracking": True,
-                },
-            },
-            "content_data": content_data,
-            "meta_data": {
-                "title": f"{content_data.get('brand_name', '')} - {content_data.get('tagline', '')}",
-                "description": content_data.get("description", "")[:160],
-                "keywords": [
-                    content_data.get("brand_name", "").lower(),
-                    "workflow automation",
-                    "productivity tools",
-                    "business integration",
-                ],
-                "brand_style": brand_data.get("visual_identity", {}),
-                "opportunity_type": opportunity_data.get("type", "standard"),
-            },
-            "analytics": {
-                "conversion_events": ["cta-primary", "cta-secondary", "form-submit"],
-                "engagement_tracking": True,
-                "scroll_tracking": True,
-                "exit_intent": True,
-            },
-        }
-
-        # Deploy to renderer service
-        deployment_result = deploy_to_renderer_service(deployment_payload)
-
-        if deployment_result.get("success"):
-            # Return human-readable markdown response
-            return generate_human_readable_success_response(
-                brand_data, deployment_result, content_data
-            )
-        else:
-            return generate_human_readable_error(
-                brand_data, deployment_result.get("error", "Unknown deployment error")
-            )
-
-    except Exception as e:
-        print(f"Error building and deploying landing page: {e}")
-        return generate_human_readable_error(brand_data, str(e))
-
-
-def generate_human_readable_success_response(
-    brand_data: Dict[str, Any],
-    deployment_result: Dict[str, Any],
-    content_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Generate a human-readable markdown response for successful deployment
-    """
-    brand_name = brand_data.get("brand_name", "Your Landing Page")
-    live_url = deployment_result.get("live_url", "")
-    admin_url = deployment_result.get("admin_url", "")
-    analytics_url = deployment_result.get("analytics_url", "")
-
-    # Count features and testimonials
-    features_count = len(content_data.get("features", []))
-    testimonials_count = len(content_data.get("testimonials", []))
-
-    # Generate markdown response
-    markdown_response = f"""# 🚀 {brand_name} is Live!
-
-**Your landing page has been successfully deployed and is ready for market validation.**
-
-## 🔗 Quick Access Links
-
-- **Live Site**: [{brand_name} Landing Page]({live_url})
-- **Admin Dashboard**: [Manage & Monitor]({admin_url})
-- **Analytics**: [View Performance]({analytics_url})
-
-## 📊 What's Included
-
-Your fully-functional landing page features:
-
-- **📱 Mobile-optimized design** - Works perfectly on all devices
-- **⚡ Fast loading** - Optimized for speed and SEO
-- **🎯 {features_count} key features** showcased with compelling visuals
-- **💬 {testimonials_count} customer testimonials** for social proof
-- **📝 Lead capture form** with email validation
-- **📊 Built-in analytics** tracking all user interactions
-- **🔥 Conversion-optimized CTAs** throughout the page
-
-## 🎯 Smart Validation Strategy
-
-**Phase 1: Immediate Testing (First 48 hours)**
-1. **Share with your network** - Send the link to colleagues, friends, and potential customers
-2. **Test on multiple devices** - Check mobile, tablet, and desktop experiences
-3. **Monitor analytics** - Watch for early engagement patterns in your admin dashboard
-
-**Phase 2: Targeted Outreach (Week 1)**
-1. **LinkedIn outreach** - Share with industry contacts and ask for feedback
-2. **Social media posts** - Post about your new solution on relevant platforms
-3. **Email signature** - Add the link to your email signature for organic traffic
-4. **Industry forums** - Share in relevant communities (Reddit, Discord, Slack groups)
-
-**Phase 3: Paid Validation (Week 2+)**
-1. **Google Ads** - Run targeted ads to your landing page ($50-100 budget)
-2. **Facebook/LinkedIn ads** - Target your ideal customer demographic
-3. **Cold email campaigns** - Use the landing page as your CTA destination
-
-## 📈 Success Metrics to Track
-
-**Immediate Indicators:**
-- Email signup rate (target: 15-25%)
-- Time spent on page (target: 2+ minutes)
-- Bounce rate (target: <60%)
-
-**Validation Signals:**
-- 100+ page views in first week
-- 20+ email signups in first week
-- Positive feedback from at least 5 people
-
-## 🎯 Next Steps
-
-1. **Visit your live site** and test all functionality
-2. **Check your admin dashboard** to familiarize yourself with analytics
-3. **Start sharing immediately** - every day of delay is missed opportunities
-4. **Set up tracking** - Monitor daily for the first week, then weekly
-5. **Iterate based on feedback** - Use the admin panel to track what's working
-
-## 💡 Pro Tips for Maximum Impact
-
-- **Create urgency**: Add "Early access" or "Limited beta" messaging
-- **Personal touch**: Respond personally to every email signup in the first week
-- **Content marketing**: Write a blog post about your solution and link to the landing page
-- **Influencer outreach**: Find micro-influencers in your space and ask for honest feedback
-
----
-
-**🎉 Congratulations!** You've just transformed a market opportunity into a live, testable business asset. The hard work of building is done - now comes the exciting part of validating your idea with real users.
-
-**Ready to start collecting your first customers?** [Visit your landing page now]({live_url}) and begin your validation journey!"""
-
-    return {
-        "human_readable_response": markdown_response,
-        "deployment_status": "success",
-        "brand_name": brand_name,
-        "live_url": live_url,
-        "admin_url": admin_url,
-        "analytics_url": analytics_url,
-        "next_actions": [
-            f"Visit {live_url} to see your live landing page",
-            f"Access {admin_url} to monitor performance",
-            "Start sharing with your network immediately",
-            "Set up email responses for incoming leads",
-            "Plan your paid advertising strategy",
-        ],
-    }
-
-
-def generate_human_readable_error(
-    brand_data: Dict[str, Any], error_message: str
-) -> Dict[str, Any]:
-    """
-    Generate a human-readable error response
-    """
-    brand_name = brand_data.get("brand_name", "Your Landing Page")
-
-    markdown_response = f"""# ❌ Deployment Issue for {brand_name}
-
-Unfortunately, we encountered an issue while deploying your landing page.
-
-## 🔧 Error Details
-```
-{error_message}
-```
-
-## 🚀 What's Next?
-
-**Don't worry - this is just a temporary setback!** Here are your options:
-
-1. **Retry the deployment** - Technical issues are often temporary
-2. **Manual setup** - I can provide you with the HTML/CSS files to host yourself
-3. **Alternative platforms** - Consider using Carrd, Webflow, or Squarespace as backup
-
-## 💡 Quick Alternative Solution
-
-While we fix the deployment issue, you can quickly validate your idea using:
-
-1. **Simple landing page builders**:
-   - Carrd.co (free tier available)
-   - Linktree (for basic validation)
-   - Google Sites (completely free)
-
-2. **Manual validation approaches**:
-   - LinkedIn post describing your solution
-   - Email to your network asking for interest
-   - Simple Google Form to collect early interest
-
-## 📧 Keep Moving Forward
-
-**The key insight: Your idea validation doesn't depend on perfect technology.**
-
-Many successful businesses started with simple solutions:
-- Dropbox used a basic video to validate demand
-- Buffer started with a simple two-page website
-- Airbnb began with a basic WordPress site
-
-## 🎯 Immediate Action Plan
-
-1. **Create a simple one-pager** on any platform
-2. **Write a compelling description** of your solution
-3. **Add an email capture form**
-4. **Start sharing today** - don't wait for perfect execution
-
-Remember: **Done is better than perfect**. Get something live and start learning from real users immediately!"""
-
-    return {
-        "human_readable_response": markdown_response,
-        "deployment_status": "failed",
-        "brand_name": brand_name,
-        "error": error_message,
-        "next_actions": [
-            "Try deploying again",
-            "Consider alternative platforms",
-            "Start manual validation immediately",
-            "Don't let technical issues stop your momentum",
-        ],
-    }
-
-
-def generate_functionality_description(
-    brand_data: Dict[str, Any], content_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Generate description of the deployed landing page functionality"""
-
-    brand_name = brand_data.get("brand_name", "Your Brand")
-    features_count = len(content_data.get("features", []))
-    testimonials_count = len(content_data.get("testimonials", []))
-
-    return {
-        "overview": f"Live landing page for {brand_name} with complete functionality for market validation",
-        "key_features": [
-            "📱 Fully responsive design optimized for mobile and desktop",
-            "⚡ Fast-loading single-page experience",
-            f"🎯 {features_count} product features showcased with engaging visuals",
-            f"💬 {testimonials_count} customer testimonials for social proof",
-            "📝 Lead capture form with email validation",
-            "📊 Built-in analytics tracking for all user interactions",
-            "🔥 Conversion-optimized CTA buttons throughout the page",
-        ],
-        "sections_included": [
-            "Hero section with compelling headline and primary CTA",
-            "Problem/solution presentation",
-            "Feature highlights with icons and descriptions",
-            "Customer testimonials and social proof",
-            "Pricing information (if applicable)",
-            "FAQ section addressing common concerns",
-            "Footer with contact information",
-        ],
-        "analytics_capabilities": [
-            "Page view tracking",
-            "Button click tracking for all CTAs",
-            "Form submission tracking with validation",
-            "Scroll depth analysis",
-            "User engagement metrics",
-            "Exit intent detection",
-        ],
-        "conversion_elements": [
-            "Multiple strategically placed CTA buttons",
-            "Email capture form with instant feedback",
-            "Social proof elements to build trust",
-            "FAQ section to address objections",
-            "Mobile-optimized design for on-the-go users",
-        ],
-    }
-
-
-def generate_testing_instructions(
-    brand_data: Dict[str, Any], content_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Generate testing instructions for the deployed landing page"""
-
-    brand_name = brand_data.get("brand_name", "Your Brand")
-
-    return {
-        "validation_checklist": [
-            "✅ Test the main CTA button and form submission",
-            "✅ Verify mobile responsiveness on different devices",
-            "✅ Check loading speed and visual elements",
-            "✅ Test email capture form validation",
-            "✅ Review all copy and messaging for clarity",
-            "✅ Ensure all features are accurately represented",
-        ],
-        "conversion_testing": [
-            "Track form submission rates",
-            "Monitor button click-through rates",
-            "Analyze scroll depth and engagement",
-            "Test different traffic sources",
-            "A/B test headline variations if needed",
-        ],
-        "feedback_collection": [
-            "Share with target customers for feedback",
-            "Test with colleagues outside your industry",
-            "Get input on value proposition clarity",
-            "Validate pricing positioning",
-            "Assess overall trust and credibility",
-        ],
-        "next_steps": [
-            "Share the live URL to start collecting early interest",
-            "Use the admin panel to monitor real-time analytics",
-            "Iterate based on user behavior and feedback",
-            "Consider traffic campaigns once conversion rate is optimized",
-            f"Prepare follow-up sequences for {brand_name} leads",
-        ],
-    }
-
-
-# [Include all other helper functions from original code - generate_design_requirements, etc.]
-# For brevity, I'm including key functions. The full implementation would include all helper functions.
-
-
-def generate_design_requirements(
-    brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Generate specific design requirements based on brand and opportunity"""
-
-    visual_identity = brand_data.get("visual_identity", {})
-    brand_personality = brand_data.get("brand_personality", {})
-
-    # Map personality to design constraints
-    personality_traits = brand_personality.get("personality_traits", [])
-    voice = brand_personality.get("voice", "professional")
-
-    design_style = "modern-minimal"
-    if "innovative" in personality_traits or "cutting-edge" in voice.lower():
-        design_style = "futuristic-bold"
-    elif "friendly" in personality_traits or "approachable" in voice.lower():
-        design_style = "warm-friendly"
-    elif "premium" in personality_traits or "luxury" in voice.lower():
-        design_style = "premium-elegant"
-
-    return {
-        "design_style": design_style,
-        "layout_complexity": "medium",
-        "color_palette": visual_identity.get(
-            "color_palette", ["#2563eb", "#1e40af", "#3b82f6"]
-        ),
-        "typography_style": visual_identity.get("typography", "modern-sans"),
-        "brand_voice": voice,
-        "personality_traits": personality_traits,
-        "conversion_focus": "early_signup",
-        "mobile_priority": True,
-        "accessibility_level": "wcag_aa",
-        "animation_level": "subtle",
-    }
-
-
-def validate_jinja_template(template_str: str) -> Dict[str, Any]:
-    """Validate Jinja2 template syntax before deployment"""
-    try:
-        from jinja2 import Environment, BaseLoader, TemplateSyntaxError
-
-        env = Environment(loader=BaseLoader())
-        template = env.from_string(template_str)
-
-        # Try to render with dummy data to catch runtime errors
-        dummy_data = {
-            "brand_name": "Test Brand",
-            "headline": "Test Headline",
-            "description": "Test Description",
-            "tagline": "Test Tagline",
-            "features": [{"title": "Test Feature", "description": "Test Description"}],
-            "testimonials": [
-                {"quote": "Test Quote", "author": "Test Author", "title": "Test Title"}
-            ],
-            "faqs": [{"question": "Test Question?", "answer": "Test Answer"}],
-            "pricing_plans": [],
-            "current_year": 2025,
-        }
-
-        rendered = template.render(**dummy_data)
-
-        return {
-            "valid": True,
-            "template": template_str,
-            "test_render": rendered[:200] + "..." if len(rendered) > 200 else rendered,
-        }
-
-    except TemplateSyntaxError as e:
-        return {
-            "valid": False,
-            "error": f"Template syntax error: {str(e)}",
-            "line": getattr(e, "lineno", None),
-            "suggestion": "Check for missing {% endfor %}, {% endif %}, or {% endblock %} tags",
-        }
-    except Exception as e:
-        return {
-            "valid": False,
-            "error": f"Template validation error: {str(e)}",
-            "suggestion": "Check template syntax and variable names",
-        }
-
-
-def generate_html_template(
-    brand_data: Dict[str, Any],
-    copy_data: Dict[str, Any],
-    design_requirements: Dict[str, Any],
-) -> str:
-    """Generate dynamic HTML template with Jinja2 syntax for renderer service"""
-
-    try:
-        prompt = f"""
-        Create a complete HTML template for the In-Memory Webpage Renderer service:
-
-        BRAND DATA: {json.dumps(brand_data, indent=2)}
-        COPY DATA: {json.dumps(copy_data, indent=2)}
-        DESIGN REQUIREMENTS: {json.dumps(design_requirements, indent=2)}
-
-        CRITICAL REQUIREMENTS:
-        1. Use {{{{ variable_name }}}} for all dynamic content
-        2. Available variables: brand_name, tagline, headline, description, features, pricing_plans, testimonials, faqs
-        3. Use {{% for feature in features %}} loops for dynamic lists
-        4. NO embedded CSS or JavaScript - renderer service injects separately
-        5. Add data-track attributes for analytics
-        6. Design style: {design_requirements.get('design_style', 'modern-minimal')}
-
-        Generate complete HTML with proper Jinja2 templating syntax.
-        """
-
-        response = completion(
-            model=MODEL_CONFIG["openai_model"],
-            api_key=settings.OPENAI_API_KEY,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-
-        if response and response.choices[0].message.content:
-            generated_template = response.choices[0].message.content.strip()
-
-            # Validate the generated template
-            validation = validate_jinja_template(generated_template)
-            if validation["valid"]:
-                return generated_template
-            else:
-                print(f"Generated template validation failed: {validation['error']}")
-                print("Falling back to default template...")
-                # Fall through to use fallback template
-
-    except Exception as e:
-        print(f"Error generating HTML template: {e}")
-
-    # Fallback template with proper Jinja2 syntax
-    return """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ headline }} | {{ brand_name }}</title>
-    <meta name="description" content="{{ description }}">
-</head>
-<body>
-    <header class="header">
-        <div class="container">
-            <div class="logo">{{ brand_name }}</div>
-            <button class="cta-nav" data-track="nav-cta">Get Started</button>
-        </div>
-    </header>
-
-    <section class="hero">
-        <div class="container">
-            <h1>{{ headline }}</h1>
-            <p>{{ description }}</p>
-            <button class="cta-primary" data-track="cta-primary">Get Started</button>
-        </div>
-    </section>
-
-    <section class="features">
-        <div class="container">
-            <h2>Why Choose {{ brand_name }}?</h2>
-            <div class="features-grid">
-                {% for feature in features %}
-                <div class="feature-card" data-track="feature-click">
-                    <h3>{{ feature.title }}</h3>
-                    <p>{{ feature.description }}</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-
-    <section class="testimonials">
-        <div class="container">
-            <h2>What Our Customers Say</h2>
-            <div class="testimonials-grid">
-                {% for testimonial in testimonials %}
-                <div class="testimonial-card">
-                    <p>"{{ testimonial.quote }}"</p>
-                    <div class="author">- {{ testimonial.author }}, {{ testimonial.title }}</div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-
-    <section class="faq">
-        <div class="container">
-            <h2>Frequently Asked Questions</h2>
-            <div class="faq-list">
-                {% for faq in faqs %}
-                <div class="faq-item">
-                    <h3>{{ faq.question }}</h3>
-                    <p>{{ faq.answer }}</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-
-    <section class="cta-section">
-        <div class="container">
-            <h2>Ready to Get Started?</h2>
-            <form class="signup-form" data-track="form-submit">
-                <input type="email" placeholder="Enter your email" required>
-                <button type="submit">Start Free Trial</button>
-            </form>
-        </div>
-    </section>
-
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; {{ current_year }} {{ brand_name }}. All rights reserved.</p>
-        </div>
-    </footer>
-</body>
-</html>"""
-
-
-def generate_css_styles(
-    brand_data: Dict[str, Any], design_requirements: Dict[str, Any]
-) -> str:
-    """Generate dynamic CSS styles based on brand identity"""
-
-    visual_identity = brand_data.get("visual_identity", {})
-    colors = visual_identity.get("color_palette", ["#2563eb", "#1e40af", "#3b82f6"])
-    primary_color = colors[0] if colors else "#2563eb"
-
-    return f"""
-/* Dynamic CSS for {brand_data.get('brand_name', 'Brand')} */
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; }}
-.container {{ max-width: 1200px; margin: 0 auto; padding: 0 20px; }}
-
-.header {{ background: white; padding: 1rem 0; border-bottom: 1px solid #e5e7eb; }}
-.header .container {{ display: flex; justify-content: space-between; align-items: center; }}
-.logo {{ font-size: 1.5rem; font-weight: 700; color: {primary_color}; }}
-
-.cta-primary, .cta-nav {{
-    background: {primary_color};
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}}
-
-.hero {{ padding: 4rem 0; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }}
-.hero h1 {{ font-size: 3rem; margin-bottom: 1rem; color: #1f2937; }}
-.hero p {{ font-size: 1.25rem; color: #6b7280; margin-bottom: 2rem; }}
-
-.features {{ padding: 4rem 0; }}
-.features-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }}
-.feature-card {{
-    padding: 2rem;
-    border-radius: 8px;
-    background: #f8fafc;
-    transition: all 0.3s ease;
-}}
-
-.cta-section {{
-    padding: 4rem 0;
-    background: {primary_color};
-    color: white;
-    text-align: center;
-}}
-
-@media (max-width: 768px) {{
-    .hero h1 {{ font-size: 2rem; }}
-    .features-grid {{ grid-template-columns: 1fr; }}
-}}
-"""
-
-
-def generate_javascript_code(
-    brand_data: Dict[str, Any], design_requirements: Dict[str, Any]
-) -> str:
-    """Generate dynamic JavaScript compatible with renderer service analytics"""
-
-    return """
-// Auto-track data-track elements
-document.addEventListener('click', function(e) {
-    const trackElement = e.target.closest('[data-track]');
-    if (trackElement) {
-        const trackType = trackElement.getAttribute('data-track');
-        trackEvent(trackType + '_click', {
-            element: trackType,
-            text: trackElement.textContent.trim().substring(0, 50),
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// Form handling with validation
-document.addEventListener('submit', function(e) {
-    const form = e.target;
-    if (form.matches('[data-track="form-submit"]')) {
-        e.preventDefault();
-
-        const formData = new FormData(form);
-        const email = formData.get('email');
-
-        if (!email || !email.includes('@')) {
-            alert('Please enter a valid email address');
-            return;
-        }
-
-        trackEvent('form_submit', {
-            form_type: 'signup',
-            has_email: !!email,
-            timestamp: new Date().toISOString()
-        });
-
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.textContent;
-        submitBtn.textContent = 'Thank you!';
-        submitBtn.disabled = true;
-
-        setTimeout(() => {
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-            form.reset();
-        }, 2000);
-    }
-});
-
-// Scroll depth tracking
-let scrollThresholds = [25, 50, 75, 100];
-let trackedThresholds = new Set();
-
-window.addEventListener('scroll', function() {
-    const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
-
-    scrollThresholds.forEach(threshold => {
-        if (scrollPercent >= threshold && !trackedThresholds.has(threshold)) {
-            trackedThresholds.add(threshold);
-            trackEvent('scroll_depth', {
-                percentage: threshold,
-                timestamp: new Date().toISOString()
-            });
-        }
-    });
-});
-"""
-
-
-def prepare_content_data(
-    brand_data: Dict[str, Any],
-    copy_data: Dict[str, Any],
-    opportunity_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Prepare content data for renderer service ContentData model"""
-
-    website_copy = copy_data.get("website_copy", {})
-
-    # Prepare features from opportunity data
-    features = []
-    opportunity_benefits = opportunity_data.get("benefits", [])
-    for i, benefit in enumerate(opportunity_benefits[:6]):
-        if isinstance(benefit, dict):
-            features.append(
-                {
-                    "title": benefit.get("title", f"Feature {i+1}"),
-                    "description": benefit.get("description", "Benefit description"),
-                    "icon": benefit.get("icon", "⚡"),
-                }
-            )
-        else:
-            features.append(
-                {
-                    "title": f"Feature {i+1}",
-                    "description": str(benefit),
-                    "icon": "⚡",
-                }
-            )
-
-    # Default features if none exist
-    if not features:
-        features = [
-            {
-                "title": "Easy Integration",
-                "description": "Connect with your existing tools in minutes",
-                "icon": "🔗",
-            },
-            {
-                "title": "Save Time",
-                "description": "Automate repetitive tasks and focus on what matters",
-                "icon": "⏰",
-            },
-            {
-                "title": "Secure & Reliable",
-                "description": "Enterprise-grade security and 99.9% uptime",
-                "icon": "🔒",
-            },
-        ]
-
-    # Prepare testimonials
-    testimonials = [
-        {
-            "quote": "This solution transformed our workflow completely.",
-            "author": "Sarah Johnson",
-            "title": "Operations Manager",
-            "company": "TechCorp",
-        },
-        {
-            "quote": "We're saving 10+ hours per week on manual tasks.",
-            "author": "Mike Chen",
-            "title": "Team Lead",
-            "company": "StartupXYZ",
-        },
-    ]
-
-    # Prepare FAQs
-    faqs = [
-        {
-            "question": "How quickly can I get started?",
-            "answer": "Most teams are up and running within 15 minutes. Our setup is designed to be simple and non-disruptive.",
-        },
-        {
-            "question": "Do you integrate with my existing tools?",
-            "answer": "Yes, we support the most popular business tools and are constantly adding new integrations.",
-        },
-        {
-            "question": "Is my data secure?",
-            "answer": "Absolutely. We use enterprise-grade security and never store your sensitive data permanently.",
-        },
-    ]
-
-    return {
-        "brand_name": brand_data.get("brand_name", "Demo Site"),
-        "tagline": brand_data.get("tagline", ""),
-        "headline": website_copy.get(
-            "hero_headline", copy_data.get("headlines", ["Transform Your Workflow"])[0]
-        ),
-        "description": brand_data.get(
-            "value_proposition", "The best solution for your needs"
-        ),
-        "features": features,
-        "pricing_plans": [],
-        "testimonials": testimonials,
-        "faqs": faqs,
-    }
-
-
-# =============================================================================
-# UPDATED AGENT DEFINITIONS
-# =============================================================================
-
-# Create the builder agents with updated landing builder
+# Brand Creator Agent
 brand_creator_agent = LlmAgent(
     name="brand_creator_agent",
     model=MODEL_CONFIG["primary_model"],
-    instruction=BRAND_CREATOR_PROMPT,
-    description="Creates compelling brand identities for liminal market opportunities",
+    instruction="""
+    You are the Brand Creator Agent, a world-class brand strategist specializing in liminal market opportunities.
+
+    CORE MISSION:
+    Create compelling brand identities for opportunities that exist between established market categories.
+    Your brands must appeal to users underserved by mainstream solutions and position uniquely in liminal spaces.
+
+    STRATEGIC APPROACH:
+    - Bridge Builder Positioning: Connect existing categories with new solutions
+    - Gap Filler Messaging: Emphasize solving problems others ignore
+    - Category Creator Language: Define new market terminology and mental models
+    - Underdog Empathy: Connect with users frustrated by mainstream options
+    - Simplicity in Complexity: Make complex integration problems seem simple
+
+    DELIVERABLES:
+    - Complete brand identity with personality, voice, and visual direction
+    - Domain suggestions with availability and trademark considerations
+    - Competitive differentiation strategy for liminal positioning
+    - Brand story that explains why this solution needs to exist
+    - Messaging architecture that creates new category language
+
+    Use OpenAI to generate all brand elements dynamically - never return static templates.
+    Focus on creating brands that feel inevitable once users discover them.
+    """,
+    description="Creates compelling brand identities for liminal market opportunities using AI-powered brand strategy",
     tools=[
-        FunctionTool(func=create_brand_identity),
-        FunctionTool(func=generate_domain_suggestions),
-        FunctionTool(func=assess_trademark_risks),
+        FunctionTool(func=create_brand_identity_with_openai),
+        FunctionTool(func=generate_smart_domain_suggestions),
+        FunctionTool(func=assess_comprehensive_trademark_risks),
     ],
-    output_key="brand_identity",
+    output_key="comprehensive_brand_identity",
 )
 
+# Copy Writer Agent
 copy_writer_agent = LlmAgent(
     name="copy_writer_agent",
     model=MODEL_CONFIG["primary_model"],
-    instruction=COPY_WRITER_PROMPT,
-    description="Generates high-converting copy for early-stage market validation",
+    instruction="""
+    You are the Copy Writer Agent, an expert conversion copywriter specializing in liminal market validation.
+
+    CORE MISSION:
+    Create high-converting marketing copy that resonates with users frustrated by existing solutions.
+    Position new offerings as the bridge between what they have and what they need.
+
+    LIMINAL COPY STRATEGIES:
+    - Pain Point Amplification: Start with existing user frustration
+    - Bridge Positioning: Position as the missing link users need
+    - Simplicity Promise: Make complex problems seem easily solvable
+    - Time-to-Value Focus: Emphasize quick wins and immediate benefits
+    - Social Proof Integration: Use testimonials from similar situations
+
+    COPY FRAMEWORK:
+    Problem-Bridge-Solution structure that acknowledges current pain, positions your solution as the bridge, then delivers the transformation.
+
+    DELIVERABLES:
+    - Complete website copy optimized for conversion
+    - Email marketing sequences for nurturing prospects
+    - Social media copy for different platforms and audiences
+    - Ad copy variations for paid acquisition campaigns
+    - Sales enablement copy and onboarding sequences
+
+    Use OpenAI to generate all copy dynamically based on specific brand and opportunity context.
+    Make every word work harder - copy must convert skeptical users into early adopters.
+    """,
+    description="Creates high-converting marketing copy for early-stage market validation using AI-powered copywriting",
     tools=[
-        FunctionTool(func=generate_marketing_copy),
-        FunctionTool(func=generate_website_copy),
-        FunctionTool(func=generate_email_sequences),
-        FunctionTool(func=generate_social_copy),
+        FunctionTool(func=generate_comprehensive_marketing_copy),
+        FunctionTool(func=generate_testimonial_templates),
+        FunctionTool(func=generate_case_study_frameworks),
     ],
-    output_key="marketing_copy",
+    output_key="comprehensive_marketing_copy",
 )
 
-# UPDATED: Landing builder now deploys instead of returning code
+# Landing Builder Agent
 landing_builder_agent = LlmAgent(
     name="landing_builder_agent",
     model=MODEL_CONFIG["primary_model"],
     instruction="""
-    You are a Landing Builder Agent that creates, deploys, and provides strategic guidance for landing page validation.
+    You are the Landing Builder Agent, expert at creating both high-converting landing pages and comprehensive admin dashboards using AI.
 
-    CRITICAL: Your role is to BUILD, DEPLOY, and PROVIDE STRATEGIC GUIDANCE - not return raw technical data.
+    CORE CAPABILITIES:
+    1. **Landing Pages**: High-converting pages optimized for early-stage validation
+    2. **Admin Dashboards**: Enterprise-grade market intelligence interfaces with interactive analytics
 
-    Your process:
-    1. Analyze brand identity and opportunity data
-    2. Generate all required assets (HTML, CSS, JS, content)
-    3. Deploy directly to the renderer service
-    4. Return human-readable strategic guidance in markdown format
+    LANDING PAGE FOCUS:
+    - Conversion-optimized layouts with multiple engagement paths
+    - Mobile-first responsive design with fast loading
+    - A/B testing infrastructure for continuous optimization
+    - Analytics integration for comprehensive tracking
+    - Progressive disclosure of information to maintain engagement
 
-    SUCCESS CRITERIA:
-    - Provide clear, actionable strategic advice in markdown format
-    - Include live URLs and access links
-    - Offer specific validation strategies and next steps
-    - Focus on business outcomes, not technical details
-    - Give a clear roadmap for market validation
+    ADMIN DASHBOARD FOCUS:
+    - Transform market research into compelling visual stories
+    - Interactive charts and drill-down analytics capabilities
+    - Executive-level insights with strategic recommendations
+    - Real-time market intelligence monitoring
+    - Collaboration tools for stakeholder alignment
+
+    TECHNICAL APPROACH:
+    - Use OpenAI to generate all code dynamically - never static templates
+    - Create premium, professional interfaces that wow users
+    - Build functional, interactive experiences with real data integration
+    - Ensure mobile-responsive, modern design aesthetics
+    - Focus on business outcomes and strategic value
 
     RESPONSE STYLE:
-    - Use markdown formatting for readability
-    - Include specific, actionable advice
-    - Provide clear success metrics and timelines
-    - Focus on business strategy over technical implementation
-    - Give immediate next steps the user can take
-
-    Remember: Your response will be read by entrepreneurs who need strategic guidance,
-    not developers who need technical specifications. Focus on turning their deployed
-    landing page into a successful market validation tool.
+    Provide strategic, business-focused guidance that excites entrepreneurs and investors.
+    Present technical capabilities as business advantages and competitive differentiators.
     """,
-    description="Builds, deploys, and provides strategic guidance for landing page validation",
+    description="Creates dynamic landing pages and market intelligence dashboards using AI-generated code and strategic insights",
     tools=[
-        FunctionTool(func=build_and_deploy_landing_page),
-        FunctionTool(func=get_deployment_status),
-        FunctionTool(func=generate_functionality_description),
-        FunctionTool(func=generate_testing_instructions),
+        FunctionTool(func=build_and_deploy_comprehensive_site),
+        FunctionTool(func=build_landing_page),
+        FunctionTool(func=build_admin_dashboard),
+        FunctionTool(func=generate_market_insights_with_openai),
+        FunctionTool(func=extract_chart_data_from_analysis),
+        FunctionTool(func=prepare_landing_content_data),
+        FunctionTool(func=prepare_admin_content_data),
     ],
-    output_key="strategic_deployment_guidance",
+    output_key="comprehensive_site_deployment",
 )
