@@ -1,5 +1,5 @@
 """
-Optimized Market Explorer Agent - Consolidated functionality
+Market Explorer Agent - Consolidated functionality
 Combines Market Explorer + Trend Analyzer + Gap Mapper capabilities
 """
 
@@ -44,8 +44,6 @@ def generate_comprehensive_marketing_copy(
     brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
-    OPTIMIZED: Generates comprehensive high-converting marketing copy in single AI call
-
     Consolidates all copy generation into one strategic pass for consistency and efficiency.
     Optimized for liminal market positioning and early-stage validation.
 
@@ -90,7 +88,6 @@ def generate_comprehensive_marketing_copy(
     try:
         print("🎯 Generating comprehensive high-converting marketing copy...")
 
-        # OPTIMIZED: Single comprehensive AI call for all copy assets
         ai_copy_package = generate_comprehensive_copy_with_ai(
             brand_data, opportunity_data
         )
@@ -134,7 +131,7 @@ def generate_comprehensive_copy_with_ai(
     brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
-    OPTIMIZED: Single AI call generating complete marketing copy ecosystem
+    Single AI call generating complete marketing copy ecosystem
     """
     try:
         # Extract optimized context for focused generation
@@ -1239,7 +1236,7 @@ def validate_signals_cross_platform(signals_data: Dict[str, Any]) -> Dict[str, A
         return validation
 
 
-# Create the optimized market explorer agent
+# Create the market explorer agent
 market_explorer_agent = LlmAgent(
     name="market_explorer_agent",
     model=LiteLlm(

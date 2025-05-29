@@ -364,13 +364,12 @@ def generate_portfolio_analysis(
         return {"error": str(e)}
 
 
-# Create the optimized market analyzer agent
 market_analyzer_agent = LlmAgent(
     name="market_analyzer_agent",
     model=MODEL_CONFIG["primary_model"],
     instruction=MARKET_ANALYZER_PROMPT,
     description=(
-        "Optimized market validation agent that combines comprehensive market analysis "
+        "market validation agent that combines comprehensive market analysis "
         "with AI-powered opportunity scoring to deliver strategic insights in a single pass."
     ),
     tools=[

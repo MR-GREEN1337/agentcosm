@@ -4,11 +4,9 @@ Reduced from 12 → 6 agents with consolidated functionality
 """
 
 from google.adk.agents import LlmAgent
-from google.adk.agents.callback_context import CallbackContext
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool
 from google.genai import types
-from datetime import datetime
 
 from .discovery.explorer_agent import (
     market_explorer_agent,
@@ -30,26 +28,6 @@ from .tools.market_research import (
 )
 from .prompts import ROOT_AGENT_PROMPT
 from .config import MODEL_CONFIG
-
-
-def setup_market_context(callback_context: CallbackContext):
-    """Market research context setup"""
-    if "market_context" not in callback_context.state:
-        callback_context.state["market_context"] = {
-            "research_timestamp": datetime.now().isoformat(),
-            "data_sources": [],
-            "validation_criteria": {},
-            "research_pipeline": "optimized_2_phase",  # Reduced from 3 phases
-        }
-
-    if "research_results" not in callback_context.state:
-        callback_context.state["research_results"] = {
-            "comprehensive_intelligence": {},  # Consolidated market signals + trends + gaps
-            "validated_opportunities": {},  # Consolidated analysis + scoring
-            "data_insights": {},  # Consolidated BigQuery + code execution
-            "brand_marketing_assets": {},  # Consolidated brand + copy
-            "deployable_assets": {},  # Landing pages and dashboards
-        }
 
 
 class MarketOpportunityAgent:
@@ -81,12 +59,11 @@ class MarketOpportunityAgent:
             model=MODEL_CONFIG["primary_model"],
             description="Rapid creation of brand assets and deployable business validation tools",
             sub_agents=[
-                brand_creator_agent,  # Now includes: brand creator + copy writer
-                landing_builder_agent,  # Optimized for both landing pages + admin dashboards
+                brand_creator_agent,
+                landing_builder_agent,
             ],
         )
 
-        # Root orchestrator with optimized workflow
         self.root_agent = LlmAgent(
             name="market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
@@ -101,17 +78,14 @@ class MarketOpportunityAgent:
                 "Market opportunity coordinator that efficiently transforms market uncertainty "
                 "into validated business opportunities using streamlined 2-phase processing with consolidated agents."
             ),
-            before_agent_callback=setup_market_context,
             generate_content_config=types.GenerateContentConfig(
                 temperature=0.3,
                 top_p=0.8,
             ),
             tools=[
-                # Consolidated tools - removed duplicates
                 FunctionTool(func=comprehensive_market_research),
                 FunctionTool(func=analyze_competitive_landscape),
                 FunctionTool(func=check_domain_availability),
-                # Optimized agent tools
                 AgentTool(agent=self.intelligence_phase),
                 AgentTool(agent=self.creation_phase),
             ],

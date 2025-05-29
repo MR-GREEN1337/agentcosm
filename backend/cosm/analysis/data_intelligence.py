@@ -735,7 +735,6 @@ def extract_visualization_data(
     return visualizations
 
 
-# Create the optimized data intelligence agent
 data_intelligence_agent = LlmAgent(
     name="data_intelligence_agent",
     model=MODEL_CONFIG["primary_model"],

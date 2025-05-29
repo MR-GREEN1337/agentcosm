@@ -46,7 +46,6 @@ def generate_comprehensive_marketing_copy(
     brand_data: Dict[str, Any], opportunity_data: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
-    OPTIMIZED: Generates comprehensive high-converting marketing copy in single AI call
 
     Consolidates all copy generation into one strategic pass for consistency and efficiency.
     Optimized for liminal market positioning and early-stage validation.
