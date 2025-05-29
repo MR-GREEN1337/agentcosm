@@ -1,28 +1,28 @@
 """
-Market Opportunity Discovery Agent
+Market Opportunity Agent - Streamlined orchestration
+Reduced from 12 → 6 agents with consolidated functionality
 """
 
-from google.adk.agents import LlmAgent, SequentialAgent
+from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool
 from google.genai import types
 from datetime import datetime
 
-# Import existing agents
-from .discovery.explorer_agent import market_explorer_agent
-from .discovery.trend_analyzer import trend_analyzer_agent
-from .discovery.gap_mapper import gap_mapper_agent
-from .analysis import market_analyzer_agent
-from .analysis.code_executor import code_executor_agent
-from .analysis.opportunity_scorer import opportunity_scorer_agent
-from .builder import brand_creator_agent, landing_builder_agent, copy_writer_agent
-
-# Import BigQuery agen
-from .analysis.bigquery_agent import create_bigquery_agent
+from .discovery.explorer_agent import (
+    market_explorer_agent,
+)  # Now includes trend analysis + gap mapping
+from .analysis import market_analyzer_agent  # Now includes opportunity scoring
+from .analysis.data_intelligence import (
+    data_intelligence_agent,
+)  # Now includes BigQuery functionality
+from .builder import (
+    brand_creator_agent,
+    landing_builder_agent,
+)  # Brand creator now includes copy writing
 
 from .settings import settings
-
 from .tools.market_research import (
     comprehensive_market_research,
     analyze_competitive_landscape,
@@ -33,87 +33,73 @@ from .config import MODEL_CONFIG
 
 
 def setup_market_context(callback_context: CallbackContext):
-    """Setup market research context and shared state"""
+    """Market research context setup"""
     if "market_context" not in callback_context.state:
         callback_context.state["market_context"] = {
             "research_timestamp": datetime.now().isoformat(),
             "data_sources": [],
             "validation_criteria": {},
-            "research_pipeline": {},
-            "bigquery_enabled": True,  # NEW: Enable BigQuery features
+            "research_pipeline": "optimized_2_phase",  # Reduced from 3 phases
         }
 
     if "research_results" not in callback_context.state:
         callback_context.state["research_results"] = {
-            "market_signals": [],
-            "trend_analysis": {},
-            "gap_analysis": {},
-            "validation_data": {},
-            "opportunity_scores": {},
-            "business_assets": {},
-            "bigquery_insights": {},  # NEW: Store BigQuery results
+            "comprehensive_intelligence": {},  # Consolidated market signals + trends + gaps
+            "validated_opportunities": {},  # Consolidated analysis + scoring
+            "data_insights": {},  # Consolidated BigQuery + code execution
+            "brand_marketing_assets": {},  # Consolidated brand + copy
+            "deployable_assets": {},  # Landing pages and dashboards
         }
 
 
 class MarketOpportunityAgent:
     """
-    Root agent with BigQuery intelligence
+    Root agent with streamlined 2-phase processing
+    Reduced complexity while maintaining comprehensive market intelligence
     """
 
     def __init__(self):
         self.project_id = settings.GOOGLE_CLOUD_PROJECT_ID
 
-        # Create BigQuery agent
-        self.bigquery_agent = create_bigquery_agent()
-
-        # Phase 1: Discovery
-        self.discovery_phase = LlmAgent(
-            name="market_discovery_phase",
+        # PHASE 1: Market Intelligence (Parallel Processing)
+        # Consolidated discovery + analysis for speed
+        self.intelligence_phase = LlmAgent(
+            name="market_intelligence_phase",
             model=MODEL_CONFIG["primary_model"],
-            description="Discovers market signals from multiple sources",
+            description="Consolidated market intelligence combining discovery, analysis, and validation",
             sub_agents=[
-                market_explorer_agent,
-                trend_analyzer_agent,
-                gap_mapper_agent,
+                market_explorer_agent,  # Now includes: explorer + trend analyzer + gap mapper
+                market_analyzer_agent,  # Now includes: analyzer + opportunity scorer
+                data_intelligence_agent,  # Now includes: BigQuery + code executor
             ],
         )
 
-        # Phase 2: Enhanced Analysis with BigQuery (Sequential)
-        self.analysis_phase = SequentialAgent(
-            name="market_analysis_phase",
-            description="Performs deep analysis including BigQuery intelligence",
-            sub_agents=[
-                market_analyzer_agent,
-                self.bigquery_agent,
-                code_executor_agent,
-                opportunity_scorer_agent,
-            ],
-        )
-
-        # Phase 3: Business Asset Creation (Parallel)
-        self.builder_phase = LlmAgent(
-            name="business_builder_phase",
+        # PHASE 2: Asset Creation (Parallel Processing)
+        # Streamlined brand and deployment creation
+        self.creation_phase = LlmAgent(
+            name="asset_creation_phase",
             model=MODEL_CONFIG["primary_model"],
-            description="Creates business assets for rapid market validation",
+            description="Rapid creation of brand assets and deployable business validation tools",
             sub_agents=[
-                brand_creator_agent,
-                copy_writer_agent,
-                landing_builder_agent,
+                brand_creator_agent,  # Now includes: brand creator + copy writer
+                landing_builder_agent,  # Optimized for both landing pages + admin dashboards
             ],
         )
 
-        # Root orchestrator
+        # Root orchestrator with optimized workflow
         self.root_agent = LlmAgent(
-            name="market_opportunity_coordinator",  # Keep internal name
+            name="market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
             instruction=(
                 ROOT_AGENT_PROMPT
-                + "\n\nYou are a strategic co-founder helping the user discover and build their next billion-dollar idea. "
-                "Use advanced data and insights without revealing internal tools or technical details."
+                + "\n\n for efficiency: You now orchestrate a streamlined 2-phase process that "
+                "delivers comprehensive market intelligence and deployable business assets faster than ever. "
+                "Each phase runs agents with consolidated capabilities, eliminating redundancy "
+                "while maintaining analytical depth and strategic insight quality."
             ),
             description=(
-                "Acts as a co-founder that helps the user uncover high-potential ideas and turn them into testable ventures, "
-                "leveraging deep data signals without surfacing implementation specifics."
+                "Market opportunity coordinator that efficiently transforms market uncertainty "
+                "into validated business opportunities using streamlined 2-phase processing with consolidated agents."
             ),
             before_agent_callback=setup_market_context,
             generate_content_config=types.GenerateContentConfig(
@@ -121,15 +107,17 @@ class MarketOpportunityAgent:
                 top_p=0.8,
             ),
             tools=[
+                # Consolidated tools - removed duplicates
                 FunctionTool(func=comprehensive_market_research),
                 FunctionTool(func=analyze_competitive_landscape),
                 FunctionTool(func=check_domain_availability),
-                AgentTool(agent=self.discovery_phase),
-                AgentTool(agent=self.analysis_phase),
-                AgentTool(agent=self.builder_phase),
+                # Optimized agent tools
+                AgentTool(agent=self.intelligence_phase),
+                AgentTool(agent=self.creation_phase),
             ],
-            sub_agents=[self.discovery_phase, self.analysis_phase, self.builder_phase],
+            sub_agents=[self.intelligence_phase, self.creation_phase],
         )
 
 
+# Export root agent
 root_agent = MarketOpportunityAgent().root_agent
