@@ -1898,28 +1898,3 @@ def validate_market_opportunity_comprehensive(
         print(f"Error in comprehensive validation: {e}")
         validation_report["error"] = str(e)
         return validation_report
-
-
-# Example usage function
-def example_market_validation():
-    """
-    Example of how to use the comprehensive market validation
-    """
-    keywords = ["AI productivity tools", "workflow automation", "team collaboration"]
-    target_audience = "small to medium businesses, remote teams"
-    solution_type = "SaaS platform"
-    pain_points = [
-        "Manual workflow processes are time-consuming",
-        "Poor team coordination in remote work",
-        "Difficulty tracking project progress",
-    ]
-
-    # Run comprehensive validation
-    result = validate_market_opportunity_comprehensive(
-        keywords=keywords,
-        target_audience=target_audience,
-        solution_type=solution_type,
-        pain_points=pain_points,
-    )
-
-    return result
