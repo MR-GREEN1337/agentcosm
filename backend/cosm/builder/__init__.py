@@ -2109,8 +2109,8 @@ def build_and_deploy_comprehensive_site(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
     opportunity_data: Dict[str, Any],
+    analysis_data: Dict[str, Any],
     site_type: str = "landing_page",  # "landing_page" or "admin_dashboard"
-    analysis_data: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """
     Build and deploy either landing page or admin dashboard using OpenAI
