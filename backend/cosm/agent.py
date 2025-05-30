@@ -1,6 +1,5 @@
 """
-Market Opportunity Agent - Streamlined orchestration
-Reduced from 12 → 6 agents with consolidated functionality
+Market Opportunity Agent
 """
 
 from google.adk.agents import LlmAgent
