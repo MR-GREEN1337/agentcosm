@@ -14,6 +14,7 @@ from datetime import datetime
 from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
+from cosm.tools.pexels import get_pexels_media
 
 client = Client()
 
@@ -777,7 +778,7 @@ def generate_fallback_copy_package(
     OPTIMIZED: Intelligent fallback copy generation when AI fails
     """
     print("🔧 Generating fallback marketing copy package...")
-
+    print(brand_data)
     brand_name = brand_data.get("brand_name", "Your Solution")
     target_audience = opportunity_data.get("target_audience", "business teams")
     keywords = opportunity_data.get("keywords", ["workflow"])
@@ -2082,30 +2083,12 @@ def generate_case_study_frameworks(
     return frameworks
 
 
-# Create the optimized brand & copy creator agent
-brand_creator_agent = LlmAgent(
-    name="brand_creator_agent",
-    model=MODEL_CONFIG["primary_model"],
-    instruction=BRAND_COPY_CREATOR_PROMPT,
-    description=(
-        "Integrated brand and copy creation agent that develops complete brand identities "
-        "with high-converting marketing copy for liminal market opportunities in a unified workflow."
-    ),
-    tools=[
-        FunctionTool(func=create_comprehensive_brand_and_marketing_assets),
-        FunctionTool(func=generate_testimonial_templates),
-        FunctionTool(func=generate_case_study_frameworks),
-        # Removed duplicate tools - now uses integrated functions
-    ],
-    output_key="comprehensive_brand_marketing_assets",
-)
-
 # =============================================================================
 # LANDING BUILDER AGENT - ENHANCED WITH OPENAI + ADMIN DASHBOARD
 # =============================================================================
 
 
-def build_and_deploy_comprehensive_site(
+def build_and_deploy_site(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
     opportunity_data: Dict[str, Any],
@@ -2128,106 +2111,207 @@ def build_and_deploy_comprehensive_site(
         return generate_error_response(brand_data, str(e), site_type)
 
 
+def prepare_enhanced_landing_content(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    opportunity_data: Dict[str, Any],
+    hero_media: Dict[str, Any],
+    feature_media: Dict[str, Any],
+    testimonial_media: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Enhanced version of existing prepare content function with video support
+    Maintains backward compatibility while adding multimedia features
+    """
+    website_copy = copy_data.get("website_copy", {})
+    hero_section = website_copy.get("hero_section", {})
+
+    # Extract media for easy template access
+    hero_images = hero_media.get("images", [])
+    hero_videos = hero_media.get("videos", [])
+    feature_images = feature_media.get("images", [])
+    feature_videos = feature_media.get("videos", [])
+    testimonial_images = testimonial_media.get("images", [])
+
+    # Enhanced features with media integration
+    enhanced_features = [
+        {
+            "title": "Seamless Integration",
+            "description": "Connect with your existing tools in minutes, not hours",
+            "icon": "🔗",
+            "image": feature_images[0]["url"] if len(feature_images) > 0 else "",
+            "video": feature_videos[0]["url_hd"] if len(feature_videos) > 0 else "",
+        },
+        {
+            "title": "Instant Results",
+            "description": "See immediate improvements in your workflow efficiency",
+            "icon": "⚡",
+            "image": feature_images[1]["url"] if len(feature_images) > 1 else "",
+            "video": feature_videos[1]["url_hd"] if len(feature_videos) > 1 else "",
+        },
+        {
+            "title": "Enterprise Security",
+            "description": "Bank-level security with 99.9% uptime guarantee",
+            "icon": "🔒",
+            "image": feature_images[2]["url"] if len(feature_images) > 2 else "",
+            "video": "",  # No video for this feature
+        },
+    ]
+
+    # Enhanced testimonials with profile photos
+    enhanced_testimonials = [
+        {
+            "quote": "This solution completely transformed how our team collaborates. We're saving 10+ hours per week.",
+            "author": "Sarah Johnson",
+            "title": "Operations Manager",
+            "company": "TechCorp",
+            "image": testimonial_images[0]["url"]
+            if len(testimonial_images) > 0
+            else "",
+            "rating": 5,
+        },
+        {
+            "quote": "Finally, a tool that actually understands our workflow. The integration was seamless.",
+            "author": "Mike Chen",
+            "title": "Product Manager",
+            "company": "StartupXYZ",
+            "image": testimonial_images[1]["url"]
+            if len(testimonial_images) > 1
+            else "",
+            "rating": 5,
+        },
+        {
+            "quote": "ROI was obvious within the first month. This pays for itself in time savings alone.",
+            "author": "Jennifer Martinez",
+            "title": "Team Lead",
+            "company": "ScaleUp LLC",
+            "image": testimonial_images[2]["url"]
+            if len(testimonial_images) > 2
+            else "",
+            "rating": 5,
+        },
+    ]
+
+    return {
+        # Core content (maintains original structure)
+        "brand_name": brand_data.get("brand_name", "Your Solution"),
+        "tagline": brand_data.get("tagline", "Transform Your Workflow"),
+        "hero_headline": hero_section.get("headline", "Transform Your Business Today"),
+        "hero_subheadline": hero_section.get(
+            "subheadline", "The best solution for your business needs"
+        ),
+        "value_proposition": brand_data.get(
+            "value_proposition", "Professional solutions that drive results"
+        ),
+        "cta_primary": hero_section.get("cta_primary", "Get Started Free"),
+        "cta_secondary": hero_section.get("cta_secondary", "Learn More"),
+        # Enhanced media content (new additions)
+        "hero_image": hero_images[0]["url"]
+        if hero_images
+        else "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "hero_video": hero_videos[0]["url_hd"] if hero_videos else "",
+        "hero_video_preview": hero_videos[0]["preview_image"] if hero_videos else "",
+        # Enhanced content arrays
+        "features": enhanced_features,
+        "testimonials": enhanced_testimonials,
+        # Additional media for template flexibility
+        "feature_images": feature_images,
+        "feature_videos": feature_videos,
+        "testimonial_images": testimonial_images,
+        # Original fields for backward compatibility
+        "current_year": 2025,
+    }
+
+
 def build_landing_page(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
     opportunity_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Build high-converting landing page using OpenAI"""
-
+    """
+    Enhanced version of existing build_landing_page with video support
+    Maintains original function name and signature
+    """
     try:
-        # Generate complete landing page with OpenAI
-        landing_page_prompt = f"""
-        Create a high-converting, modern landing page for a liminal market opportunity.
+        print("🎨 Building enhanced landing page with multimedia support...")
 
-        BRAND DATA:
-        {json.dumps(brand_data, indent=2)[:2000]}
+        # Get enhanced media using new functions
+        brand_keywords = opportunity_data.get("keywords", ["business", "technology"])
+        primary_keyword = brand_keywords[0] if brand_keywords else "business technology"
 
-        COPY DATA:
+        # Fetch both images and videos for comprehensive media support
+        hero_media = get_pexels_media(f"{primary_keyword} success", "both", 2)
+        feature_media = get_pexels_media(f"{primary_keyword} team", "both", 3)
+        testimonial_media = get_pexels_media("business professionals", "images", 3)
+
+        # Enhanced landing page prompt with video integration
+        enhanced_prompt = f"""
+        Create a stunning, modern landing page with integrated video and image support.
+
+        BRAND CONTEXT:
+        {json.dumps(brand_data, indent=2)[:1500]}
+
+        COPY CONTENT:
         {json.dumps(copy_data, indent=2)[:2000]}
 
-        OPPORTUNITY DATA:
-        {json.dumps(opportunity_data, indent=2)[:1000]}
+        AVAILABLE MEDIA ASSETS:
+        Hero Media: {len(hero_media.get('images', []))} images, {len(hero_media.get('videos', []))} videos
+        Feature Media: {len(feature_media.get('images', []))} images, {len(feature_media.get('videos', []))} videos
+        Testimonial Images: {len(testimonial_media.get('images', []))} professional photos
 
-        LANDING PAGE REQUIREMENTS:
+        ENHANCED DESIGN REQUIREMENTS:
 
-        1. **HTML Structure** (Use Jinja2 templating):
-        - Modern, mobile-first responsive design
-        - Progressive web app capabilities
-        - Semantic HTML5 structure
-        - Accessibility compliance (WCAG 2.1 AA)
+        1. **MULTIMEDIA HERO SECTION**:
+        - Background video with image fallback for hero section
+        - Video controls (autoplay, muted, loop) with user override
+        - Overlay gradients ensuring text readability
+        - Mobile-responsive video handling with image fallback
+        - Progressive loading with video preview images
 
-        2. **Conversion-Optimized Layout**:
-        - Hero section with compelling headline + CTA
-        - Problem agitation section
-        - Solution demonstration with benefits
-        - Social proof section with testimonials
-        - Feature highlights with icons
-        - Pricing/signup section with urgency
-        - FAQ section addressing objections
-        - Footer with trust signals
+        2. **INTERACTIVE FEATURES WITH MEDIA**:
+        - Feature cards with background images and optional video demos
+        - Hover effects revealing video content for features
+        - Professional testimonial photos with customer quotes
+        - Image galleries showcasing product benefits
 
-        3. **Advanced Features**:
-        - Sticky navigation with CTA
-        - Progress indicators for long pages
-        - Exit-intent popup optimization
-        - Mobile-optimized forms with validation
-        - Loading animations and micro-interactions
-        - Social sharing integration
+        3. **PERFORMANCE & ACCESSIBILITY**:
+        - Lazy loading for all media content
+        - Alt text for images and video descriptions
+        - Multiple video formats (MP4, WebM) for browser compatibility
+        - Responsive design with mobile-first approach
+        - Fast loading with optimized media delivery
 
-        4. **Technical Implementation**:
-        - Embedded CSS with modern features (Grid, Flexbox, Custom Properties)
-        - Vanilla JavaScript for interactions
-        - Form validation and submission handling
-        - Analytics event tracking setup
-        - Performance optimization techniques
-        - SEO meta tags and structured data
-
-        5. **Jinja2 Variables** (use these exactly):
+        4. **JINJA2 TEMPLATE VARIABLES** (exact format):
         - {{{{ brand_name }}}} - Brand name
         - {{{{ tagline }}}} - Brand tagline
-        - {{{{ headline }}}} - Hero headline
-        - {{{{ description }}}} - Value proposition
-        - {{{{ features }}}} - Feature list (array)
-        - {{{{ testimonials }}}} - Testimonial array
-        - {{{{ faqs }}}} - FAQ array
-        - {{{{ pricing_plans }}}} - Pricing array
+        - {{{{ hero_headline }}}} - Main headline
+        - {{{{ hero_subheadline }}}} - Supporting text
+        - {{{{ features }}}} - Feature list with media
+        - {{{{ testimonials }}}} - Customer testimonials with photos
+        - {{{{ hero_video }}}} - Hero background video URL
+        - {{{{ hero_image }}}} - Hero background image (fallback)
+        - {{{{ cta_primary }}}} - Primary call-to-action
         - {{{{ current_year }}}} - Current year
 
-        6. **Conversion Elements**:
-        - Multiple strategically placed CTAs
-        - Lead capture forms with progressive profiling
-        - Social proof integration
-        - Urgency and scarcity indicators
-        - Trust badges and security signals
-        - Mobile-optimized user experience
+        5. **TECHNICAL IMPLEMENTATION**:
+        - HTML5 video elements with proper fallbacks
+        - CSS Grid and Flexbox for responsive layouts
+        - Vanilla JavaScript for video controls and interactions
+        - Modern CSS features (custom properties, transforms)
+        - SEO optimization with structured data
 
-        7. **Visual Design**:
-        - Modern, professional aesthetic matching brand identity
-        - Consistent color scheme from brand data
-        - Typography hierarchy for readability
-        - Strategic use of whitespace
-        - High-contrast CTAs that demand attention
-        - Responsive images with proper alt text
+        Create a premium landing page that looks like it cost $50,000 to build, with seamless video integration that enhances the user experience without overwhelming the core message.
 
-        OPTIMIZATION FOR EARLY-STAGE VALIDATION:
-        - Clear value proposition above the fold
-        - Simple, friction-free signup process
-        - Multiple engagement levels (newsletter, trial, demo)
-        - A/B testing infrastructure built-in
-        - Comprehensive analytics tracking
-
-        Return complete HTML template that creates a stunning, high-converting landing page optimized for liminal market validation.
-
-        This page should make visitors think "Finally, someone gets it!" and convert them into early adopters.
+        Return complete HTML with embedded CSS and JavaScript.
         """
 
+        # Use GPT for superior code generation
         response = completion(
-            model=MODEL_CONFIG["openai_model"],
+            model=MODEL_CONFIG["coding_model"],
             api_key=settings.OPENAI_API_KEY,
-            messages=[{"role": "user", "content": landing_page_prompt}],
-            temperature=0.2,
-            max_tokens=4000,
+            messages=[{"role": "user", "content": enhanced_prompt}],
+            temperature=0.1,
+            max_tokens=8192,
         )
 
         if response and response.choices[0].message.content:
@@ -2241,12 +2325,17 @@ def build_landing_page(
             elif "```" in generated_html:
                 generated_html = generated_html.split("```")[1].strip()
 
-            # Prepare content data
-            content_data = prepare_landing_content_data(
-                brand_data, copy_data, opportunity_data
+            # Prepare enhanced content data with multimedia
+            content_data = prepare_enhanced_landing_content(
+                brand_data,
+                copy_data,
+                opportunity_data,
+                hero_media,
+                feature_media,
+                testimonial_media,
             )
 
-            # Deploy to renderer service
+            # Deploy with enhanced payload
             deployment_payload = {
                 "site_name": brand_data.get("brand_name", "landing-page")
                 .lower()
@@ -2255,36 +2344,39 @@ def build_landing_page(
                     "html_template": generated_html,
                     "css_styles": "",  # Embedded in HTML
                     "javascript": "",  # Embedded in HTML
+                    "media": {
+                        "hero": hero_media,
+                        "features": feature_media,
+                        "testimonials": testimonial_media,
+                    },
                     "config": {
                         "responsive": True,
+                        "video_enabled": True,
                         "analytics_enabled": True,
                         "conversion_tracking": True,
+                        "premium_design": True,
+                        "multimedia_optimization": True,
                     },
                 },
                 "content_data": content_data,
                 "meta_data": {
                     "title": f"{content_data['brand_name']} - {content_data['tagline']}",
-                    "description": content_data.get("description", "")[:160],
-                    "type": "landing_page",
+                    "description": content_data.get("value_proposition", "")[:160],
+                    "type": "premium_multimedia_landing_page",
+                    "image": content_data.get("hero_image", ""),
+                    "video": content_data.get("hero_video", ""),
                 },
             }
 
-            deployment_result = deploy_to_renderer_service(deployment_payload)
+            return deploy_to_renderer_service(deployment_payload)
 
-            if deployment_result.get("success"):
-                return generate_landing_success_response(
-                    brand_data, deployment_result, content_data
-                )
-            else:
-                return generate_error_response(
-                    brand_data, deployment_result.get("error"), "landing_page"
-                )
-
-        return generate_error_response(
-            brand_data, "Failed to generate landing page", "landing_page"
-        )
+        else:
+            return generate_error_response(
+                brand_data, "Failed to generate enhanced landing page", "landing_page"
+            )
 
     except Exception as e:
+        print(f"❌ Error building enhanced landing page: {e}")
         return generate_error_response(brand_data, str(e), "landing_page")
 
 
@@ -2294,16 +2386,25 @@ def build_admin_dashboard(
     opportunity_data: Dict[str, Any],
     analysis_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Build comprehensive admin dashboard using OpenAI"""
-
+    """
+    Enhanced version of existing build_admin_dashboard with media support
+    Maintains original function name and signature
+    """
     try:
-        # Generate market insights first
+        print("📊 Building enhanced admin dashboard with multimedia integration...")
+
+        # Fetch media for professional dashboard presentation
+        dashboard_media = get_pexels_media("business analytics dashboard", "both", 3)
+        background_media = get_pexels_media("professional office", "images", 2)
+        team_media = get_pexels_media("business team professionals", "images", 4)
+
+        # Generate market insights and chart data (existing functionality)
         market_insights = generate_market_insights_with_openai(analysis_data)
         chart_data = extract_chart_data_from_analysis(analysis_data)
 
-        # Generate admin dashboard with OpenAI
+        # Enhanced dashboard prompt with media integration
         dashboard_prompt = f"""
-        Create a comprehensive, interactive admin dashboard for market opportunity analysis.
+        Create an interactive admin dashboard with professional media integration for executive-level market intelligence.
 
         BRAND DATA:
         {json.dumps(brand_data, indent=2)[:1000]}
@@ -2311,98 +2412,67 @@ def build_admin_dashboard(
         ANALYSIS DATA:
         {json.dumps(analysis_data, indent=2)[:3000]}
 
-        CHART DATA:
-        {json.dumps(chart_data, indent=2)[:2000]}
+        AVAILABLE MEDIA ASSETS:
+        Dashboard Media: {len(dashboard_media.get('images', []))} images, {len(dashboard_media.get('videos', []))} videos
+        Background Images: {len(background_media.get('images', []))} professional photos
+        Team Photos: {len(team_media.get('images', []))} professional portraits
 
-        MARKET INSIGHTS:
-        {json.dumps(market_insights, indent=2)[:2000]}
+        ENHANCED DASHBOARD REQUIREMENTS:
 
-        ADMIN DASHBOARD REQUIREMENTS:
+        1. **PROFESSIONAL VISUAL DESIGN**:
+        - Hero section with background video or premium imagery
+        - Executive summary with professional photography
+        - Team/stakeholder sections with portrait photography
+        - Branded visual elements throughout interface
 
-        1. **Dashboard Layout**:
-        - Professional analytics interface with sidebar navigation
-        - Main dashboard with key metrics and KPIs
-        - Detailed sections: Overview, Market Analysis, Competition, Risks, Insights
-        - Responsive grid layout for different screen sizes
+        2. **INTERACTIVE MEDIA ELEMENTS**:
+        - Background videos for key sections (muted, autoplay)
+        - Image galleries for case studies and market examples
+        - Professional photography in team and about sections
+        - Video backgrounds for executive summary presentations
 
-        2. **Data Visualizations** (Use Chart.js via CDN):
-        - Opportunity Score Gauge (0-100 with color zones)
-        - Market Size Donut Chart (TAM/SAM/SOM)
-        - Competition Radar Chart (multiple dimensions)
-        - Risk Assessment Scatter Plot
-        - Market Signal Sentiment Bar Chart
-        - Trend Analysis Line Charts
-        - Geographic Distribution Map (if data available)
+        3. **DATA VISUALIZATION WITH MEDIA**:
+        - Chart.js visualizations with branded color schemes
+        - Background imagery that complements data sections
+        - Professional layout with contextual imagery
+        - Interactive charts with smooth animations
 
-        3. **Interactive Features**:
-        - Collapsible sidebar navigation
-        - Filterable data tables
-        - Expandable insight cards
-        - Modal windows for detailed views
-        - Export functionality for charts and data
-        - Real-time data refresh simulation
+        4. **BUSINESS INTELLIGENCE FOCUS**:
+        - Executive-level presentation design
+        - Professional media supporting business narratives
+        - Strategic insights highlighted with visual elements
+        - Fortune 500-level design and user experience
 
-        4. **Chat Interface Section**:
-        - Embedded chat widget for market questions
-        - Quick action buttons for common queries
-        - Conversation history display
-        - Integration placeholder for AI responses
-
-        5. **Key Sections**:
-        - Executive Summary with key takeaways
-        - Market Opportunity Scoring with breakdown
-        - Competitive Landscape Analysis
-        - Risk Assessment Matrix
-        - Strategic Recommendations
-        - Action Plan with timelines
-        - Financial Projections
-
-        6. **Jinja2 Variables** (use these exactly):
+        5. **JINJA2 TEMPLATE VARIABLES** (exact format):
         - {{{{ opportunity_name }}}} - Opportunity title
         - {{{{ opportunity_score }}}} - Main opportunity score
         - {{{{ brand_name }}}} - Brand name
-        - {{{{ executive_summary }}}} - Key insights summary
-        - {{{{ market_size_data }}}} - Market size information
-        - {{{{ competition_data }}}} - Competition analysis
-        - {{{{ risk_factors }}}} - Risk assessment data
-        - {{{{ recommendations }}}} - Strategic recommendations
-        - {{{{ chart_datasets }}}} - Chart data for visualizations
-        - {{{{ analysis_timestamp }}}} - When analysis was performed
+        - {{{{ executive_summary }}}} - Strategic overview
+        - {{{{ recommendations }}}} - Action recommendations
+        - {{{{ chart_datasets }}}} - Chart visualization data
+        - {{{{ dashboard_video }}}} - Background video for hero
+        - {{{{ dashboard_image }}}} - Background image fallback
+        - {{{{ team_images }}}} - Professional team photos
+        - {{{{ analysis_timestamp }}}} - Analysis date
 
-        7. **Technical Implementation**:
-        - Use Chart.js from CDN for all visualizations
-        - Embedded CSS with modern design system
-        - Vanilla JavaScript for interactions
+        6. **TECHNICAL IMPLEMENTATION**:
+        - Chart.js from CDN for all data visualizations
+        - HTML5 video with proper fallbacks and controls
         - Responsive design with mobile considerations
-        - Loading states and error handling
-        - Performance optimization
+        - Modern CSS with professional color schemes
+        - Interactive elements with smooth transitions
 
-        8. **Visual Design**:
-        - Professional dark theme with accent colors
-        - Clean, modern interface design
-        - Consistent spacing and typography
-        - Strategic use of colors for data visualization
-        - Professional card-based layout
-        - Smooth animations and transitions
+        Create a dashboard that looks like a $10,000/month enterprise analytics platform with integrated multimedia that enhances credibility and user engagement.
 
-        BUSINESS INTELLIGENCE FOCUS:
-        - Present data as actionable business insights
-        - Highlight critical metrics and KPIs
-        - Create compelling visual narratives
-        - Enable drill-down analysis capabilities
-        - Support executive decision-making
-
-        Return complete HTML template that creates a premium, functional admin dashboard for market intelligence analysis.
-
-        This should look like a $10,000/month enterprise analytics platform that gives users confidence in their market opportunities.
+        Return complete HTML with Chart.js integration and professional media-rich interface.
         """
 
         response = completion(
-            model=MODEL_CONFIG["openai_model"],
+            model=MODEL_CONFIG["coding_model"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": dashboard_prompt}],
             temperature=0.2,
-            max_tokens=4000,
+            max_tokens=6000,
         )
 
         if response and response.choices[0].message.content:
@@ -2416,29 +2486,52 @@ def build_admin_dashboard(
             elif "```" in generated_html:
                 generated_html = generated_html.split("```")[1].strip()
 
-            # Prepare admin content data
+            # Prepare enhanced admin content with media
             admin_content_data = prepare_admin_content_data(
                 brand_data, opportunity_data, analysis_data, market_insights, chart_data
             )
 
-            # Deploy to renderer service
+            # Add media data to admin content
+            admin_content_data.update(
+                {
+                    "dashboard_video": dashboard_media.get("videos", [{}])[0].get(
+                        "url_hd", ""
+                    ),
+                    "dashboard_image": dashboard_media.get("images", [{}])[0].get(
+                        "url", ""
+                    ),
+                    "background_images": background_media.get("images", []),
+                    "team_images": team_media.get("images", []),
+                    "dashboard_media": dashboard_media,
+                }
+            )
+
+            # Deploy with media-enhanced payload
             deployment_payload = {
                 "site_name": f"{brand_data.get('brand_name', 'opportunity').lower().replace(' ', '-')}-admin",
                 "assets": {
                     "html_template": generated_html,
                     "css_styles": "",  # Embedded in HTML
                     "javascript": "",  # Embedded in HTML
+                    "media": {
+                        "dashboard": dashboard_media,
+                        "background": background_media,
+                        "team": team_media,
+                    },
                     "config": {
                         "responsive": True,
                         "analytics_enabled": True,
                         "admin_mode": True,
+                        "media_integration": True,
+                        "professional_design": True,
                     },
                 },
                 "content_data": admin_content_data,
                 "meta_data": {
                     "title": f"{admin_content_data['opportunity_name']} - Market Intelligence Dashboard",
-                    "description": f"Comprehensive market analysis dashboard for {admin_content_data['opportunity_name']}",
-                    "type": "admin_dashboard",
+                    "description": f"Professional market analysis dashboard for {admin_content_data['opportunity_name']}",
+                    "type": "multimedia_admin_dashboard",
+                    "image": admin_content_data.get("dashboard_image", ""),
                 },
             }
 
@@ -2454,7 +2547,7 @@ def build_admin_dashboard(
                 )
 
         return generate_error_response(
-            brand_data, "Failed to generate admin dashboard", "admin_dashboard"
+            brand_data, "Failed to generate enhanced admin dashboard", "admin_dashboard"
         )
 
     except Exception as e:
@@ -2597,7 +2690,7 @@ def prepare_admin_content_data(
         "opportunity_score": int(analysis_data.get("opportunity_score", 0) * 100),
         "executive_summary": market_insights.get(
             "executive_summary",
-            "Comprehensive market analysis completed with strategic insights.",
+            "Market analysis completed with strategic insights.",
         ),
         "market_size_data": analysis_data.get("market_size_analysis", {}),
         "competition_data": analysis_data.get("competition_analysis", {}),
@@ -2807,230 +2900,108 @@ def generate_market_insights_with_openai(
 
 
 def generate_landing_success_response(
-    brand_data: Dict[str, Any],
-    deployment_result: Dict[str, Any],
-    content_data: Dict[str, Any],
+    deployment_payload: Dict[str, Any], result: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Generate success response for landing page deployment"""
+    """
+    Generate enhanced success response for landing page
+    """
+    brand_name = deployment_payload["content_data"]["brand_name"]
+    live_url = result["live_url"]
 
-    brand_name = brand_data.get("brand_name", "Your Landing Page")
-    live_url = deployment_result.get("live_url", "")
+    response = f"""# 🚀 {brand_name} - Premium Landing Page Deployed!
 
-    markdown_response = f"""# 🚀 {brand_name} Landing Page is Live!
+**Your stunning, professional landing page is now live and ready to convert visitors into customers.**
 
-**Your high-converting landing page has been deployed and is ready to validate your market opportunity.**
+## 🌟 What You Got
 
-## 🔗 Quick Access
+✅ **Premium Design** - Professional, modern interface that builds trust
+✅ **High-Quality Images** - Curated visuals from Pexels that tell your story
+✅ **Mobile-First** - Perfect experience on all devices
+✅ **Conversion Optimized** - Strategic CTAs and user flow
+✅ **Fast Loading** - Optimized for speed and performance
+✅ **SEO Ready** - Meta tags and structured data included
 
-- **🌟 Live Landing Page**: [{brand_name}]({live_url})
-- **📊 Analytics Dashboard**: [View Performance]({deployment_result.get("analytics_url", "")})
-- **⚙️ Admin Panel**: [Manage & Monitor]({deployment_result.get("admin_url", "")})
+## 🔗 Your Live Sites
 
-## 🎯 What's Included
-
-Your landing page features:
-
-- **📱 Mobile-Optimized Design** - Perfect experience on all devices
-- **⚡ Fast Loading Performance** - Optimized for speed and conversions
-- **🎨 Professional Brand Design** - Reflects your unique positioning
-- **📝 High-Converting Copy** - Crafted for liminal market positioning
-- **🔥 Strategic CTAs** - Multiple conversion paths optimized for validation
-- **💬 Social Proof Elements** - Testimonials and trust signals
-- **📊 Analytics Integration** - Track every visitor interaction
-- **🔒 Lead Capture Forms** - Collect early adopter interest
-
-## 🚀 Market Validation Strategy
-
-**Phase 1: Immediate Testing (First 48 Hours)**
-1. **Share with your network** - Get initial feedback from trusted contacts
-2. **Test all functionality** - Forms, CTAs, mobile experience
-3. **Monitor analytics** - Track engagement and conversion patterns
-
-**Phase 2: Targeted Outreach (Week 1)**
-1. **Industry forums** - Share in relevant communities and groups
-2. **Social media promotion** - Post about your solution launch
-3. **Direct outreach** - Email potential customers with your landing page
-4. **Content marketing** - Write blog posts linking to your page
-
-**Phase 3: Paid Validation (Week 2+)**
-1. **Google Ads** - Run targeted ads to your ideal customers
-2. **Social media ads** - Facebook, LinkedIn, Twitter campaigns
-3. **Influencer outreach** - Partner with industry micro-influencers
-
-## 📈 Success Metrics to Track
-
-**Immediate Indicators:**
-- Email signup rate (target: 15-25%)
-- Time on page (target: 2+ minutes)
-- Bounce rate (target: <60%)
-- CTA click-through rate (target: 5-10%)
-
-**Validation Signals:**
-- 100+ unique visitors in first week
-- 25+ email signups in first week
-- 5+ detailed inquiries or demo requests
-- Positive feedback from at least 10 people
-
-## 💡 Pro Tips for Maximum Impact
-
-- **Create urgency** with "Early Access" or "Limited Beta" messaging
-- **Personal touch** - Respond to every signup within 24 hours
-- **A/B test headlines** - Try different value propositions
-- **Social proof** - Add new testimonials as you get feedback
-- **Mobile optimization** - Most traffic will be mobile-first
+- **🎯 Landing Page**: [{brand_name}]({live_url})
+- **📊 Analytics**: [Performance Dashboard]({result.get("analytics_url", "")})
+- **⚙️ Admin Panel**: [Management Interface]({result.get("admin_url", "")})
 
 ## 🎯 Next Steps
 
-1. **🔍 Visit Your Landing Page** - [{brand_name}]({live_url})
-2. **📊 Monitor Analytics** - Check performance daily for first week
-3. **📢 Start Promoting** - Share immediately with your network
-4. **💌 Prepare Follow-up** - Set up email sequences for leads
-5. **🔄 Iterate Based on Data** - Optimize based on real user behavior
+1. **Visit your landing page** and test all functionality
+2. **Share with your network** for immediate feedback
+3. **Start driving traffic** through social media and ads
+4. **Monitor conversions** through the analytics dashboard
+5. **Optimize based on data** to improve conversion rates
 
----
-
-**🎉 Congratulations!** Your market opportunity is now live and ready to collect validation data. The hardest part (building) is done - now comes the exciting part of proving your market hypothesis!
-
-**Ready to validate your idea?** [Visit your landing page]({live_url}) and start collecting your first customers!"""
+Your landing page now looks like it cost $50,000 to build - time to validate your market opportunity!
+"""
 
     return {
-        "human_readable_response": markdown_response,
+        "human_readable_response": response,
         "deployment_status": "success",
-        "site_type": "landing_page",
+        "site_type": "premium_landing_page",
         "brand_name": brand_name,
         "live_url": live_url,
-        "next_actions": [
-            f"Visit your landing page at {live_url}",
-            "Share with your network for initial validation",
-            "Monitor analytics and user behavior",
-            "Start targeted promotion campaigns",
-            "Collect and respond to early user feedback",
+        "features": [
+            "premium_design",
+            "pexels_images",
+            "mobile_optimized",
+            "conversion_ready",
         ],
     }
 
 
 def generate_admin_success_response(
-    brand_data: Dict[str, Any],
-    deployment_result: Dict[str, Any],
-    content_data: Dict[str, Any],
-    market_insights: Dict[str, Any],
+    deployment_payload: Dict[str, Any], result: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Generate success response for admin dashboard deployment"""
+    """
+    Generate enhanced success response for admin dashboard
+    """
+    brand_name = deployment_payload["content_data"]["brand_name"]
+    admin_url = result["admin_url"]
 
-    brand_name = brand_data.get("brand_name", "Your Market Opportunity")
-    admin_url = deployment_result.get("admin_url", "")
-    opportunity_score = content_data.get("opportunity_score", 0)
+    response = f"""# 📊 {brand_name} - Market Intelligence Dashboard Live!
 
-    # Determine opportunity level
-    if opportunity_score >= 75:
-        opportunity_level = "🚀 **EXCEPTIONAL OPPORTUNITY**"
-    elif opportunity_score >= 50:
-        opportunity_level = "📈 **STRONG OPPORTUNITY**"
-    else:
-        opportunity_level = "⚠️ **EXPLORATORY OPPORTUNITY**"
+**Your professional admin dashboard is deployed with enterprise-grade analytics and insights.**
 
-    markdown_response = f"""# 📊 Market Intelligence Dashboard Deployed!
+## 🎯 Dashboard Features
 
-{opportunity_level}
+✅ **Interactive Charts** - Dynamic visualizations with Chart.js
+✅ **Market Intelligence** - Comprehensive opportunity analysis
+✅ **Risk Assessment** - Strategic risk monitoring and alerts
+✅ **Professional Design** - Enterprise-grade interface
+✅ **Mobile Responsive** - Works perfectly on all devices
+✅ **Export Ready** - Generate reports for stakeholders
 
-**Your comprehensive market analysis dashboard for "{brand_name}" is live with enterprise-grade analytics.**
-
-## 🎯 Dashboard Access
+## 🔗 Dashboard Access
 
 - **🔧 Admin Dashboard**: [Market Intelligence Hub]({admin_url})
-- **📊 Analytics Portal**: [Live Data View]({deployment_result.get("analytics_url", "")})
-- **📈 Opportunity Score**: **{opportunity_score}/100**
+- **📈 Analytics**: [Live Data View]({result.get("analytics_url", "")})
 
-## 🧠 Key Market Intelligence
+## 💡 How to Use Your Dashboard
 
-### Executive Summary
-{market_insights.get('executive_summary', 'Comprehensive market analysis completed with actionable strategic insights.')}
+1. **Explore Market Insights** - Review opportunity scoring and analysis
+2. **Monitor Competitions** - Track competitive landscape changes
+3. **Assess Risks** - Use risk matrix for strategic planning
+4. **Export Reports** - Generate presentations for stakeholders
+5. **Track Progress** - Monitor KPIs and success metrics
 
-### Strategic Opportunities Identified
-{chr(10).join([f"- **{opp.get('title', 'Strategic Opportunity')}**: {opp.get('description', 'High-impact opportunity identified')}" for opp in market_insights.get('top_opportunities', [])[:3]])}
-
-### Competitive Advantages
-{chr(10).join([f"- {advantage}" for advantage in market_insights.get('competitive_advantages', [])[:3]])}
-
-## 📊 Dashboard Capabilities
-
-Your admin dashboard includes:
-
-- **🎯 AI-Powered Opportunity Scoring** - Multi-factor market assessment
-- **📈 Interactive Market Size Analysis** - TAM/SAM/SOM with drill-down
-- **🏢 Competitive Intelligence Radar** - Visual positioning analysis
-- **⚠️ Dynamic Risk Assessment Matrix** - Real-time risk monitoring
-- **💬 Market Sentiment Tracking** - Social signals and trend analysis
-- **🗨️ Intelligent Chat Interface** - Ask questions about your market data
-- **📋 Strategic Action Planning** - Prioritized recommendations with timelines
-- **💰 Financial Modeling Tools** - Revenue projections and ROI analysis
-
-## 🎯 Strategic Recommendations
-
-### High-Priority Actions
-{chr(10).join([f"- **{action.get('action', 'Strategic Action')}** *(Timeline: {action.get('timeline', 'TBD')})*" for action in market_insights.get('recommended_actions', [])[:3] if action.get('priority') == 'high'])}
-
-### Market Timing Analysis
-- **Current Market Phase**: {market_insights.get('market_timing', {}).get('current_phase', 'Growth').title()}
-- **Optimal Entry Strategy**: {market_insights.get('market_timing', {}).get('optimal_entry_window', 'Strategic timing identified')}
-- **Market Readiness**: {market_insights.get('market_timing', {}).get('market_readiness_score', 75)}/100
-
-## 💼 Business Intelligence Features
-
-**Advanced Analytics:**
-- Interactive charts with drill-down capabilities
-- Scenario modeling and sensitivity analysis
-- Competitive benchmarking with market positioning
-- Predictive trend analysis with confidence intervals
-- Risk monitoring with alert thresholds
-
-**Executive Reporting:**
-- One-click executive summary generation
-- Investor-ready presentation exports
-- Stakeholder collaboration tools
-- Performance tracking dashboards
-- Strategic planning interfaces
-
-## 🚀 Next Steps for Market Success
-
-1. **📊 Explore Your Dashboard** - Deep dive into market intelligence
-2. **🎯 Review Strategic Plan** - Prioritize high-impact recommendations
-3. **💬 Use Chat Interface** - Ask specific questions about market data
-4. **📈 Monitor Key Metrics** - Track market signals and competitive moves
-5. **🤝 Share with Stakeholders** - Export insights for team alignment
-
-## 💡 Advanced Usage Tips
-
-**For Strategic Planning:**
-- Use scenario modeling to test different market entry strategies
-- Monitor competitive radar for positioning opportunities
-- Track risk matrix for proactive mitigation planning
-
-**For Investor Presentations:**
-- Export executive summaries with key metrics
-- Use market size visualizations for TAM/SAM/SOM presentations
-- Leverage competitive analysis for differentiation stories
-
----
-
-**🎉 Congratulations!** You now have institutional-grade market intelligence that Fortune 500 companies pay thousands for. Your dashboard transforms complex market dynamics into clear strategic advantages.
-
-**Ready to make data-driven decisions?** [Access your Market Intelligence Dashboard]({admin_url}) and turn insights into market-winning strategies!"""
+Your dashboard provides Fortune 500-level market intelligence at your fingertips!
+"""
 
     return {
-        "human_readable_response": markdown_response,
+        "human_readable_response": response,
         "deployment_status": "success",
         "site_type": "admin_dashboard",
         "brand_name": brand_name,
         "admin_url": admin_url,
-        "opportunity_score": opportunity_score,
-        "market_insights": market_insights,
-        "next_actions": [
-            f"Access your dashboard at {admin_url}",
-            "Review strategic recommendations and market timing",
-            "Explore interactive analytics and visualizations",
-            "Use chat interface for market-specific questions",
-            "Export key insights for stakeholder presentations",
+        "features": [
+            "interactive_charts",
+            "market_intelligence",
+            "professional_design",
+            "export_ready",
         ],
     }
 
@@ -3235,7 +3206,7 @@ landing_builder_agent = LlmAgent(
     """,
     description="Creates dynamic landing pages and market intelligence dashboards using AI-generated code and strategic insights",
     tools=[
-        FunctionTool(func=build_and_deploy_comprehensive_site),
+        FunctionTool(func=build_and_deploy_site),
         FunctionTool(func=build_landing_page),
         FunctionTool(func=build_admin_dashboard),
         FunctionTool(func=generate_market_insights_with_openai),
@@ -3243,5 +3214,5 @@ landing_builder_agent = LlmAgent(
         FunctionTool(func=prepare_landing_content_data),
         FunctionTool(func=prepare_admin_content_data),
     ],
-    output_key="comprehensive_site_deployment",
+    output_key="site_deployment",
 )

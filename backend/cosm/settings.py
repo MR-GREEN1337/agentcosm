@@ -12,8 +12,9 @@ class Settings(BaseSettings):
 
     RENDERER_SERVICE_URL: str
 
-    GROQ_API_KEY: str
     OPENAI_API_KEY: str
+
+    PEXELS_API_KEY: str
 
 
 settings = Settings()
