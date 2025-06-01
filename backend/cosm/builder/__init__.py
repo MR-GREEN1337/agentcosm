@@ -5,6 +5,7 @@ Brand Creator + Copy Writer + Landing Builder + Admin Dashboard Generator
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
+from google.adk.models.lite_llm import LiteLlm
 from google.genai import Client
 from typing import Dict, List, Any
 import json
@@ -2307,7 +2308,7 @@ def build_landing_page(
 
         # Use GPT for superior code generation
         response = completion(
-            model=MODEL_CONFIG["coding_model"],
+            model=MODEL_CONFIG["landing_builder"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": enhanced_prompt}],
             temperature=0.1,
@@ -2468,8 +2469,9 @@ def build_admin_dashboard(
         """
 
         response = completion(
-            model=MODEL_CONFIG["coding_model"],
-            api_key=settings.OPENAI_API_KEY,
+            model=LiteLlm(
+                model=MODEL_CONFIG["landing_builder"], api_key=settings.OPENAI_API_KEY
+            ),
             messages=[{"role": "user", "content": dashboard_prompt}],
             temperature=0.2,
             max_tokens=6000,
@@ -3171,7 +3173,7 @@ copy_writer_agent = LlmAgent(
 # Landing Builder Agent
 landing_builder_agent = LlmAgent(
     name="landing_builder_agent",
-    model=MODEL_CONFIG["primary_model"],
+    model=MODEL_CONFIG["landing_builder"],
     instruction="""
     You are the Landing Builder Agent, expert at creating both high-converting landing pages and comprehensive admin dashboards using AI.
 
@@ -3207,12 +3209,12 @@ landing_builder_agent = LlmAgent(
     description="Creates dynamic landing pages and market intelligence dashboards using AI-generated code and strategic insights",
     tools=[
         FunctionTool(func=build_and_deploy_site),
-        FunctionTool(func=build_landing_page),
-        FunctionTool(func=build_admin_dashboard),
-        FunctionTool(func=generate_market_insights_with_openai),
-        FunctionTool(func=extract_chart_data_from_analysis),
+        # FunctionTool(func=build_landing_page),
+        # FunctionTool(func=build_admin_dashboard),
+        # FunctionTool(func=generate_market_insights_with_openai),
+        # FunctionTool(func=extract_chart_data_from_analysis),
         FunctionTool(func=prepare_landing_content_data),
-        FunctionTool(func=prepare_admin_content_data),
+        # FunctionTool(func=prepare_admin_content_data),
     ],
     output_key="site_deployment",
 )

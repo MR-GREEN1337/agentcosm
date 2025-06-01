@@ -55,7 +55,7 @@ Use your integrated data capabilities to provide comprehensive market intelligen
 
 def integrated_data_analysis_and_storage(
     keywords: List[str],
-    market_data: Dict[str, Any] = None,
+    market_data: Dict[str, Any],
     analysis_type: str = "comprehensive",
 ) -> Dict[str, Any]:
     """
@@ -137,7 +137,7 @@ def integrated_data_analysis_and_storage(
 
 def setup_and_analyze_bigquery_data(
     keywords: List[str],
-    market_data: Dict[str, Any] = None,
+    market_data: Dict[str, Any],
     dataset_id: str = "agentcosm_market",
 ) -> Dict[str, Any]:
     """
@@ -182,8 +182,8 @@ def setup_and_analyze_bigquery_data(
 
 def execute_market_data_analysis(
     keywords: List[str],
-    market_data: Dict[str, Any] = None,
-    bigquery_data: Dict[str, Any] = None,
+    market_data: Dict[str, Any],
+    bigquery_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Execute comprehensive market data analysis using Python code
