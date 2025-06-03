@@ -8,7 +8,7 @@
 ## Audio reads previous ai messages@
 ## Abstract instructions, ai is to user an in-between business ideas finder -- Done
 ## Add loading state while no messagee streamed
-
+## Use imagen vs vertex
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 
 ![App](App.png)

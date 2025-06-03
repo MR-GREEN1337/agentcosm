@@ -176,8 +176,6 @@ export default function AgentDevUI() {
     }
   }, [sessionEvents]);
 
-  // 🔥 REMOVED THE PROBLEMATIC useEffect - We now set lastAiResponse directly in the SSE processing
-
   // Parse query parameter and create a new session if there's a query
   useEffect(() => {
     const checkAndHandleQueryParam = async () => {
