@@ -374,7 +374,6 @@ market_analyzer_agent = LlmAgent(
         "with AI-powered opportunity scoring to deliver strategic insights in a single pass."
     ),
     tools=[
-        # FunctionTool(func=comprehensive_market_validation_with_scoring),
         FunctionTool(func=rank_opportunities_with_integrated_analysis),
         search_tool,
     ],

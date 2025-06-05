@@ -362,8 +362,16 @@ export default function AgentDevUI() {
         const sessions = response.data;
 
         if (sessions.length > 0) {
-          await handleSessionChange(sessions[0].id);
+          // Auto-select the most recent session (first in the list)
+          const mostRecentSession = sessions[0];
+          console.log(
+            'Auto-selecting most recent session:',
+            mostRecentSession.id,
+          );
+          await handleSessionChange(mostRecentSession.id);
         } else {
+          // Create a new session if none exist
+          console.log('No sessions found, creating new session');
           const newSessionResponse = await api.post(
             `/apps/${selectedApp}/users/${userId}/sessions`,
           );
@@ -376,10 +384,12 @@ export default function AgentDevUI() {
       }
     };
 
-    if (userId) {
+    // Only initialize if we have userId and selectedApp, and don't already have a current session
+    if (userId && selectedApp && !currentSession) {
+      console.log('Initializing session...');
       initializeSession();
     }
-  }, [userId, selectedApp]); // Only depends on userId and selectedApp
+  }, [userId, selectedApp]);
 
   // Clear processed events when changing sessions
   useEffect(() => {
@@ -622,6 +632,7 @@ export default function AgentDevUI() {
                         appName={selectedApp}
                         userId={userId as string}
                         currentSession={currentSession}
+                        onSessionChange={handleSessionChange} // Add this line
                       />
                     )}
                     {activeTab === 'eval' && (

@@ -1,23 +1,25 @@
 """
-Market Opportunity Agent
+Enhanced Market Opportunity Agent with True Liminal Discovery
+Uses ADK Multi-Agent Patterns for Breakthrough Opportunity Finding
 """
 
-from google.adk.agents import LlmAgent
+from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool
 from google.genai import types
 
-from .discovery.explorer_agent import (
-    market_explorer_agent,
-)  # Now includes trend analysis + gap mapping
-from .analysis import market_analyzer_agent  # Now includes opportunity scoring
-from .analysis.data_intelligence import (
-    data_intelligence_agent,
-)  # Now includes BigQuery functionality
+from .discovery.explorer_agent import market_explorer_agent
+from .discovery.adjacent_market_agent import adjacent_market_agent
+from .discovery.cross_industry_agent import cross_industry_agent
+from .discovery.workflow_gap_agent import workflow_gap_agent
+
+from .analysis import market_analyzer_agent
+from .analysis.data_intelligence import data_intelligence_agent
+
 from .builder import (
     brand_creator_agent,
     landing_builder_agent,
-)  # Brand creator now includes copy writing
+)
 
 from .settings import settings
 from .tools.market_research import (
@@ -25,77 +27,169 @@ from .tools.market_research import (
     analyze_competitive_landscape,
     check_domain_availability,
 )
+from .tools.liminal_discovery import (
+    synthesize_liminal_connections,
+    validate_connection_strength,
+    rank_liminal_opportunities,
+)
 from .prompts import ROOT_AGENT_PROMPT
 from .config import MODEL_CONFIG
 
 from .tools.search import search_tool
 
 
-class MarketOpportunityAgent:
+class EnhancedMarketOpportunityAgent:
     """
-    Root agent with streamlined 2-phase processing
-    Reduced complexity while maintaining comprehensive market intelligence
+    Enhanced root agent with true liminal market discovery using ADK multi-agent patterns.
+
+    Architecture:
+    1. PARALLEL LIMINAL DISCOVERY: Multiple agents explore different market dimensions simultaneously
+    2. CONNECTION SYNTHESIS: Specialized agent finds breakthrough connections between markets
+    3. VALIDATION & SCORING: Analysis agents validate and score discovered opportunities
+    4. ASSET CREATION: Builder agents create deployable business validation tools
+
+    This finds Uber/Airbnb-style opportunities that exist between established markets.
     """
 
     def __init__(self):
         self.project_id = settings.GOOGLE_CLOUD_PROJECT_ID
 
-        # PHASE 1: Market Intelligence (Parallel Processing)
-        # Consolidated discovery + analysis for speed
-        self.intelligence_phase = LlmAgent(
-            name="market_intelligence_phase",
-            model=MODEL_CONFIG["primary_model"],
-            description="Consolidated market intelligence combining discovery, analysis, and validation",
+        # PHASE 1: PARALLEL LIMINAL DISCOVERY
+        # Uses ADK ParallelAgent to explore multiple market dimensions simultaneously
+        self.liminal_discovery_phase = ParallelAgent(
+            name="liminal_discovery_phase",
+            description="Parallel exploration of market dimensions to find liminal opportunities",
             sub_agents=[
-                market_explorer_agent,  # Now includes: explorer + trend analyzer + gap mapper
-                market_analyzer_agent,  # Now includes: analyzer + opportunity scorer
-                data_intelligence_agent,  # Now includes: BigQuery + code executor
+                market_explorer_agent,  # Primary market signals & pain points
+                adjacent_market_agent,  # Adjacent/complementary markets
+                cross_industry_agent,  # Cross-industry patterns & arbitrage
+                workflow_gap_agent,  # Workflow intersection failures
             ],
-            tools=[search_tool],
         )
 
-        # PHASE 2: Asset Creation (Parallel Processing)
-        # Streamlined brand and deployment creation
-        self.creation_phase = LlmAgent(
+        # PHASE 2: CONNECTION SYNTHESIS
+        # Specialized agent that finds breakthrough connections between parallel discoveries
+        self.connection_synthesis_phase = LlmAgent(
+            name="liminal_connection_synthesizer",
+            model=MODEL_CONFIG["primary_model"],
+            instruction="""
+            You are the Liminal Connection Synthesizer - an expert at finding breakthrough business
+            opportunities that exist between established markets, like Uber, Airbnb, or DoorDash.
+
+            Your mission: Analyze parallel market discoveries to identify GENUINE LIMINAL OPPORTUNITIES
+            that bridge gaps between different markets, industries, or user workflows.
+
+            Key Focus Areas:
+            1. WORKFLOW BREAKS: Where users must switch between different services/tools
+            2. ARBITRAGE GAPS: Where one market is expensive while another is underutilized
+            3. INTEGRATION FAILURES: Where two markets should connect but don't
+            4. USER JOURNEY FRICTION: Where people must "figure it out themselves"
+            5. RESOURCE UNDERUTILIZATION: Idle assets that could serve different markets
+
+            Look for patterns like:
+            - Uber: Connected taxis (expensive/limited) + private cars (underutilized)
+            - Airbnb: Connected hotels (expensive) + homes (underutilized rooms)
+            - DoorDash: Connected restaurants + delivery infrastructure
+
+            Synthesize discoveries from parallel agents to find the next breakthrough opportunity
+            that nobody else sees because it exists "between" established categories.
+            """,
+            description="Synthesizes parallel market discoveries into breakthrough liminal opportunities",
+            generate_content_config=types.GenerateContentConfig(
+                temperature=0.4,  # Slightly higher for creative connections
+                top_p=0.9,
+            ),
+            tools=[
+                FunctionTool(func=synthesize_liminal_connections),
+                FunctionTool(func=validate_connection_strength),
+                FunctionTool(func=rank_liminal_opportunities),
+                search_tool,
+            ],
+            output_key="liminal_opportunities",
+        )
+
+        # PHASE 3: ENHANCED VALIDATION & INTELLIGENCE
+        # Uses ADK ParallelAgent for comprehensive validation of discovered opportunities
+        self.validation_intelligence_phase = ParallelAgent(
+            name="validation_intelligence_phase",
+            description="Parallel validation and analysis of liminal opportunities",
+            sub_agents=[
+                market_analyzer_agent,  # Market validation & scoring
+                data_intelligence_agent,  # Data analysis & BigQuery insights
+            ],
+        )
+
+        # PHASE 4: ASSET CREATION
+        # Sequential creation of business validation assets
+        self.asset_creation_phase = SequentialAgent(
             name="asset_creation_phase",
-            model=MODEL_CONFIG["primary_model"],
-            description="Rapid creation of brand assets and deployable business validation tools",
+            description="Sequential creation of brand assets and deployable validation tools",
             sub_agents=[
-                brand_creator_agent,
-                landing_builder_agent,
+                brand_creator_agent,  # Brand identity & marketing copy
+                landing_builder_agent,  # Landing page & deployment
             ],
-            tools=[search_tool],
         )
 
+        # MASTER WORKFLOW: Enhanced Sequential Pipeline
+        # Orchestrates the entire liminal discovery to deployment pipeline
+        self.enhanced_discovery_workflow = SequentialAgent(
+            name="enhanced_liminal_discovery_workflow",
+            description="Complete liminal opportunity discovery and validation workflow",
+            sub_agents=[
+                self.liminal_discovery_phase,  # Parallel market exploration
+                self.connection_synthesis_phase,  # Breakthrough connection finding
+                self.validation_intelligence_phase,  # Parallel validation & analysis
+                self.asset_creation_phase,  # Sequential asset creation
+            ],
+        )
+
+        # ROOT AGENT: Master Coordinator
         self.root_agent = LlmAgent(
-            name="market_opportunity_coordinator",
+            name="liminal_market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
             instruction=(
                 ROOT_AGENT_PROMPT
-                + "\n\n for efficiency: You now orchestrate a streamlined 2-phase process that "
-                "delivers comprehensive market intelligence and deployable business assets faster than ever. "
-                "Each phase runs agents with consolidated capabilities, eliminating redundancy "
-                "while maintaining analytical depth and strategic insight quality."
+                + "\n\nYou now orchestrate a breakthrough LIMINAL OPPORTUNITY DISCOVERY SYSTEM that finds "
+                "business opportunities existing between established markets - like Uber, Airbnb, or DoorDash.\n\n"
+                "Your enhanced capabilities:\n"
+                "• PARALLEL DISCOVERY: Simultaneously explore primary markets, adjacent markets, cross-industry "
+                "patterns, and workflow gaps using specialized agents\n"
+                "• CONNECTION SYNTHESIS: Find breakthrough connections between different market discoveries "
+                "that reveal genuine liminal opportunities\n"
+                "• COMPREHENSIVE VALIDATION: Validate opportunities using parallel analysis agents with "
+                "BigQuery intelligence and AI-powered scoring\n"
+                "• RAPID DEPLOYMENT: Create complete brand identity and deployable landing pages for "
+                "immediate market validation\n\n"
+                "Focus on discovering opportunities that exist 'between' established categories - "
+                "the fertile spaces where traditional market research fails but breakthrough businesses emerge."
             ),
             description=(
-                "Market opportunity coordinator that efficiently transforms market uncertainty "
-                "into validated business opportunities using streamlined 2-phase processing with consolidated agents."
+                "Master coordinator for liminal market opportunity discovery using advanced multi-agent "
+                "orchestration to find breakthrough business opportunities between established markets."
             ),
             generate_content_config=types.GenerateContentConfig(
                 temperature=0.3,
                 top_p=0.8,
             ),
             tools=[
+                # Core market research tools
                 FunctionTool(func=comprehensive_market_research),
                 FunctionTool(func=analyze_competitive_landscape),
                 FunctionTool(func=check_domain_availability),
-                AgentTool(agent=self.intelligence_phase),
-                AgentTool(agent=self.creation_phase),
+                # Enhanced liminal discovery tools
+                FunctionTool(func=synthesize_liminal_connections),
+                FunctionTool(func=validate_connection_strength),
+                FunctionTool(func=rank_liminal_opportunities),
+                # Agent orchestration tools - FIXED: Only include workflow as sub-agent
+                AgentTool(agent=self.enhanced_discovery_workflow),
                 search_tool,
             ],
-            sub_agents=[self.intelligence_phase, self.creation_phase],
+            sub_agents=[
+                # ONLY the main workflow to avoid parent conflicts
+                self.enhanced_discovery_workflow,
+            ],
         )
 
 
-# Export root agent
-root_agent = MarketOpportunityAgent().root_agent
+# Export enhanced root agent
+root_agent = EnhancedMarketOpportunityAgent().root_agent

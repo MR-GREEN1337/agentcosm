@@ -43,9 +43,7 @@ def create_brand_identity_package(opportunity_data: Dict[str, Any]) -> Dict[str,
         }
 
         # Generate unified brand strategy with AI
-        brand_package = generate_brand_strategy_with_ai(
-            market_context, opportunity_data
-        )
+        brand_package = generate_brand_strategy_with_ai(market_context)
 
         if brand_package and not brand_package.get("error"):
             package.update(brand_package)
@@ -68,9 +66,7 @@ def create_brand_identity_package(opportunity_data: Dict[str, Any]) -> Dict[str,
         return generate_fallback_brand_package(opportunity_data, package)
 
 
-def generate_brand_strategy_with_ai(
-    market_context: Dict[str, Any], opportunity_data: Dict[str, Any]
-) -> Dict[str, Any]:
+def generate_brand_strategy_with_ai(market_context: Dict[str, Any]) -> Dict[str, Any]:
     """AI-powered brand strategy generation focused on liminal market positioning."""
 
     try:

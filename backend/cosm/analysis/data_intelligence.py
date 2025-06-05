@@ -747,7 +747,6 @@ data_intelligence_agent = LlmAgent(
     tools=[
         FunctionTool(func=integrated_data_analysis_and_storage),
         search_tool,
-        # Removed duplicate tools - now uses integrated functions
     ],
     output_key="integrated_data_intelligence",
 )
