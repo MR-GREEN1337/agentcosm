@@ -202,6 +202,8 @@ def perform_comprehensive_synthesis_with_ai(
         - ECONOMICALLY VIABLE (clear value creation and capture)
         - TECHNICALLY FEASIBLE (can be built with current technology)
         - MARKET READY (timing is right for adoption)
+
+        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(

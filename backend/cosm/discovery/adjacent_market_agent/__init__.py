@@ -1,5 +1,5 @@
 """
-Adjacent Market Discovery Agent
+Adjacent Market Discovery Agent - Fixed Implementation
 Uses parallel web search to discover markets adjacent to primary market for liminal connections
 """
 
@@ -10,6 +10,8 @@ from google.adk.models.lite_llm import LiteLlm
 from typing import Dict, List, Any
 import json
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
@@ -17,6 +19,7 @@ from cosm.tools.search import search_tool
 from cosm.tools.parallel_search import parallel_adjacent_market_search
 
 client = Client()
+thread_local = threading.local()
 
 ADJACENT_MARKET_PROMPT = """
 You are the Adjacent Market Discovery Agent, specialized in finding markets that are
@@ -140,6 +143,8 @@ def analyze_adjacent_connections_with_ai(
                 }}
             ]
         }}
+
+        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
@@ -163,9 +168,81 @@ def analyze_adjacent_connections_with_ai(
     }
 
 
+def analyze_upstream_market_with_ai(
+    keyword: str, upstream_prompt: str
+) -> Dict[str, Any]:
+    """
+    Analyze upstream markets using AI for a specific keyword
+    """
+    try:
+        response = completion(
+            model=MODEL_CONFIG["market_explorer"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": upstream_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.choices[0].message.content:
+            result = json.loads(response.choices[0].message.content)
+            return {
+                "keyword": keyword,
+                "upstream_dependencies": result.get("upstream_dependencies", []),
+                "prerequisites": result.get("prerequisites", []),
+                "preparation_steps": result.get("preparation_steps", []),
+                "enabling_services": result.get("enabling_services", []),
+            }
+    except Exception as e:
+        print(f"❌ Error analyzing upstream market for {keyword}: {e}")
+
+    return {
+        "keyword": keyword,
+        "upstream_dependencies": [],
+        "prerequisites": [],
+        "preparation_steps": [],
+        "enabling_services": [],
+    }
+
+
+def analyze_downstream_market_with_ai(
+    keyword: str, downstream_prompt: str
+) -> Dict[str, Any]:
+    """
+    Analyze downstream markets using AI for a specific keyword
+    """
+    try:
+        response = completion(
+            model=MODEL_CONFIG["market_explorer"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": downstream_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.choices[0].message.content:
+            result = json.loads(response.choices[0].message.content)
+            return {
+                "keyword": keyword,
+                "downstream_outcomes": result.get("downstream_outcomes", []),
+                "next_steps": result.get("next_steps", []),
+                "follow_up_services": result.get("follow_up_services", []),
+                "completion_requirements": result.get("completion_requirements", []),
+            }
+    except Exception as e:
+        print(f"❌ Error analyzing downstream market for {keyword}: {e}")
+
+    return {
+        "keyword": keyword,
+        "downstream_outcomes": [],
+        "next_steps": [],
+        "follow_up_services": [],
+        "completion_requirements": [],
+    }
+
+
 def find_upstream_downstream_flows(keywords: List[str]) -> Dict[str, Any]:
     """
-    Find upstream and downstream market flows for workflow analysis
+    Find upstream and downstream market flows for workflow analysis using threading
     """
     flows = {
         "upstream_dependencies": [],
@@ -175,31 +252,182 @@ def find_upstream_downstream_flows(keywords: List[str]) -> Dict[str, Any]:
     }
 
     try:
-        # This would use the parallel search results to map user workflow flows
-        # and identify where workflows break between different markets
+        print(f"🔄 Analyzing upstream/downstream flows for {len(keywords)} keywords...")
 
-        for keyword in keywords:
-            # Analyze upstream dependencies
-            upstream_prompt = f"""
-            Based on market research, what are the typical steps users take BEFORE using {keyword}?
-            What tools, services, or processes do they need to complete first?
-            What preparation or prerequisites are required?
-            """  # noqa: F841
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            # Submit upstream analysis tasks
+            upstream_futures = []
+            downstream_futures = []
 
-            # Analyze downstream outcomes
-            downstream_prompt = f"""
-            Based on market research, what do users typically do AFTER using {keyword}?
-            What are the next steps in their workflow?
-            What additional tools or services do they need?
-            """  # noqa: F841
+            for keyword in keywords:
+                # Upstream analysis
+                upstream_prompt = f"""
+                Based on market research, analyze what users typically do BEFORE using {keyword}.
+                What tools, services, or processes do they need to complete first?
+                What preparation or prerequisites are required?
 
-            # These could be executed in parallel as well using ThreadPoolExecutor
+                Return JSON:
+                {{
+                    "upstream_dependencies": ["step1", "step2", "step3"],
+                    "prerequisites": ["requirement1", "requirement2"],
+                    "preparation_steps": ["prep1", "prep2"],
+                    "enabling_services": ["service1", "service2"]
+                }}
 
+                RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
+                """
+
+                upstream_future = executor.submit(
+                    analyze_upstream_market_with_ai, keyword, upstream_prompt
+                )
+                upstream_futures.append(upstream_future)
+
+                # Downstream analysis
+                downstream_prompt = f"""
+                Based on market research, analyze what users typically do AFTER using {keyword}.
+                What are the next steps in their workflow?
+                What additional tools or services do they need?
+
+                Return JSON:
+                {{
+                    "downstream_outcomes": ["outcome1", "outcome2", "outcome3"],
+                    "next_steps": ["step1", "step2"],
+                    "follow_up_services": ["service1", "service2"],
+                    "completion_requirements": ["req1", "req2"]
+                }}
+
+                RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
+                """
+
+                downstream_future = executor.submit(
+                    analyze_downstream_market_with_ai, keyword, downstream_prompt
+                )
+                downstream_futures.append(downstream_future)
+
+            # Collect upstream results
+            for future in as_completed(upstream_futures):
+                try:
+                    result = future.result(timeout=30)
+                    flows["upstream_dependencies"].append(result)
+                except Exception as e:
+                    print(f"❌ Upstream analysis failed: {e}")
+
+            # Collect downstream results
+            for future in as_completed(downstream_futures):
+                try:
+                    result = future.result(timeout=30)
+                    flows["downstream_outcomes"].append(result)
+                except Exception as e:
+                    print(f"❌ Downstream analysis failed: {e}")
+
+        # Analyze workflow breaks
+        flows["workflow_continuity_breaks"] = identify_workflow_breaks(
+            flows["upstream_dependencies"], flows["downstream_outcomes"]
+        )
+
+        # Identify integration opportunities
+        flows["integration_opportunities"] = identify_integration_opportunities(
+            flows["upstream_dependencies"], flows["downstream_outcomes"]
+        )
+
+        print("✅ Upstream/downstream analysis completed")
         return flows
 
     except Exception as e:
         flows["error"] = str(e)
+        print(f"❌ Error in upstream/downstream analysis: {e}")
         return flows
+
+
+def identify_workflow_breaks(
+    upstream_data: List[Dict], downstream_data: List[Dict]
+) -> List[Dict[str, Any]]:
+    """
+    Identify breaks in workflow continuity between upstream and downstream processes
+    """
+    workflow_breaks = []
+
+    try:
+        # Analyze gaps between upstream outputs and downstream inputs
+        for upstream_item in upstream_data:
+            keyword = upstream_item.get("keyword", "")
+            upstream_outputs = upstream_item.get("enabling_services", [])
+
+            # Find corresponding downstream data
+            downstream_item = next(
+                (item for item in downstream_data if item.get("keyword") == keyword),
+                None,
+            )
+
+            if downstream_item:
+                downstream_inputs = downstream_item.get("next_steps", [])
+
+                # Identify potential breaks
+                for output in upstream_outputs:
+                    if not any(
+                        output.lower() in step.lower() for step in downstream_inputs
+                    ):
+                        workflow_breaks.append(
+                            {
+                                "keyword": keyword,
+                                "break_type": "service_gap",
+                                "upstream_output": output,
+                                "missing_connection": f"No clear downstream usage of {output}",
+                                "opportunity": f"Bridge {output} to downstream workflow",
+                            }
+                        )
+
+    except Exception as e:
+        print(f"❌ Error identifying workflow breaks: {e}")
+
+    return workflow_breaks[:10]  # Limit results
+
+
+def identify_integration_opportunities(
+    upstream_data: List[Dict], downstream_data: List[Dict]
+) -> List[Dict[str, Any]]:
+    """
+    Identify opportunities for integrating upstream and downstream processes
+    """
+    opportunities = []
+
+    try:
+        # Look for automation opportunities
+        for upstream_item in upstream_data:
+            keyword = upstream_item.get("keyword", "")
+            prerequisites = upstream_item.get("prerequisites", [])
+
+            downstream_item = next(
+                (item for item in downstream_data if item.get("keyword") == keyword),
+                None,
+            )
+
+            if downstream_item:
+                completion_reqs = downstream_item.get("completion_requirements", [])
+
+                # Find automation opportunities
+                for prereq in prerequisites:
+                    for comp_req in completion_reqs:
+                        if any(
+                            word in prereq.lower() and word in comp_req.lower()
+                            for word in ["data", "file", "report", "document"]
+                        ):
+                            opportunities.append(
+                                {
+                                    "keyword": keyword,
+                                    "integration_type": "data_flow_automation",
+                                    "upstream_requirement": prereq,
+                                    "downstream_requirement": comp_req,
+                                    "automation_potential": f"Automate {prereq} → {comp_req} flow",
+                                    "value_proposition": "Eliminate manual data transfer",
+                                }
+                            )
+
+    except Exception as e:
+        print(f"❌ Error identifying integration opportunities: {e}")
+
+    return opportunities[:10]  # Limit results
 
 
 # Create the adjacent market agent

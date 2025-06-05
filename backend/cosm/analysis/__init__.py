@@ -222,6 +222,8 @@ def calculate_ai_powered_comprehensive_score(
 
         Base your analysis on the actual data provided. Be specific and actionable in your insights.
         Consider market size sustainability, competitive dynamics, demand authenticity, and execution realities.
+
+        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(

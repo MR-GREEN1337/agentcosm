@@ -1,5 +1,5 @@
 """
-Cross-Industry Pattern Discovery Agent
+Cross-Industry Pattern Discovery Agent - Fixed Implementation
 Uses parallel search to find patterns across different industries for arbitrage opportunities
 """
 
@@ -9,11 +9,15 @@ from google.adk.models.lite_llm import LiteLlm
 from typing import Dict, List, Any
 import json
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
 from cosm.tools.parallel_search import parallel_cross_industry_search
+
+thread_local = threading.local()
 
 CROSS_INDUSTRY_PROMPT = """
 You are the Cross-Industry Pattern Discovery Agent, specialized in finding patterns,
@@ -153,6 +157,8 @@ def analyze_cross_industry_arbitrage_with_ai(
                 }}
             ]
         }}
+
+        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
@@ -177,9 +183,81 @@ def analyze_cross_industry_arbitrage_with_ai(
     }
 
 
+def analyze_cost_disparities_with_ai(
+    keyword: str, cost_analysis_prompt: str
+) -> Dict[str, Any]:
+    """
+    Analyze cost disparities across industries using AI
+    """
+    try:
+        response = completion(
+            model=MODEL_CONFIG["market_explorer"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": cost_analysis_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.choices[0].message.content:
+            result = json.loads(response.choices[0].message.content)
+            return {
+                "keyword": keyword,
+                "cost_disparities": result.get("cost_disparities", []),
+                "price_arbitrage": result.get("price_arbitrage", []),
+                "efficiency_gaps": result.get("efficiency_gaps", []),
+                "cost_drivers": result.get("cost_drivers", []),
+            }
+    except Exception as e:
+        print(f"❌ Error analyzing cost disparities for {keyword}: {e}")
+
+    return {
+        "keyword": keyword,
+        "cost_disparities": [],
+        "price_arbitrage": [],
+        "efficiency_gaps": [],
+        "cost_drivers": [],
+    }
+
+
+def analyze_asset_utilization_with_ai(
+    keyword: str, asset_analysis_prompt: str
+) -> Dict[str, Any]:
+    """
+    Analyze underutilized assets across industries using AI
+    """
+    try:
+        response = completion(
+            model=MODEL_CONFIG["market_explorer"],
+            api_key=settings.OPENAI_API_KEY,
+            messages=[{"role": "user", "content": asset_analysis_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+
+        if response and response.choices[0].message.content:
+            result = json.loads(response.choices[0].message.content)
+            return {
+                "keyword": keyword,
+                "underutilized_assets": result.get("underutilized_assets", []),
+                "idle_resources": result.get("idle_resources", []),
+                "sharing_opportunities": result.get("sharing_opportunities", []),
+                "utilization_rates": result.get("utilization_rates", []),
+            }
+    except Exception as e:
+        print(f"❌ Error analyzing asset utilization for {keyword}: {e}")
+
+    return {
+        "keyword": keyword,
+        "underutilized_assets": [],
+        "idle_resources": [],
+        "sharing_opportunities": [],
+        "utilization_rates": [],
+    }
+
+
 def find_industry_cost_disparities(keywords: List[str]) -> Dict[str, Any]:
     """
-    Find cost disparities across industries for the same solutions/needs
+    Find cost disparities across industries for the same solutions/needs using threading
     """
     disparities = {
         "cost_gaps": [],
@@ -189,28 +267,87 @@ def find_industry_cost_disparities(keywords: List[str]) -> Dict[str, Any]:
     }
 
     try:
-        for keyword in keywords:
-            # This could use parallel search to find pricing in different industries
-            # and identify where the same solution costs vastly different amounts
+        print(
+            f"💰 Analyzing cost disparities across industries for {len(keywords)} keywords..."
+        )
 
-            cost_analysis_prompt = f"""
-            Analyze cost structures for {keyword} across different industries.
-            Where are there significant price differences for similar solutions?
-            Which industries overpay while others have efficient alternatives?
-            """  # noqa: F841
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = []
 
-            # Implementation would use parallel search results
+            for keyword in keywords:
+                cost_analysis_prompt = f"""
+                Analyze cost structures for {keyword} across different industries.
+                Where are there significant price differences for similar solutions?
+                Which industries overpay while others have efficient alternatives?
 
+                Return JSON:
+                {{
+                    "cost_disparities": [
+                        {{
+                            "expensive_industry": "industry name",
+                            "cheap_industry": "industry name",
+                            "cost_difference": "percentage or amount",
+                            "reason": "why the difference exists"
+                        }}
+                    ],
+                    "price_arbitrage": [
+                        {{
+                            "opportunity": "arbitrage opportunity description",
+                            "source_industry": "where it's cheap",
+                            "target_industry": "where it's expensive",
+                            "potential_savings": "estimated savings"
+                        }}
+                    ],
+                    "efficiency_gaps": [
+                        {{
+                            "inefficient_industry": "industry with inefficiency",
+                            "efficient_industry": "industry with better approach",
+                            "efficiency_gain": "potential improvement"
+                        }}
+                    ],
+                    "cost_drivers": ["factor1", "factor2", "factor3"]
+                }}
+
+                RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
+                """
+
+                future = executor.submit(
+                    analyze_cost_disparities_with_ai, keyword, cost_analysis_prompt
+                )
+                futures.append(future)
+
+            # Collect results
+            for future in as_completed(futures):
+                try:
+                    result = future.result(timeout=30)
+                    disparities["cost_gaps"].append(result)
+
+                    # Extract specific data
+                    if result.get("cost_disparities"):
+                        disparities["price_arbitrage_opportunities"].extend(
+                            result.get("price_arbitrage", [])
+                        )
+                    if result.get("efficiency_gaps"):
+                        disparities["efficiency_gaps"].extend(
+                            result.get("efficiency_gaps", [])
+                        )
+
+                except Exception as e:
+                    print(f"❌ Cost analysis failed: {e}")
+
+        print("✅ Cost disparity analysis completed")
         return disparities
 
     except Exception as e:
         disparities["error"] = str(e)
+        print(f"❌ Error in cost disparity analysis: {e}")
         return disparities
 
 
 def identify_underutilized_industry_assets(keywords: List[str]) -> Dict[str, Any]:
     """
-    Identify underutilized assets in different industries that could serve other markets
+    Identify underutilized assets in different industries using threading
     """
     assets = {
         "underutilized_infrastructure": [],
@@ -220,22 +357,89 @@ def identify_underutilized_industry_assets(keywords: List[str]) -> Dict[str, Any
     }
 
     try:
-        for keyword in keywords:
-            # Analyze which industries have excess capacity or underutilized resources
-            # that could be repurposed to serve other industries
+        print(
+            f"🏗️ Analyzing underutilized assets across industries for {len(keywords)} keywords..."
+        )
 
-            asset_analysis_prompt = f"""
-            What infrastructure, resources, or capacity related to {keyword} is
-            underutilized in different industries? How could these assets serve
-            other industries or markets?
-            """  # noqa: F841
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = []
 
-            # Implementation would analyze parallel search results for asset utilization
+            for keyword in keywords:
+                asset_analysis_prompt = f"""
+                What infrastructure, resources, or capacity related to {keyword} is
+                underutilized in different industries? How could these assets serve
+                other industries or markets?
 
+                Return JSON:
+                {{
+                    "underutilized_assets": [
+                        {{
+                            "asset_type": "type of asset",
+                            "industry": "industry with underutilized asset",
+                            "utilization_rate": "current utilization percentage",
+                            "potential_uses": ["use1", "use2", "use3"]
+                        }}
+                    ],
+                    "idle_resources": [
+                        {{
+                            "resource": "specific resource",
+                            "industry": "industry with idle resource",
+                            "idle_capacity": "amount or percentage idle",
+                            "alternative_applications": ["app1", "app2"]
+                        }}
+                    ],
+                    "sharing_opportunities": [
+                        {{
+                            "shared_asset": "what could be shared",
+                            "source_industry": "industry that has excess",
+                            "target_industry": "industry that needs it",
+                            "sharing_model": "how sharing would work"
+                        }}
+                    ],
+                    "utilization_rates": [
+                        {{
+                            "industry": "industry name",
+                            "asset": "asset type",
+                            "current_rate": "utilization percentage",
+                            "optimal_rate": "target utilization"
+                        }}
+                    ]
+                }}
+
+                RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
+                """
+
+                future = executor.submit(
+                    analyze_asset_utilization_with_ai, keyword, asset_analysis_prompt
+                )
+                futures.append(future)
+
+            # Collect results
+            for future in as_completed(futures):
+                try:
+                    result = future.result(timeout=30)
+                    assets["underutilized_infrastructure"].append(result)
+
+                    # Extract specific data
+                    if result.get("underutilized_assets"):
+                        assets["idle_resources"].extend(
+                            result.get("idle_resources", [])
+                        )
+                    if result.get("sharing_opportunities"):
+                        assets["cross_industry_opportunities"].extend(
+                            result.get("sharing_opportunities", [])
+                        )
+
+                except Exception as e:
+                    print(f"❌ Asset analysis failed: {e}")
+
+        print("✅ Asset utilization analysis completed")
         return assets
 
     except Exception as e:
         assets["error"] = str(e)
+        print(f"❌ Error in asset utilization analysis: {e}")
         return assets
 
 

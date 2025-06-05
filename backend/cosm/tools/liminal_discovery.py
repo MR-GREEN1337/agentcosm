@@ -112,6 +112,7 @@ def synthesize_liminal_connections(
 
         FOCUS: Find opportunities that entrepreneurs can actually build and scale.
         Make each opportunity SPECIFIC and ACTIONABLE with clear next steps.
+        RETURN ONLY JSON, NO OTHER TEXT!!!!!!!!!
         """
 
         response = completion(

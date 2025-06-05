@@ -38,7 +38,7 @@ from .config import MODEL_CONFIG
 from .tools.search import search_tool
 
 
-class EnhancedMarketOpportunityAgent:
+class MarketOpportunityAgent:
     """
     Enhanced root agent with true liminal market discovery using ADK multi-agent patterns.
 
@@ -132,8 +132,8 @@ class EnhancedMarketOpportunityAgent:
 
         # MASTER WORKFLOW: Enhanced Sequential Pipeline
         # Orchestrates the entire liminal discovery to deployment pipeline
-        self.enhanced_discovery_workflow = SequentialAgent(
-            name="enhanced_liminal_discovery_workflow",
+        self.discovery_workflow = SequentialAgent(
+            name="liminal_discovery_workflow",
             description="Complete liminal opportunity discovery and validation workflow",
             sub_agents=[
                 self.liminal_discovery_phase,  # Parallel market exploration
@@ -181,15 +181,15 @@ class EnhancedMarketOpportunityAgent:
                 FunctionTool(func=validate_connection_strength),
                 FunctionTool(func=rank_liminal_opportunities),
                 # Agent orchestration tools - FIXED: Only include workflow as sub-agent
-                AgentTool(agent=self.enhanced_discovery_workflow),
+                AgentTool(agent=self.discovery_workflow),
                 search_tool,
             ],
             sub_agents=[
                 # ONLY the main workflow to avoid parent conflicts
-                self.enhanced_discovery_workflow,
+                self.discovery_workflow,
             ],
         )
 
 
 # Export enhanced root agent
-root_agent = EnhancedMarketOpportunityAgent().root_agent
+root_agent = MarketOpportunityAgent().root_agent

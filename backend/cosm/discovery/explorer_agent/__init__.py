@@ -218,6 +218,8 @@ def analyze_comprehensive_signals_with_ai(
         }}
 
         Focus on finding genuine liminal opportunities - gaps between established market categories where new solutions could thrive.
+
+        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(

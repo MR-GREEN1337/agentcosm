@@ -125,6 +125,7 @@ def generate_brand_strategy_with_ai(market_context: Dict[str, Any]) -> Dict[str,
 
         Focus on making every element work together to position this as the inevitable solution
         users didn't know they needed.
+        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
@@ -297,34 +298,44 @@ def generate_landing_page_with_ai(
 
     try:
         landing_prompt = f"""
-        Create a premium, conversion-optimized landing page for a breakthrough solution.
+        Create a premium, conversion-optimized landing page for: {brand_data.get("brand_name", "Brand")}
 
-        BRAND: {brand_data.get("brand_name", "Brand")}
-        TAGLINE: {brand_data.get("tagline", "Transform Your Workflow")}
-        VALUE PROP: {brand_data.get("value_proposition", "Professional solutions")}
+        CRITICAL: Use EXACTLY this Jinja2 syntax for variables:
+        - {{{{ brand_name }}}} for the brand name
+        - {{{{ tagline }}}} for the tagline
+        - {{{{ headline }}}} for main headline
+        - {{{{ description }}}} for description
 
-        DESIGN REQUIREMENTS:
-        1. Modern, professional design that builds immediate trust
-        2. Hero section with compelling headline and clear CTA
-        3. Benefits section highlighting key value propositions
-        4. Social proof with testimonials
-        5. Fully responsive mobile-first design
-        6. Optimized for conversion with multiple strategic CTAs
+        Create a complete HTML document with:
+        1. Proper DOCTYPE and meta tags
+        2. Embedded CSS using modern design
+        3. Mobile-responsive layout
+        4. Clear call-to-action buttons
 
-        TEMPLATE VARIABLES (use Jinja2 syntax):
-        - {{{{ brand_name }}}} - Brand name
-        - {{{{ tagline }}}} - Brand tagline
-        - {{{{ hero_headline }}}} - Main headline
-        - {{{{ hero_subheadline }}}} - Supporting copy
-        - {{{{ cta_primary }}}} - Primary CTA text
-        - {{{{ benefits }}}} - Array of benefit objects
-        - {{{{ testimonials }}}} - Array of testimonial objects
+        brand data: {brand_data}
 
-        Create complete HTML with embedded CSS and minimal JavaScript.
-        Use semantic HTML5, modern CSS (Grid/Flexbox), and ensure it works on all devices.
-        Make it look like a $50k custom design.
+        Example structure:
+        ```html
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{{{{ brand_name }}}} - {{{{ tagline }}}}</title>
+            <style>
+                /* Modern CSS here */
+            </style>
+        </head>
+        <body>
+            <header>
+                <h1>{{{{ headline }}}}</h1>
+                <p>{{{{ description }}}}</p>
+            </header>
+        </body>
+        </html>
+        ```
 
-        Return ONLY the HTML code, no explanations or markdown formatting.
+        Return ONLY the HTML code with proper Jinja2 template variables.
         """
 
         response = completion(

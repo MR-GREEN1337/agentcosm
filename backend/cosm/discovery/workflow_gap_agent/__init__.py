@@ -153,6 +153,8 @@ def analyze_workflow_gaps_with_ai(
                 }}
             ]
         }}
+
+        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
