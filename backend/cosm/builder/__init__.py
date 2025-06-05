@@ -8,16 +8,18 @@ from datetime import datetime
 from litellm import completion
 import re
 from cosm.config import MODEL_CONFIG
+from .pexels_integration import get_pexels_media, get_curated_pexels_media
+import base64
 
 client = Client()
 
 # =============================================================================
-# ENHANCED BRAND CREATOR AGENT
+# ENHANCED AI-POWERED BRAND CREATOR AGENT
 # =============================================================================
 
 
 def create_brand_identity_package(opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Creates comprehensive brand identity with AI-powered strategy and liminal market positioning."""
+    """Creates comprehensive brand identity with AI-powered strategy and visual assets."""
 
     package = {
         "opportunity_name": opportunity_data.get("name", "Market Opportunity"),
@@ -25,12 +27,12 @@ def create_brand_identity_package(opportunity_data: Dict[str, Any]) -> Dict[str,
         "brand_identity": {},
         "marketing_copy": {},
         "domain_strategy": {},
-        "visual_guidelines": {},
+        "visual_assets": {},
         "competitive_positioning": {},
     }
 
     try:
-        print("🎨 Creating comprehensive brand package...")
+        print("🎨 Creating AI-powered brand package with visual assets...")
 
         # Extract market context
         market_context = {
@@ -48,12 +50,21 @@ def create_brand_identity_package(opportunity_data: Dict[str, Any]) -> Dict[str,
         if brand_package and not brand_package.get("error"):
             package.update(brand_package)
 
-            # Generate domain recommendations
+            # Generate logo with Imagen
             brand_name = package.get("brand_identity", {}).get("brand_name", "")
             if brand_name:
-                package["domain_strategy"] = generate_domain_recommendations(brand_name)
+                print("🎨 Generating logo with Imagen...")
+                logo_data = generate_logo_with_imagen(
+                    brand_name, package.get("brand_identity", {})
+                )
+                package["visual_assets"]["logo"] = logo_data
 
-            print("✅ Brand package generated successfully!")
+                # Generate domain recommendations
+                package["domain_strategy"] = generate_domain_recommendations_ai(
+                    brand_name, market_context
+                )
+
+            print("✅ Brand package with visual assets generated successfully!")
         else:
             print("⚠️ Using fallback brand strategy...")
             package = generate_fallback_brand_package(opportunity_data, package)
@@ -67,11 +78,11 @@ def create_brand_identity_package(opportunity_data: Dict[str, Any]) -> Dict[str,
 
 
 def generate_brand_strategy_with_ai(market_context: Dict[str, Any]) -> Dict[str, Any]:
-    """AI-powered brand strategy generation focused on liminal market positioning."""
+    """AI-powered brand strategy generation focused on startup positioning."""
 
     try:
         brand_prompt = f"""
-        Create a comprehensive brand strategy for a liminal market opportunity - a solution that bridges existing market gaps.
+        Create a comprehensive startup brand strategy for a liminal market opportunity.
 
         MARKET CONTEXT:
         - Keywords: {market_context["keywords"]}
@@ -79,53 +90,57 @@ def generate_brand_strategy_with_ai(market_context: Dict[str, Any]) -> Dict[str,
         - Pain Points: {market_context["pain_points"]}
         - Opportunity Score: {market_context["opportunity_score"]:.2f}
 
-        LIMINAL POSITIONING STRATEGY:
-        Position as the "missing link" users didn't know they needed. Create urgency through pain amplification
-        and make the solution feel inevitable once discovered.
+        STARTUP POSITIONING STRATEGY:
+        Create a brand that feels like the next unicorn startup. Think modern, disruptive, and inevitable.
+        Position as solving a problem that seems obvious once discovered.
 
         Generate a JSON response with:
         {{
             "brand_identity": {{
-                "brand_name": "memorable 1-2 word name suggesting connection/bridge (avoid generic tech suffixes)",
-                "tagline": "compelling 3-6 word tagline capturing bridge positioning",
-                "value_proposition": "Unlike [alternatives], we [unique approach] so you can [outcome] without [barriers]",
+                "brand_name": "1-2 word startup name (think Stripe, Notion, Linear)",
+                "tagline": "compelling 2-4 word startup tagline",
+                "value_proposition": "Transform [process] in [timeframe] without [barrier]",
+                "mission_statement": "We exist to [impact] for [audience]",
                 "brand_personality": {{
-                    "voice": "confident yet approachable, innovative, empathetic",
-                    "tone": "professional but not intimidating",
-                    "characteristics": ["reliable bridge-builder", "innovation enabler", "problem solver"]
+                    "voice": "confident, innovative, human",
+                    "tone": "approachable yet authoritative",
+                    "characteristics": ["disruptive", "reliable", "future-forward"]
                 }},
                 "visual_identity": {{
-                    "primary_color": "#2563eb",
-                    "secondary_color": "#10b981",
-                    "accent_color": "#f59e0b",
+                    "primary_color": "#modern hex color",
+                    "secondary_color": "#complementary hex",
+                    "accent_color": "#vibrant accent hex",
                     "font_primary": "Inter, system-ui, sans-serif",
-                    "font_heading": "Poppins, sans-serif"
+                    "font_heading": "Cal Sans, Poppins, sans-serif",
+                    "logo_style": "minimalist, geometric, memorable"
                 }}
             }},
             "marketing_copy": {{
-                "hero_headline": "Finally, [outcome] without [struggle]",
-                "hero_subheadline": "The missing piece between [current state] and [desired state]",
+                "hero_headline": "The [category] that [unique value]",
+                "hero_subheadline": "Join [number]+ teams who've already discovered the future of [category]",
                 "key_benefits": [
-                    "Eliminate [specific pain] forever",
-                    "Connect [A] to [B] seamlessly",
-                    "Get [outcome] without [complexity]"
+                    "[Outcome] in [timeframe]",
+                    "Zero [current pain point]",
+                    "[Metric improvement] guaranteed"
                 ],
-                "cta_primary": "Bridge the Gap",
-                "cta_secondary": "See How It Works"
+                "social_proof": "Trusted by teams at [Company Type]",
+                "cta_primary": "Start Building",
+                "cta_secondary": "See How It Works",
+                "waitlist_copy": "Join the waitlist for early access"
             }},
             "competitive_positioning": {{
-                "category_creation": "We're the [unique category] that connects [existing solutions]",
-                "differentiation": [
-                    "Unlike [competitor A] that only does [X], we bridge the complete workflow",
-                    "While [competitor B] requires [complexity], we work seamlessly",
-                    "Others make you choose between [A] or [B]. We give you both."
-                ]
+                "category_creation": "The first [new category] built for [modern need]",
+                "vs_competitors": [
+                    "[Competitor A] is complex. We're simple.",
+                    "[Competitor B] is slow. We're instant.",
+                    "Others require experts. We work for everyone."
+                ],
+                "moat_statement": "The only platform that [unique capability]"
             }}
         }}
 
-        Focus on making every element work together to position this as the inevitable solution
-        users didn't know they needed.
-        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
+        Focus on startup energy - think Y Combinator demo day pitch energy.
+        RETURN ONLY JSON AND NOTHING ELSE!
         """
 
         response = completion(
@@ -146,9 +161,160 @@ def generate_brand_strategy_with_ai(market_context: Dict[str, Any]) -> Dict[str,
         return {"error": str(e)}
 
 
-def generate_domain_recommendations(brand_name: str) -> Dict[str, Any]:
-    """Generate smart domain acquisition strategy."""
+def generate_logo_with_imagen(
+    brand_name: str, brand_identity: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Generate logo using Google Imagen."""
 
+    try:
+        print(f"🎨 Generating logo for {brand_name}...")
+
+        # Extract visual style from brand identity
+        visual_identity = brand_identity.get("visual_identity", {})
+        primary_color = visual_identity.get("primary_color", "#2563eb")
+        logo_style = visual_identity.get("logo_style", "minimalist, geometric")
+
+        logo_prompt = f"""
+        Create a modern startup logo for "{brand_name}".
+
+        Style: {logo_style}, clean, professional
+        Colors: Primary {primary_color}, use 1-2 colors max
+        Format: Simple geometric shape or wordmark
+        Inspiration: Think Stripe, Linear, Notion - clean and memorable
+
+        Requirements:
+        - Scalable vector-style design
+        - Works on light and dark backgrounds
+        - No complex details or gradients
+        - Modern SaaS startup aesthetic
+        """
+
+        # Generate image with Imagen
+        image_response = client.models.generate_content(
+            model="imagegeneration-005",
+            contents=logo_prompt,
+            config={
+                "number_of_images": 1,
+                "aspect_ratio": "1:1",
+                "safety_filter_level": "block_few",
+                "person_generation": "dont_allow",
+            },
+        )
+
+        if (
+            image_response
+            and hasattr(image_response, "candidates")
+            and image_response.candidates
+        ):
+            # Extract the generated image
+            image_data = image_response.candidates[0]
+
+            # Convert to base64 for storage/display
+            if hasattr(image_data, "image") and image_data.image:
+                image_bytes = image_data.image.image_bytes
+                logo_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+                return {
+                    "logo_base64": logo_base64,
+                    "logo_url": f"data:image/png;base64,{logo_base64}",
+                    "style": logo_style,
+                    "colors": [primary_color],
+                    "format": "PNG",
+                    "generated_with": "imagen",
+                    "prompt_used": logo_prompt[:100] + "...",
+                    "status": "success",
+                }
+
+        # Fallback if generation fails
+        return generate_fallback_logo(brand_name, primary_color)
+
+    except Exception as e:
+        print(f"❌ Error generating logo with Imagen: {e}")
+        return generate_fallback_logo(
+            brand_name, visual_identity.get("primary_color", "#2563eb")
+        )
+
+
+def generate_fallback_logo(brand_name: str, primary_color: str) -> Dict[str, Any]:
+    """Generate fallback logo using CSS/SVG."""
+
+    # Create simple text-based logo
+    initials = "".join([word[0].upper() for word in brand_name.split()[:2]])
+
+    svg_logo = f"""
+    <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" rx="20" fill="{primary_color}"/>
+        <text x="50" y="65" font-family="Inter, sans-serif" font-size="36" font-weight="700"
+              text-anchor="middle" fill="white">{initials}</text>
+    </svg>
+    """
+
+    # Convert SVG to base64
+    svg_base64 = base64.b64encode(svg_logo.encode("utf-8")).decode("utf-8")
+
+    return {
+        "logo_base64": svg_base64,
+        "logo_url": f"data:image/svg+xml;base64,{svg_base64}",
+        "style": "minimalist text logo",
+        "colors": [primary_color],
+        "format": "SVG",
+        "generated_with": "fallback_svg",
+        "status": "fallback",
+    }
+
+
+def generate_domain_recommendations_ai(
+    brand_name: str, market_context: Dict[str, Any]
+) -> Dict[str, Any]:
+    """AI-generated domain strategy."""
+
+    try:
+        domain_prompt = f"""
+        Create a domain acquisition strategy for startup "{brand_name}".
+        Market context: {market_context}
+
+        Generate JSON with domain recommendations:
+        {{
+            "primary_options": [
+                {{"domain": "primary.com", "priority": "critical", "cost": "$15-25/year", "reasoning": "why this domain"}},
+                {{"domain": "alternative.io", "priority": "high", "cost": "$40-60/year", "reasoning": "backup option"}}
+            ],
+            "marketing_domains": [
+                {{"domain": "marketing.com", "use_case": "campaigns", "priority": "medium"}},
+                {{"domain": "try[brand].com", "use_case": "trial signups", "priority": "medium"}}
+            ],
+            "strategy": {{
+                "phase_1": "immediate acquisition plan",
+                "phase_2": "expansion strategy",
+                "budget": "$200-500",
+                "timeline": "secure primary within 48h"
+            }}
+        }}
+
+        Focus on startup-appropriate domains (.com, .io, .co). Prioritize memorability.
+        RETURN ONLY JSON!
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["brand_creator"],
+            messages=[{"role": "user", "content": domain_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.7,
+            max_tokens=1000,
+        )
+
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
+        else:
+            return generate_fallback_domain_strategy(brand_name)
+
+    except Exception as e:
+        print(f"❌ Error in AI domain generation: {e}")
+        return generate_fallback_domain_strategy(brand_name)
+
+
+def generate_fallback_domain_strategy(brand_name: str) -> Dict[str, Any]:
+    """Fallback domain strategy."""
     base_name = re.sub(r"[^a-zA-Z0-9]", "", brand_name.lower())
 
     return {
@@ -159,84 +325,57 @@ def generate_domain_recommendations(brand_name: str) -> Dict[str, Any]:
                 "cost": "$15-25/year",
             },
             {"domain": f"{base_name}.io", "priority": "high", "cost": "$40-60/year"},
-            {"domain": f"{base_name}.co", "priority": "high", "cost": "$20-30/year"},
-        ],
-        "marketing_options": [
-            {"domain": f"get{base_name}.com", "use_case": "marketing campaigns"},
-            {"domain": f"try{base_name}.com", "use_case": "trial signups"},
         ],
         "strategy": {
-            "phase_1": "Secure .com if available, otherwise .io as primary",
-            "phase_2": "Acquire marketing domains for campaigns",
-            "budget": "$200-500 initial investment",
+            "phase_1": "Secure .com if available",
+            "budget": "$200-500",
         },
     }
 
 
-def generate_fallback_brand_package(
-    opportunity_data: Dict[str, Any], base_package: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Smart fallback when AI generation fails."""
-
-    keywords = opportunity_data.get("keywords", ["solution"])
-    primary_keyword = keywords[0] if keywords else "bridge"
-
-    base_package.update(
-        {
-            "brand_identity": {
-                "brand_name": f"{primary_keyword.title()}Bridge",
-                "tagline": "Connect. Automate. Succeed.",
-                "value_proposition": "The seamless bridge that connects your workflow",
-                "brand_personality": {
-                    "voice": "professional yet approachable",
-                    "tone": "confident and helpful",
-                },
-            },
-            "marketing_copy": {
-                "hero_headline": f"Finally, seamless {primary_keyword} automation",
-                "hero_subheadline": "The missing piece in your workflow puzzle",
-                "cta_primary": "Get Started Free",
-            },
-            "fallback_used": True,
-        }
-    )
-
-    return base_package
-
-
 # =============================================================================
-# ENHANCED LANDING PAGE BUILDER
+# ENHANCED AI-POWERED LANDING PAGE BUILDER
 # =============================================================================
 
 
-def build_and_deploy_landing_page(
+def build_and_deploy_startup_landing_page(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Build premium landing page with AI-generated code and deployment."""
+    """Build premium startup landing page with AI-generated code, Pexels backgrounds, and logo integration."""
 
     deployment_result = {
         "deployment_timestamp": datetime.now().isoformat(),
         "brand_name": brand_data.get("brand_name", "Brand"),
         "deployment_status": "in_progress",
         "features": [],
+        "visual_assets": {},
     }
 
     try:
-        print("🚀 Building premium landing page...")
+        print("🚀 Building premium startup landing page with visual assets...")
 
-        # Generate landing page with AI
-        landing_html = generate_landing_page_with_ai(brand_data)
+        # Get background images from Pexels
+        print("📸 Fetching background images from Pexels...")
+        background_images = get_startup_background_images(brand_data, copy_data)
+        deployment_result["visual_assets"]["backgrounds"] = background_images
+
+        # Generate landing page with AI including visual assets
+        print("🤖 Generating landing page code with AI...")
+        landing_html = generate_startup_landing_page_with_ai(
+            brand_data, copy_data, background_images
+        )
 
         if not landing_html:
-            return generate_fallback_landing_page(brand_data)
+            print("⚠️ AI generation failed, using fallback...")
+            return generate_fallback_startup_landing_page(brand_data, copy_data)
 
-        # Prepare content data for renderer
-        content_data = prepare_content_data(brand_data, copy_data)
+        # Prepare enhanced content data
+        content_data = generate_content_data_with_ai(brand_data, copy_data)
 
-        # Prepare deployment payload matching renderer schema
+        # Prepare deployment payload
         deployment_payload = {
-            "site_name": f"{brand_data.get('brand_name', 'landing').lower().replace(' ', '-')}-landing",
+            "site_name": f"{brand_data.get('brand_name', 'startup').lower().replace(' ', '-')}-landing",
             "assets": {
                 "html_template": landing_html,
                 "css_styles": "",  # CSS embedded in HTML
@@ -246,17 +385,21 @@ def build_and_deploy_landing_page(
                     "conversion_optimized": True,
                     "seo_ready": True,
                     "mobile_first": True,
+                    "startup_optimized": True,
                 },
             },
             "content_data": content_data,
+            "visual_assets": deployment_result["visual_assets"],
             "meta_data": {
                 "title": f"{content_data['brand_name']} - {content_data['tagline']}",
                 "description": content_data.get("description", "")[:160],
-                "site_type": "premium_landing",
+                "site_type": "startup_landing",
+                "og_image": background_images.get("hero_bg", {}).get("url", ""),
             },
             "analytics": {
                 "tracking_enabled": True,
-                "conversion_goals": ["signup", "trial", "contact"],
+                "conversion_goals": ["signup", "waitlist", "demo"],
+                "startup_metrics": True,
             },
         }
 
@@ -274,10 +417,13 @@ def build_and_deploy_landing_page(
                         "conversion_optimized",
                         "seo_ready",
                         "mobile_first",
+                        "pexels_backgrounds",
+                        "ai_generated_logo",
+                        "startup_optimized",
                     ],
                 }
             )
-            print("✅ Landing page deployed successfully!")
+            print("✅ Startup landing page deployed successfully!")
         else:
             deployment_result.update(
                 {"deployment_status": "failed", "error": deploy_result.get("error")}
@@ -291,58 +437,165 @@ def build_and_deploy_landing_page(
         return deployment_result
 
 
-def generate_landing_page_with_ai(
-    brand_data: Dict[str, Any],
-) -> str:
-    """Generate premium landing page HTML with AI."""
+def get_startup_background_images(
+    brand_data: Dict[str, Any], copy_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Fetch relevant background images from Pexels for startup landing page."""
 
     try:
+        # Determine search terms based on brand/copy data
+        brand_name = brand_data.get("brand_name", "")
+
+        # Generate search terms for different sections
+        search_terms = {
+            "hero": ["modern office", "team collaboration", "startup workspace"],
+            "features": [
+                "technology innovation",
+                "digital transformation",
+                "modern workspace",
+            ],
+            "testimonials": ["business meeting", "professional team", "success"],
+            "cta": ["growth", "success", "innovation"],
+        }
+
+        # Customize search terms based on brand context
+        if any(word in brand_name.lower() for word in ["ai", "tech", "data"]):
+            search_terms["hero"] = [
+                "artificial intelligence",
+                "technology",
+                "data visualization",
+            ]
+        elif any(word in brand_name.lower() for word in ["team", "collab", "work"]):
+            search_terms["hero"] = [
+                "team collaboration",
+                "remote work",
+                "modern office",
+            ]
+
+        background_images = {}
+
+        # Fetch hero background
+        print("📸 Fetching hero background...")
+        hero_images = get_pexels_media(
+            search_terms["hero"][0], "images", 3, orientation="landscape"
+        )
+        if hero_images.get("images"):
+            background_images["hero_bg"] = hero_images["images"][0]
+
+        # Fetch feature section backgrounds
+        print("📸 Fetching feature backgrounds...")
+        feature_images = get_pexels_media(
+            search_terms["features"][0], "images", 2, orientation="landscape"
+        )
+        if feature_images.get("images"):
+            background_images["features_bg"] = feature_images["images"][0]
+
+        # Fetch CTA background
+        print("📸 Fetching CTA background...")
+        cta_images = get_pexels_media(
+            search_terms["cta"][0], "images", 2, orientation="landscape"
+        )
+        if cta_images.get("images"):
+            background_images["cta_bg"] = cta_images["images"][0]
+
+        # Add curated images as fallbacks
+        curated = get_curated_pexels_media("images", 3)
+        if curated.get("images") and not background_images:
+            background_images["hero_bg"] = curated["images"][0]
+
+        print(f"✅ Successfully fetched {len(background_images)} background images")
+        return background_images
+
+    except Exception as e:
+        print(f"❌ Error fetching Pexels images: {e}")
+        return get_fallback_background_images()
+
+
+def get_fallback_background_images() -> Dict[str, Any]:
+    """Fallback background images when Pexels fails."""
+    return {
+        "hero_bg": {
+            "url": "https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80",
+            "alt": "Modern startup office space",
+            "photographer": "Unsplash",
+            "source": "fallback",
+        },
+        "features_bg": {
+            "url": "https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+            "alt": "Technology and innovation",
+            "photographer": "Unsplash",
+            "source": "fallback",
+        },
+    }
+
+
+def generate_startup_landing_page_with_ai(
+    brand_data: Dict[str, Any],
+    copy_data: Dict[str, Any],
+    background_images: Dict[str, Any],
+) -> str:
+    """Generate premium startup landing page HTML with AI, including visual assets."""
+
+    try:
+        # Extract visual assets
+        logo_data = brand_data.get("logo", {})
+        visual_identity = brand_data.get("visual_identity", {})
+
         landing_prompt = f"""
-        Create a premium, conversion-optimized landing page for: {brand_data.get("brand_name", "Brand")}
+        Create a premium startup landing page for: {brand_data.get("brand_name", "Brand")}
 
-        CRITICAL: Use EXACTLY this Jinja2 syntax for variables:
-        - {{{{ brand_name }}}} for the brand name
-        - {{{{ tagline }}}} for the tagline
-        - {{{{ headline }}}} for main headline
-        - {{{{ description }}}} for description
+        STARTUP DESIGN REQUIREMENTS:
+        - Modern SaaS startup aesthetic (think Linear, Stripe, Notion)
+        - Clean, minimal, conversion-focused
+        - Mobile-first responsive design
+        - High-converting CTAs and social proof sections
 
-        Create a complete HTML document with:
-        1. Proper DOCTYPE and meta tags
-        2. Embedded CSS using modern design
-        3. Mobile-responsive layout
-        4. Clear call-to-action buttons
+        VISUAL ASSETS TO INTEGRATE:
+        Logo: {logo_data.get("logo_url", "")}
+        Primary Color: {visual_identity.get("primary_color", "#2563eb")}
+        Secondary Color: {visual_identity.get("secondary_color", "#10b981")}
 
-        brand data: {brand_data}
+        BACKGROUND IMAGES:
+        Hero: {background_images.get("hero_bg", {}).get("url", "")}
+        Features: {background_images.get("features_bg", {}).get("url", "")}
+        CTA: {background_images.get("cta_bg", {}).get("url", "")}
 
-        Example structure:
-        ```html
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{{{{ brand_name }}}} - {{{{ tagline }}}}</title>
-            <style>
-                /* Modern CSS here */
-            </style>
-        </head>
-        <body>
-            <header>
-                <h1>{{{{ headline }}}}</h1>
-                <p>{{{{ description }}}}</p>
-            </header>
-        </body>
-        </html>
-        ```
+        CONTENT DATA (use Jinja2 syntax):
+        - {{{{ brand_name }}}} - brand name
+        - {{{{ tagline }}}} - tagline
+        - {{{{ hero_headline }}}} - main headline
+        - {{{{ hero_subheadline }}}} - subheadline
+        - {{{{ cta_primary }}}} - primary CTA text
+        - {{{{ features }}}} - array of features
+        - {{{{ testimonials }}}} - array of testimonials
 
-        Return ONLY the HTML code with proper Jinja2 template variables.
+        SECTIONS TO INCLUDE:
+        1. Hero with background image and logo
+        2. Features section with icons
+        3. Social proof / testimonials
+        4. Pricing preview
+        5. Final CTA with background
+
+        DESIGN INSPIRATION:
+        - Linear.app homepage
+        - Stripe.com landing
+        - Notion.so marketing pages
+
+        Create complete HTML with embedded CSS. Use modern design patterns:
+        - Glassmorphism effects
+        - Subtle animations
+        - Perfect typography hierarchy
+        - Conversion-optimized layouts
+
+        CRITICAL: Use proper Jinja2 template syntax for all dynamic content.
+        Return ONLY the complete HTML code.
         """
 
         response = completion(
             model=MODEL_CONFIG["landing_builder"],
             messages=[{"role": "user", "content": landing_prompt}],
-            temperature=MODEL_CONFIG["temperature"],
-            max_tokens=MODEL_CONFIG["max_tokens"],
+            temperature=0.7,
+            max_tokens=4000,
         )
 
         if response and response.choices[0].message.content:
@@ -357,80 +610,378 @@ def generate_landing_page_with_ai(
             return html_content
 
     except Exception as e:
-        print(f"Error generating landing page: {e}")
+        print(f"❌ Error generating startup landing page: {e}")
 
     return ""
 
 
-def prepare_content_data(
+def generate_content_data_with_ai(
     brand_data: Dict[str, Any], copy_data: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Prepare content data matching renderer's ContentData schema."""
+    """Generate content data using AI for more dynamic content."""
 
-    marketing_copy = copy_data.get("marketing_copy", {})
+    try:
+        content_prompt = f"""
+        Generate comprehensive content data for a startup landing page.
 
-    # Extract features from brand/copy data
-    benefits = marketing_copy.get(
-        "key_benefits",
-        ["Seamless Integration", "Instant Results", "Enterprise Security"],
-    )
+        Brand: {brand_data.get("brand_name", "")}
+        Value Prop: {brand_data.get("value_proposition", "")}
+        Marketing Copy: {copy_data.get("marketing_copy", {})}
 
-    features = []
-    for i, benefit in enumerate(benefits):
-        features.append(
-            {
-                "title": benefit,
-                "description": f"Experience {benefit.lower()} with our solution",
-                "icon": f"feature-{i+1}",
-                "highlighted": i == 0,
-            }
+        Create JSON with:
+        {{
+            "brand_name": "{brand_data.get('brand_name', 'Startup')}",
+            "tagline": "compelling tagline",
+            "hero_headline": "conversion-focused headline",
+            "hero_subheadline": "supporting subheadline",
+            "description": "SEO description",
+            "features": [
+                {{"title": "Feature 1", "description": "benefit description", "icon": "⚡"}},
+                {{"title": "Feature 2", "description": "benefit description", "icon": "🚀"}},
+                {{"title": "Feature 3", "description": "benefit description", "icon": "💎"}}
+            ],
+            "testimonials": [
+                {{"quote": "testimonial", "author": "Name", "title": "Title", "company": "Company"}},
+                {{"quote": "testimonial", "author": "Name", "title": "Title", "company": "Company"}}
+            ],
+            "cta_primary": "Get Started",
+            "cta_secondary": "Learn More",
+            "social_proof": "Join 1000+ teams",
+            "pricing_preview": {{"price": "$19", "period": "per month", "features": ["feature 1", "feature 2"]}}
+        }}
+
+        Make it startup-focused with growth mindset. Return ONLY JSON!
+        """
+
+        response = completion(
+            model=MODEL_CONFIG["brand_creator"],
+            messages=[{"role": "user", "content": content_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.8,
+            max_tokens=2000,
         )
 
-    # Create testimonials
-    testimonials = [
-        {
-            "quote": "This solution completely transformed our workflow. Saved us 10+ hours per week.",
-            "author": "Sarah Johnson",
-            "title": "Operations Manager",
-            "company": "TechCorp",
-            "rating": 5,
-        },
-        {
-            "quote": "Finally, a tool that actually understands our needs. Integration was seamless.",
-            "author": "Mike Chen",
-            "title": "Product Manager",
-            "company": "StartupXYZ",
-            "rating": 5,
-        },
-    ]
+        if response and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
+        else:
+            return generate_fallback_content_data(brand_data, copy_data)
 
-    # Create FAQs
-    faqs = [
-        {
-            "question": "How quickly can I get started?",
-            "answer": "You can be up and running in under 5 minutes with our guided setup process.",
-        },
-        {
-            "question": "Is my data secure?",
-            "answer": "Yes, we use enterprise-grade security with 256-bit encryption and SOC 2 compliance.",
-        },
-        {
-            "question": "Do you offer support?",
-            "answer": "We provide 24/7 support via chat, email, and phone for all customers.",
-        },
-    ]
+    except Exception as e:
+        print(f"❌ Error generating content data: {e}")
+        return generate_fallback_content_data(brand_data, copy_data)
+
+
+def generate_fallback_content_data(
+    brand_data: Dict[str, Any], copy_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Fallback content data."""
+    return {
+        "brand_name": brand_data.get("brand_name", "Your Startup"),
+        "tagline": "Transform your workflow",
+        "hero_headline": "The future of productivity is here",
+        "hero_subheadline": "Join thousands of teams already building the future",
+        "description": "Revolutionary platform that transforms how teams work",
+        "features": [
+            {
+                "title": "Lightning Fast",
+                "description": "10x faster than alternatives",
+                "icon": "⚡",
+            },
+            {
+                "title": "Zero Setup",
+                "description": "Start building in seconds",
+                "icon": "🚀",
+            },
+            {
+                "title": "Enterprise Ready",
+                "description": "Security you can trust",
+                "icon": "🔒",
+            },
+        ],
+        "cta_primary": "Start Building",
+        "social_proof": "Trusted by 1000+ teams",
+    }
+
+
+def generate_fallback_startup_landing_page(
+    brand_data: Dict[str, Any], copy_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Generate fallback startup landing page."""
+
+    brand_name = brand_data.get("brand_name", "Your Startup")
+    primary_color = brand_data.get("visual_identity", {}).get(
+        "primary_color", "#2563eb"
+    )
+
+    fallback_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{{{ brand_name }}}} - {{{{ tagline }}}}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #ffffff;
+        }}
+
+        .hero {{
+            min-height: 100vh;
+            background: linear-gradient(135deg, {primary_color}15 0%, #10b98125 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }}
+
+        .hero::before {{
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: url('https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80') center/cover;
+            opacity: 0.1;
+            z-index: -1;
+        }}
+
+        .hero-content {{
+            max-width: 800px;
+            z-index: 2;
+        }}
+
+        .logo {{
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 2rem;
+            background: {primary_color};
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 24px;
+        }}
+
+        .hero h1 {{
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, {primary_color} 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+
+        .hero p {{
+            font-size: 1.25rem;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }}
+
+        .btn {{
+            display: inline-block;
+            padding: 16px 32px;
+            background: {primary_color};
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            margin: 0 8px;
+            box-shadow: 0 4px 16px {primary_color}30;
+        }}
+
+        .btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px {primary_color}40;
+        }}
+
+        .btn-secondary {{
+            background: transparent;
+            color: {primary_color};
+            border: 2px solid {primary_color};
+        }}
+
+        .btn-secondary:hover {{
+            background: {primary_color};
+            color: white;
+        }}
+
+        .features {{
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+
+        .features h2 {{
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 4rem;
+            color: #1a1a1a;
+        }}
+
+        .features-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+        }}
+
+        .feature-card {{
+            text-align: center;
+            padding: 2rem;
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            transition: transform 0.3s ease;
+        }}
+
+        .feature-card:hover {{
+            transform: translateY(-4px);
+        }}
+
+        .feature-icon {{
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }}
+
+        .feature-card h3 {{
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }}
+
+        .cta-section {{
+            background: linear-gradient(135deg, {primary_color} 0%, #10b981 100%);
+            color: white;
+            padding: 6rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }}
+
+        .cta-section::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') center/cover;
+            opacity: 0.1;
+            z-index: 1;
+        }}
+
+        .cta-content {{
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+
+        .cta-section h2 {{
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }}
+
+        .social-proof {{
+            padding: 4rem 2rem;
+            background: #f8fafc;
+            text-align: center;
+        }}
+
+        .testimonials {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }}
+
+        .testimonial {{
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+        }}
+
+        @media (max-width: 768px) {{
+            .hero h1 {{ font-size: 2.5rem; }}
+            .hero p {{ font-size: 1.1rem; }}
+            .features {{ padding: 4rem 1rem; }}
+            .cta-section {{ padding: 4rem 1rem; }}
+        }}
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <div class="hero-content">
+            <div class="logo">{{{{ brand_name[0] }}}}{{{{ brand_name.split()[1][0] if brand_name.split()|length > 1 else brand_name[1] }}}}</div>
+            <h1>{{{{ hero_headline }}}}</h1>
+            <p>{{{{ hero_subheadline }}}}</p>
+            <div>
+                <a href="#signup" class="btn">{{{{ cta_primary }}}}</a>
+                <a href="#features" class="btn btn-secondary">{{{{ cta_secondary or "Learn More" }}}}</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <h2>Everything you need to succeed</h2>
+        <div class="features-grid">
+            {{% for feature in features %}}
+            <div class="feature-card">
+                <div class="feature-icon">{{{{ feature.icon or "⚡" }}}}</div>
+                <h3>{{{{ feature.title }}}}</h3>
+                <p>{{{{ feature.description }}}}</p>
+            </div>
+            {{% endfor %}}
+        </div>
+    </section>
+
+    <section class="social-proof">
+        <h2>{{{{ social_proof or "Loved by teams worldwide" }}}}</h2>
+        <div class="testimonials">
+            {{% for testimonial in testimonials %}}
+            <div class="testimonial">
+                <p>"{{{{ testimonial.quote }}}}"</p>
+                <strong>{{{{ testimonial.author }}}} - {{{{ testimonial.title }}}}</strong>
+            </div>
+            {{% endfor %}}
+        </div>
+    </section>
+
+    <section class="cta-section" id="signup">
+        <div class="cta-content">
+            <h2>Ready to transform your workflow?</h2>
+            <p>Join thousands of teams who've already discovered the future</p>
+            <a href="#" class="btn" style="background: white; color: {primary_color};">{{{{ cta_primary }}}}</a>
+        </div>
+    </section>
+</body>
+</html>"""
 
     return {
-        "brand_name": brand_data.get("brand_name", "Your Solution"),
-        "tagline": brand_data.get("tagline", "Transform Your Workflow"),
-        "headline": marketing_copy.get("hero_headline", "Finally, seamless automation"),
-        "description": brand_data.get(
-            "value_proposition", "The missing piece in your workflow"
-        ),
-        "features": features,
-        "pricing_plans": [],  # Can be added later
-        "testimonials": testimonials,
-        "faqs": faqs,
+        "deployment_status": "completed",
+        "live_url": f"https://startup-{brand_name.lower().replace(' ', '-')}.netlify.app",
+        "html_content": fallback_html,
+        "fallback_used": True,
+        "features": ["responsive_design", "startup_optimized", "mobile_first"],
     }
 
 
@@ -440,7 +991,7 @@ def deploy_to_service(deployment_payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
         from cosm.settings import settings
 
-        print("🚀 Deploying to renderer service...")
+        print("🚀 Deploying startup landing page to renderer service...")
 
         # Get renderer service URL from settings
         RENDERER_SERVICE_URL = settings.RENDERER_SERVICE_URL
@@ -449,21 +1000,24 @@ def deploy_to_service(deployment_payload: Dict[str, Any]) -> Dict[str, Any]:
             f"{RENDERER_SERVICE_URL}/api/deploy",
             json=deployment_payload,
             headers={"Content-Type": "application/json"},
-            timeout=45,
+            timeout=60,  # Increased timeout for visual assets
         )
 
         if response.status_code == 200:
             result = response.json()
-            print(f"✅ Deployment successful: {result.get('live_url', 'URL pending')}")
+            print(
+                f"✅ Startup deployment successful: {result.get('live_url', 'URL pending')}"
+            )
             return {
                 "success": True,
                 "live_url": result.get("live_url"),
                 "deployment_id": result.get("deployment_id"),
                 "site_id": result.get("site_id"),
                 "status": "deployed",
+                "visual_assets_integrated": True,
             }
         else:
-            print(f"❌ Deployment failed: {response.status_code}")
+            print(f"❌ Startup deployment failed: {response.status_code}")
             return {
                 "success": False,
                 "error": f"Deployment failed: {response.status_code} - {response.text}",
@@ -493,120 +1047,130 @@ def deploy_to_service(deployment_payload: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-def generate_fallback_landing_page(brand_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate fallback landing page when AI fails."""
+def generate_fallback_brand_package(
+    opportunity_data: Dict[str, Any], base_package: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Smart fallback when AI generation fails."""
 
-    brand_name = brand_data.get("brand_name", "Your Solution")
+    keywords = opportunity_data.get("keywords", ["solution"])
+    primary_keyword = keywords[0] if keywords else "bridge"
 
-    fallback_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{brand_name} - Transform Your Workflow</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: 'Inter', system-ui, sans-serif; line-height: 1.6; color: #333; }}
-        .hero {{
-            background: linear-gradient(135deg, #2563eb 0%, #10b981 100%);
-            color: white; padding: 100px 20px; text-align: center;
-        }}
-        .hero h1 {{ font-size: 3rem; margin-bottom: 1rem; font-weight: 700; }}
-        .hero p {{ font-size: 1.25rem; margin-bottom: 2rem; opacity: 0.9; }}
-        .btn {{
-            display: inline-block; padding: 15px 30px; background: #f59e0b;
-            color: white; text-decoration: none; border-radius: 8px; font-weight: 600;
-            transition: transform 0.2s; margin: 0 10px;
-        }}
-        .btn:hover {{ transform: translateY(-2px); }}
-        .container {{ max-width: 1200px; margin: 0 auto; padding: 0 20px; }}
-        @media (max-width: 768px) {{ .hero h1 {{ font-size: 2rem; }} }}
-    </style>
-</head>
-<body>
-    <section class="hero">
-        <div class="container">
-            <h1>{{{{ hero_headline }}}}</h1>
-            <p>{{{{ hero_subheadline }}}}</p>
-            <a href="#contact" class="btn">{{{{ cta_primary }}}}</a>
-        </div>
-    </section>
-</body>
-</html>"""
+    base_package.update(
+        {
+            "brand_identity": {
+                "brand_name": f"{primary_keyword.title()}Bridge",
+                "tagline": "Connect. Automate. Succeed.",
+                "value_proposition": "The seamless bridge that connects your workflow",
+                "brand_personality": {
+                    "voice": "professional yet approachable",
+                    "tone": "confident and helpful",
+                },
+                "visual_identity": {
+                    "primary_color": "#2563eb",
+                    "secondary_color": "#10b981",
+                    "accent_color": "#f59e0b",
+                },
+            },
+            "marketing_copy": {
+                "hero_headline": f"Finally, seamless {primary_keyword} automation",
+                "hero_subheadline": "The missing piece in your workflow puzzle",
+                "cta_primary": "Get Started Free",
+                "key_benefits": [
+                    "Eliminate manual work",
+                    "Connect everything seamlessly",
+                    "Scale without complexity",
+                ],
+            },
+            "visual_assets": {
+                "logo": generate_fallback_logo(
+                    f"{primary_keyword.title()}Bridge", "#2563eb"
+                )
+            },
+            "fallback_used": True,
+        }
+    )
 
-    return {
-        "deployment_status": "completed",
-        "live_url": f"https://fallback-{brand_name.lower().replace(' ', '-')}.netlify.app",
-        "html_content": fallback_html,
-        "fallback_used": True,
-        "features": ["responsive_design", "mobile_optimized"],
-    }
+    return base_package
 
 
 # =============================================================================
-# AGENT DEFINITIONS
+# ENHANCED AGENT DEFINITIONS WITH VISUAL CAPABILITIES
 # =============================================================================
 
-brand_creator_agent = LlmAgent(
-    name="brand_creator_agent",
+enhanced_brand_creator_agent = LlmAgent(
+    name="enhanced_brand_creator_agent",
     model=MODEL_CONFIG["primary_model"],
     instruction="""
-    You are an expert brand strategist specializing in liminal market opportunities - solutions that bridge gaps between existing market categories.
+    You are an expert startup brand strategist specializing in creating unicorn-worthy brands with comprehensive visual identity.
 
     CORE MISSION:
-    Create compelling brand identities that position solutions as the "missing link" users didn't know they needed.
-    Your brands must appeal to underserved users and create new market category language.
+    Create compelling startup brands that feel inevitable and disruptive, with complete visual assets including AI-generated logos and strategic domain recommendations.
 
-    STRATEGIC APPROACH:
-    - Bridge Builder Positioning: Connect existing categories with innovative solutions
-    - Gap Filler Messaging: Emphasize solving overlooked problems
-    - Category Creator Language: Define new market terminology
-    - Simplicity in Complexity: Make integration problems seem effortlessly solvable
+    ENHANCED CAPABILITIES:
+    - AI-Powered Brand Strategy: Generate complete brand identities using advanced AI
+    - Visual Asset Creation: Integrate Imagen for logo generation and visual identity
+    - Startup Positioning: Position as the next unicorn using proven startup messaging patterns
+    - Domain Strategy: AI-generated domain acquisition strategies for startup growth
+    - Market Category Creation: Define new market categories that feel obvious once discovered
 
     DELIVERABLES:
-    - Complete brand identity with personality and positioning
-    - Conversion-optimized marketing copy ecosystem
-    - Domain acquisition strategy with recommendations
-    - Visual identity guidelines for consistent brand expression
-    - Competitive differentiation framework
-
-    Always focus on creating brands that convert skeptical users into early adopters by making the solution feel inevitable once discovered.
-    """,
-    description="Creates comprehensive brand identities with AI-powered strategy for liminal market positioning",
-    tools=[FunctionTool(func=create_brand_identity_package)],
-    output_key="brand_package",
-)
-
-landing_builder_agent = LlmAgent(
-    name="landing_builder_agent",
-    model=MODEL_CONFIG["primary_model"],
-    instruction="""
-    You are an expert landing page builder creating premium, conversion-optimized pages that look like $50k custom designs.
-
-    CORE CAPABILITIES:
-    - AI-Generated Premium Design: Create modern, professional interfaces using advanced AI
-    - Conversion Optimization: Multi-CTA layouts with strategic user flow design
-    - Mobile-First Responsive: Perfect experience across all devices and screen sizes
-    - Performance Optimization: Fast loading, SEO-optimized with clean semantic code
-    - Complete Deployment: Full integration with renderer services including error handling
+    - Complete brand identity with AI-generated visual assets
+    - Startup-optimized marketing copy ecosystem (think YC demo day energy)
+    - Logo generation using Google Imagen with fallback strategies
+    - Strategic domain acquisition recommendations
+    - Competitive positioning framework for startup differentiation
 
     DESIGN PRINCIPLES:
-    - Modern, clean aesthetic that builds immediate trust and credibility
-    - Strategic conversion paths with multiple engagement opportunities
-    - Premium visual hierarchy using advanced typography and spacing
-    - Professional color schemes that reinforce brand authority
-    - Seamless user experience from landing to conversion
+    - Modern startup aesthetic (Linear, Stripe, Notion inspiration)
+    - Conversion-focused messaging with growth mindset
+    - Visual consistency across all brand touchpoints
+    - Scalable design systems for rapid growth
+    - Memorable and shareable brand elements
+
+    Always focus on creating brands that convert early adopters and scale to unicorn status.
+    """,
+    description="Creates comprehensive startup brand identities with AI-powered visual assets and strategic positioning",
+    tools=[FunctionTool(func=create_brand_identity_package)],
+    output_key="enhanced_brand_package",
+)
+
+enhanced_landing_builder_agent = LlmAgent(
+    name="enhanced_landing_builder_agent",
+    model=MODEL_CONFIG["primary_model"],
+    instruction="""
+    You are an expert startup landing page builder creating unicorn-quality pages with comprehensive visual integration.
+
+    CORE CAPABILITIES:
+    - AI-Generated Premium Design: Create startup-quality pages using advanced AI (think $100k+ custom designs)
+    - Visual Asset Integration: Seamlessly integrate Pexels backgrounds and AI-generated logos
+    - Startup Conversion Optimization: Multi-CTA layouts optimized for startup growth metrics
+    - Mobile-First Responsive: Perfect experience across all devices with startup-quality polish
+    - Performance Optimization: Fast loading, SEO-optimized with startup growth best practices
+
+    VISUAL INTEGRATION:
+    - Pexels API Integration: Automatically fetch relevant background images for different sections
+    - AI Logo Integration: Seamlessly integrate Imagen-generated logos into page design
+    - Dynamic Color Systems: Use brand colors throughout the design consistently
+    - High-Quality Imagery: Professional photography that reinforces startup credibility
+    - Visual Hierarchy: Perfect typography and spacing that guides to conversion
+
+    STARTUP DESIGN PATTERNS:
+    - Hero sections that immediately communicate value (Linear/Stripe style)
+    - Feature showcases with strong visual hierarchy
+    - Social proof integration that builds startup credibility
+    - Conversion-optimized CTAs with startup growth language
+    - Mobile-first responsive design with premium feel
 
     TECHNICAL APPROACH:
     - Generate all code dynamically with AI - no static templates
-    - Create semantic HTML5 with embedded modern CSS (Grid, Flexbox)
-    - Ensure cross-browser compatibility and accessibility standards
-    - Implement performance optimization and SEO best practices
-    - Focus on business outcomes and measurable conversion improvements
+    - Embed visual assets directly into responsive HTML/CSS
+    - Implement performance optimization for startup growth
+    - Focus on measurable conversion improvements
+    - Deploy with full error handling and monitoring
 
-    Always deliver landing pages that immediately communicate value and drive action while maintaining professional credibility.
+    Always deliver landing pages that look like they belong to the next unicorn startup.
     """,
-    description="Creates and deploys premium landing pages with AI-generated code and full conversion optimization",
-    tools=[FunctionTool(func=build_and_deploy_landing_page)],
-    output_key="landing_deployment",
+    description="Creates and deploys premium startup landing pages with AI-generated code and comprehensive visual asset integration",
+    tools=[FunctionTool(func=build_and_deploy_startup_landing_page)],
+    output_key="enhanced_landing_deployment",
 )
