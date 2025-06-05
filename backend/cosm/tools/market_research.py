@@ -595,6 +595,7 @@ def check_domain_availability(domain_name: str) -> Dict[str, Any]:
         # Simple domain availability check using whois
         import socket
 
+        print(f"Checking domain availability for: {domain_name}")
         result = {
             "domain": domain_name,
             "available": False,

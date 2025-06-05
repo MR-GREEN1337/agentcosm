@@ -65,6 +65,7 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
     try:
         print(f"🔍 Comprehensive market discovery for: {query_context}")
 
+        ## Parallelize this
         # Phase 1: Pain Point Discovery
         pain_point_results = tavily_quick_search(query_context)
 
