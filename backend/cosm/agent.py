@@ -28,6 +28,8 @@ from .tools.market_research import (
 from .prompts import ROOT_AGENT_PROMPT
 from .config import MODEL_CONFIG
 
+from .tools.search import search_tool
+
 
 class MarketOpportunityAgent:
     """
@@ -49,6 +51,7 @@ class MarketOpportunityAgent:
                 market_analyzer_agent,  # Now includes: analyzer + opportunity scorer
                 data_intelligence_agent,  # Now includes: BigQuery + code executor
             ],
+            tools=[search_tool],
         )
 
         # PHASE 2: Asset Creation (Parallel Processing)
@@ -61,6 +64,7 @@ class MarketOpportunityAgent:
                 brand_creator_agent,
                 landing_builder_agent,
             ],
+            tools=[search_tool],
         )
 
         self.root_agent = LlmAgent(
@@ -87,6 +91,7 @@ class MarketOpportunityAgent:
                 FunctionTool(func=check_domain_availability),
                 AgentTool(agent=self.intelligence_phase),
                 AgentTool(agent=self.creation_phase),
+                search_tool,
             ],
             sub_agents=[self.intelligence_phase, self.creation_phase],
         )

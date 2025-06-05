@@ -515,7 +515,9 @@ const ContactContent = () => {
       </h2>
       <img src="face.jpeg" className="w-80 h-80 mx-auto" />
       <p className="text-white/70 text-center">
-        Ready to embark on this journey? Let's connect and explore the
+        I'm Islam HACHIMI, an AI explorer of the digital frontier, seeking to
+        unravel the mysteries of artificial consciousness and multi-agent
+        systems, and eating pizza along the way. Let's connect and explore the
         possibilities together.
       </p>
       <div className="pt-4">

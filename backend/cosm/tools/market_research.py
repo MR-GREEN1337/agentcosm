@@ -10,8 +10,6 @@ import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from google.genai import Client, types
-import requests
-from bs4 import BeautifulSoup
 import time
 from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
@@ -314,37 +312,6 @@ async def search_web(
         print(f"Error in async web search: {e}")
 
     return results
-
-
-def extract_snippet_from_url(url: str, max_length: int = 500) -> str:
-    """Extracts text snippet from a URL"""
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
-
-        response = requests.get(url, headers=headers, timeout=5)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # Remove script and style elements
-        for script in soup(["script", "style"]):
-            script.decompose()
-
-        # Get text content
-        text = soup.get_text()
-
-        # Clean up text
-        lines = (line.strip() for line in text.splitlines())
-        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = " ".join(chunk for chunk in chunks if chunk)
-
-        return text[:max_length] + "..." if len(text) > max_length else text
-
-    except Exception as e:
-        print(f"Error extracting snippet from {url}: {e}")
-        return ""
 
 
 def extract_pain_signals_with_gemini(
@@ -1483,12 +1450,6 @@ def assess_market_risks(
     }
 
     try:
-        # Prepare comprehensive data for Gemini analysis
-        analysis_data = {  # noqa: F841
-            "competition_data": competition_analysis,
-            "trend_data": trend_analysis,
-        }
-
         prompt = f"""
         Analyze the following market data and provide a comprehensive risk assessment for entering this market.
 

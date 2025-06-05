@@ -183,6 +183,12 @@ const parseMarkdown = (text: string) => {
         '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>',
       )
 
+      // Links [text](url)
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>',
+      )
+
       // Headers (# ## ###)
       .replace(
         /^### (.*$)/gim,

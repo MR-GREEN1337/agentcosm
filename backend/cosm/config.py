@@ -5,7 +5,7 @@ MODEL_CONFIG = {
     "market_analyzer": "gemini-2.5-flash-preview-05-20",  # Analysis + scoring
     "data_intelligence": "gemini-2.5-flash-preview-05-20",  # BigQuery + code execution
     "brand_creator": "openai/gpt-4o-mini",  # Brand + copy creation
-    "landing_builder": "openai/gpt-4.1-mini",  # Landing pages + dashboards
+    "landing_builder": "gemini-2.5-pro-preview-05-06",  # Landing pages + dashboards
     "market_research": "openai/gpt-4o-mini",
     "trend_tracker": "openai/gpt-4o-mini",
     "bigquery_agent": "gemini-2.5-flash-preview-05-20",

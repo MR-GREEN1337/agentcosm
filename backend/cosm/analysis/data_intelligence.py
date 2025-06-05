@@ -21,6 +21,7 @@ from pathlib import Path
 from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
+from ..tools.search import search_tool
 
 # Initialize clients
 bq_client = (
@@ -745,6 +746,7 @@ data_intelligence_agent = LlmAgent(
     ),
     tools=[
         FunctionTool(func=integrated_data_analysis_and_storage),
+        search_tool,
         # Removed duplicate tools - now uses integrated functions
     ],
     output_key="integrated_data_intelligence",

@@ -13,11 +13,12 @@ from litellm import completion
 from cosm.config import MODEL_CONFIG
 from google.adk.models.lite_llm import LiteLlm
 from cosm.settings import settings
+from cosm.tools.search import search_tool
 
 # Import consolidated Tavily tools
 from ...tools.tavily import (
-    tavily_quick_search_tool,
-    tavily_comprehensive_research_tool,
+    tavily_comprehensive_research,
+    tavily_quick_search,
 )
 
 # Initialize client
@@ -995,21 +996,13 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
         print(f"🔍 Comprehensive market discovery for: {query_context}")
 
         # Phase 1: Pain Point Discovery
-        pain_point_results = tavily_quick_search_tool(
-            market_keywords=[query_context],
-            user_segments=["small business", "enterprise", "individual users"],
-        )
+        pain_point_results = tavily_quick_search(query_context)
 
         # Phase 2: Market Research
-        market_research_results = tavily_comprehensive_research_tool(
-            keywords=[query_context], research_type="market_analysis"
-        )
+        market_research_results = tavily_comprehensive_research([query_context])
 
         # Phase 3: Competitive Intelligence
-        competitive_results = tavily_comprehensive_research_tool(
-            company_names=[],  # Discover through search
-            market_context=query_context,
-        )
+        competitive_results = tavily_comprehensive_research([query_context])
 
         # Consolidate all collected data
         all_content = []
@@ -1250,6 +1243,7 @@ market_explorer_agent = LlmAgent(
     tools=[
         FunctionTool(func=discover_comprehensive_market_signals),
         FunctionTool(func=validate_signals_cross_platform),
+        search_tool,
     ],
     output_key="comprehensive_market_intelligence",
 )

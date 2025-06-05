@@ -11,6 +11,7 @@ from datetime import datetime
 from cosm.config import MODEL_CONFIG
 from litellm import completion
 from cosm.settings import settings
+from ..tools.search import search_tool
 
 # Import consolidated tools
 from ..tools.market_research import (
@@ -373,8 +374,9 @@ market_analyzer_agent = LlmAgent(
         "with AI-powered opportunity scoring to deliver strategic insights in a single pass."
     ),
     tools=[
-        FunctionTool(func=comprehensive_market_validation_with_scoring),
+        # FunctionTool(func=comprehensive_market_validation_with_scoring),
         FunctionTool(func=rank_opportunities_with_integrated_analysis),
+        search_tool,
     ],
     output_key="comprehensive_market_validation",
 )
