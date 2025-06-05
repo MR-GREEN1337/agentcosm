@@ -1,6 +1,6 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from google.genai import Client
+from google.genai import Client, types
 from typing import Dict, Any
 import json
 import requests
@@ -14,7 +14,7 @@ import base64
 client = Client()
 
 # =============================================================================
-# ENHANCED AI-POWERED BRAND CREATOR AGENT
+# BRAND CREATOR AGENT
 # =============================================================================
 
 
@@ -190,24 +190,24 @@ def generate_logo_with_imagen(
         """
 
         # Generate image with Imagen
-        image_response = client.models.generate_content(
-            model="imagegeneration-005",
-            contents=logo_prompt,
-            config={
-                "number_of_images": 1,
-                "aspect_ratio": "1:1",
-                "safety_filter_level": "block_few",
-                "person_generation": "dont_allow",
-            },
+        image_response = client.models.generate_images(
+            model="imagen-3.0-generate-002",
+            prompt=logo_prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio="1:1",
+                safety_filter_level="block_few",
+                person_generation="dont_allow",
+            ),
         )
 
         if (
             image_response
-            and hasattr(image_response, "candidates")
-            and image_response.candidates
+            and hasattr(image_response, "generated_images")
+            and image_response.generated_images
         ):
             # Extract the generated image
-            image_data = image_response.candidates[0]
+            image_data = image_response.generated_images[0]
 
             # Convert to base64 for storage/display
             if hasattr(image_data, "image") and image_data.image:
@@ -334,7 +334,7 @@ def generate_fallback_domain_strategy(brand_name: str) -> Dict[str, Any]:
 
 
 # =============================================================================
-# ENHANCED AI-POWERED LANDING PAGE BUILDER
+# LANDING PAGE BUILDER
 # =============================================================================
 
 
@@ -1094,11 +1094,11 @@ def generate_fallback_brand_package(
 
 
 # =============================================================================
-# ENHANCED AGENT DEFINITIONS WITH VISUAL CAPABILITIES
+# AGENT DEFINITIONS WITH VISUAL CAPABILITIES
 # =============================================================================
 
-enhanced_brand_creator_agent = LlmAgent(
-    name="enhanced_brand_creator_agent",
+brand_creator_agent = LlmAgent(
+    name="brand_creator_agent",
     model=MODEL_CONFIG["primary_model"],
     instruction="""
     You are an expert startup brand strategist specializing in creating unicorn-worthy brands with comprehensive visual identity.
@@ -1131,12 +1131,12 @@ enhanced_brand_creator_agent = LlmAgent(
     """,
     description="Creates comprehensive startup brand identities with AI-powered visual assets and strategic positioning",
     tools=[FunctionTool(func=create_brand_identity_package)],
-    output_key="enhanced_brand_package",
+    output_key="brand_package",
 )
 
-enhanced_landing_builder_agent = LlmAgent(
-    name="enhanced_landing_builder_agent",
-    model=MODEL_CONFIG["primary_model"],
+landing_builder_agent = LlmAgent(
+    name="landing_builder_agent",
+    model=MODEL_CONFIG["landing_builder"],
     instruction="""
     You are an expert startup landing page builder creating unicorn-quality pages with comprehensive visual integration.
 
@@ -1172,5 +1172,5 @@ enhanced_landing_builder_agent = LlmAgent(
     """,
     description="Creates and deploys premium startup landing pages with AI-generated code and comprehensive visual asset integration",
     tools=[FunctionTool(func=build_and_deploy_startup_landing_page)],
-    output_key="enhanced_landing_deployment",
+    output_key="landing_deployment",
 )
