@@ -9,6 +9,7 @@
 ## Add loading state while no messagee streamed
 
 ## Agent exhibits difficulties to retrieve from state on asking
+## root agent needs to report to user after each finding, not just asking permission to advance
 
 ## liminal discovery
 
