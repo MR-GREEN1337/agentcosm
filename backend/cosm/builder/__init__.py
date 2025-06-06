@@ -663,44 +663,9 @@ def generate_content_data_with_ai(
 
         if response and response.choices[0].message.content:
             return json.loads(response.choices[0].message.content)
-        else:
-            return generate_fallback_content_data(brand_data, copy_data)
 
     except Exception as e:
         print(f"❌ Error generating content data: {e}")
-        return generate_fallback_content_data(brand_data, copy_data)
-
-
-def generate_fallback_content_data(
-    brand_data: Dict[str, Any], copy_data: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Fallback content data."""
-    return {
-        "brand_name": brand_data.get("brand_name", "Your Startup"),
-        "tagline": "Transform your workflow",
-        "hero_headline": "The future of productivity is here",
-        "hero_subheadline": "Join thousands of teams already building the future",
-        "description": "Revolutionary platform that transforms how teams work",
-        "features": [
-            {
-                "title": "Lightning Fast",
-                "description": "10x faster than alternatives",
-                "icon": "⚡",
-            },
-            {
-                "title": "Zero Setup",
-                "description": "Start building in seconds",
-                "icon": "🚀",
-            },
-            {
-                "title": "Enterprise Ready",
-                "description": "Security you can trust",
-                "icon": "🔒",
-            },
-        ],
-        "cta_primary": "Start Building",
-        "social_proof": "Trusted by 1000+ teams",
-    }
 
 
 def generate_fallback_startup_landing_page(

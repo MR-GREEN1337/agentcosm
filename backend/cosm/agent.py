@@ -21,6 +21,7 @@ from .builder import (
     landing_builder_agent,
 )
 
+from cosm.startup_pitch import startup_pitch_agent
 from .settings import settings
 from .tools.market_research import (
     comprehensive_market_research,
@@ -129,6 +130,10 @@ class MarketOpportunityAgent:
                 landing_builder_agent,  # Landing page & deployment
             ],
         )
+
+        # PHASE 5: STARTUP PITCH GENERATION
+        # Final synthesis phase that creates professional startup pitch deck
+        self.pitch_generation_phase = startup_pitch_agent
 
         # MASTER WORKFLOW: Enhanced Sequential Pipeline
         # Orchestrates the entire liminal discovery to deployment pipeline

@@ -4,11 +4,9 @@
 ## implement retry mechanism for failed model call
 ## assistant sholuldn't ask itself should be answering -- Done
 ## Be able to stream agent steps
-## Run market research queries/tools in parallel
 ## Audio reads previous ai messages@
 ## Abstract instructions, ai is to user an in-between business ideas finder -- Done
 ## Add loading state while no messagee streamed
-## Use imagen vs vertex
 
 ## liminal discovery
 

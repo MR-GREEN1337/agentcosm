@@ -72,6 +72,7 @@ dependencies = [
     "python-dotenv==1.1.0",
     "python-multipart==0.0.20",
     "pyyaml==6.0.2",
+    "reportlab>=4.4.1",
     "requests==2.32.3",
     "rsa==4.9.1",
     "scrapybara>=2.5.1",
