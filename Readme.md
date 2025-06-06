@@ -11,6 +11,8 @@
 ## Agent exhibits difficulties to retrieve from state on asking
 ## root agent needs to report to user after each finding, not just asking permission to advance
 
+## Agent needs to help find idea -> validate it --> build landing page and pitch deck with plots, and all relies on seamlessly doing pull/push ops on state
+
 ## liminal discovery
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
