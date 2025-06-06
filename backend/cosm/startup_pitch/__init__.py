@@ -28,6 +28,7 @@ import os
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from litellm import completion
+import base64
 
 STARTUP_PITCH_PROMPT = """
 You are the Startup Pitch Agent, a specialist in creating investor-grade pitch decks and business presentations. You synthesize all previous analysis into compelling investment narratives.
@@ -116,90 +117,68 @@ def generate_startup_pitch_deck(
 ) -> Dict[str, Any]:
     """
     Generate comprehensive startup pitch deck from all analysis data
-
-    Args:
-        market_analysis: Market research and analysis results
-        opportunity_data: Liminal opportunities and signals
-        brand_data: Brand identity and positioning
-        competitive_data: Competitive landscape analysis
-        additional_context: Any additional context or requirements
-
-    Returns:
-        Dictionary containing PDF data and presentation metadata
+    Returns PDF as base64 for download
     """
     pitch_result = {
         "generation_timestamp": datetime.now().isoformat(),
         "pitch_deck_ready": False,
-        "pdf_data": None,
+        "pdf_base64": None,
+        "pdf_filename": None,
         "presentation_metadata": {},
         "executive_summary": {},
         "investment_thesis": {},
         "next_steps": [],
-        "file_info": {},
+        "download_instructions": "",
     }
 
     try:
         print("📊 Generating comprehensive startup pitch deck...")
 
-        # Phase 1: Synthesize narrative with AI
-        print("🧠 Creating investment narrative...")
+        # Phase 1-4: Same as your existing code
         narrative_synthesis = create_investment_narrative_with_ai(
             market_analysis, opportunity_data, brand_data, competitive_data
         )
-
-        # Phase 2: Extract key metrics and data points
-        print("📈 Processing key metrics...")
         key_metrics = extract_key_metrics_for_presentation(
             market_analysis, opportunity_data, competitive_data
         )
-
-        # Phase 3: Create executive summary
-        print("💡 Crafting executive summary...")
         executive_summary = create_executive_summary(narrative_synthesis, key_metrics)
 
-        # Phase 4: Generate PDF pitch deck
+        # Phase 5: Generate PDF and convert to base64
         print("📄 Generating PDF presentation...")
         pdf_data = generate_pitch_deck_pdf(
             narrative_synthesis, key_metrics, executive_summary, brand_data
         )
 
-        # Phase 5: Create presentation metadata
-        presentation_metadata = {
-            "title": executive_summary.get("opportunity_name", "Market Opportunity"),
-            "subtitle": executive_summary.get("tagline", "Investment Opportunity"),
-            "pages": 12,  # Standard pitch deck length
-            "format": "PDF",
-            "target_audience": "investors_stakeholders",
-            "presentation_style": "professional_startup_pitch",
-            "generated_by": "COSM_AI_Analysis",
-            "data_sources": list(
-                set(
-                    [
-                        "market_analysis",
-                        "competitive_intelligence",
-                        "liminal_discovery",
-                        "brand_strategy",
-                    ]
-                )
-            ),
-        }
+        if pdf_data:
+            # Convert PDF to base64 for return
+            pdf_base64 = base64.b64encode(pdf_data).decode("utf-8")
+            filename = f"{executive_summary.get('opportunity_name', 'opportunity').lower().replace(' ', '_')}_pitch_deck.pdf"
 
-        pitch_result.update(
-            {
-                "pitch_deck_ready": True,
-                "pdf_data": pdf_data,
-                "presentation_metadata": presentation_metadata,
-                "executive_summary": executive_summary,
-                "investment_thesis": narrative_synthesis.get("investment_thesis", {}),
-                "next_steps": narrative_synthesis.get("recommended_actions", []),
-                "file_info": {
-                    "filename": f"{executive_summary.get('opportunity_name', 'opportunity').lower().replace(' ', '_')}_pitch_deck.pdf",
-                    "size_bytes": len(pdf_data) if pdf_data else 0,
-                    "mime_type": "application/pdf",
-                    "download_ready": True,
-                },
-            }
-        )
+            pitch_result.update(
+                {
+                    "pitch_deck_ready": True,
+                    "pdf_base64": pdf_base64,
+                    "pdf_filename": filename,
+                    "presentation_metadata": {
+                        "title": executive_summary.get(
+                            "opportunity_name", "Market Opportunity"
+                        ),
+                        "subtitle": executive_summary.get(
+                            "tagline", "Investment Opportunity"
+                        ),
+                        "pages": 12,
+                        "format": "PDF",
+                        "size_bytes": len(pdf_data),
+                        "generated_by": "COSM_AI_Analysis",
+                    },
+                    "executive_summary": executive_summary,
+                    "investment_thesis": narrative_synthesis.get(
+                        "investment_thesis", {}
+                    ),
+                    "next_steps": narrative_synthesis.get("recommended_actions", []),
+                    "download_instructions": f"Your pitch deck '{filename}' is ready for download. The PDF contains a comprehensive 12-page investor presentation.",
+                }
+            )
 
         print("✅ Startup pitch deck generated successfully!")
         return pitch_result
@@ -1268,18 +1247,63 @@ This opportunity analysis was generated using advanced AI market intelligence.
         return export_data
 
 
-# Create the startup pitch generator agent
+def return_pitch_deck_for_download(pdf_base64: str, filename: str) -> str:
+    """
+    Helper function to format PDF for download
+    Returns instructions for accessing the PDF
+    """
+    return f"""
+    📄 **Pitch Deck Generated Successfully!**
+
+    **File:** {filename}
+    **Format:** PDF (12 pages)
+    **Status:** Ready for download
+
+    The comprehensive investor pitch deck has been generated and is available for download.
+    The PDF contains:
+    - Executive Summary
+    - Problem & Solution
+    - Market Analysis
+    - Financial Projections
+    - Investment Thesis
+    - Next Steps
+
+    **To access your pitch deck:**
+    The PDF data is included in the response and can be downloaded by your application.
+
+    Size: {len(pdf_base64)} characters (base64 encoded)
+    """
+
+
+# Updated agent with better output handling
 startup_pitch_agent = LlmAgent(
     name="startup_pitch_agent",
     model=MODEL_CONFIG["primary_model"],
-    instruction=STARTUP_PITCH_PROMPT,
+    instruction=STARTUP_PITCH_PROMPT
+    + """
+
+    **Important Output Guidelines:**
+    When generating a pitch deck:
+    1. Always return the PDF as base64 data for download
+    2. Provide clear filename and metadata
+    3. Include executive summary and key highlights
+    4. Give users clear next steps for accessing their pitch deck
+
+    **Response Format:**
+    After generating the pitch deck, present:
+    - Confirmation that the pitch deck was created
+    - Download instructions
+    - Executive summary highlights
+    - Suggested next steps for the user
+    """,
     description=(
         "Creates comprehensive startup pitch decks and investment presentations from "
         "market analysis and opportunity discovery data. Generates professional PDF "
-        "reports ready for download and investor presentations."
+        "reports as downloadable base64 content."
     ),
     tools=[
         FunctionTool(func=generate_startup_pitch_deck),
+        FunctionTool(func=return_pitch_deck_for_download),
         FunctionTool(func=export_pitch_data_formats),
     ],
     output_key="startup_pitch_package",

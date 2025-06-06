@@ -11,7 +11,6 @@ from google.genai import types
 from .discovery.explorer_agent import market_explorer_agent
 from .discovery.adjacent_market_agent import adjacent_market_agent
 from .discovery.cross_industry_agent import cross_industry_agent
-from .discovery.workflow_gap_agent import workflow_gap_agent
 
 from .analysis import market_analyzer_agent
 from .analysis.data_intelligence import data_intelligence_agent
@@ -64,7 +63,6 @@ class MarketOpportunityAgent:
                 market_explorer_agent,  # Primary market signals & pain points
                 adjacent_market_agent,  # Adjacent/complementary markets
                 cross_industry_agent,  # Cross-industry patterns & arbitrage
-                workflow_gap_agent,  # Workflow intersection failures
             ],
         )
 

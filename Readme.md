@@ -8,6 +8,8 @@
 ## Abstract instructions, ai is to user an in-between business ideas finder -- Done
 ## Add loading state while no messagee streamed
 
+## Agent exhibits difficulties to retrieve from state on asking
+
 ## liminal discovery
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business

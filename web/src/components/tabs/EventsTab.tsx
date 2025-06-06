@@ -8,6 +8,12 @@ import {
   RotateCcw,
   MoreVertical,
   Check,
+  Brain,
+  Cpu,
+  Zap,
+  Target,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -18,6 +24,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface EventsTabProps {
   ref: React.RefObject<{ scrollToBottom: () => void }>;
@@ -27,11 +39,227 @@ interface EventsTabProps {
   events: any[];
   onResendMessage?: (text: string) => void;
   onEditMessage?: (messageId: string, newText: string) => void;
-  isLoading?: boolean; // Add this prop to track SSE loading state
+  isLoading?: boolean;
 }
 
-// Loading component with animated dots
-const LoadingMessage = () => {
+// Agent avatar configurations
+const AGENT_CONFIGS = {
+  liminal_market_opportunity_coordinator: {
+    name: 'Market Coordinator',
+    avatar: '/face.png',
+    color: 'blue',
+    showMessages: true,
+  },
+  research_agent: {
+    name: 'Research Agent',
+    avatar: null,
+    icon: Brain,
+    color: 'purple',
+    showMessages: false,
+  },
+  analysis_agent: {
+    name: 'Analysis Agent',
+    avatar: null,
+    icon: Cpu,
+    color: 'green',
+    showMessages: false,
+  },
+  strategy_agent: {
+    name: 'Strategy Agent',
+    avatar: null,
+    icon: Target,
+    color: 'orange',
+    showMessages: false,
+  },
+  execution_agent: {
+    name: 'Execution Agent',
+    avatar: null,
+    icon: Zap,
+    color: 'red',
+    showMessages: false,
+  },
+};
+
+// Agent message modal component using shadcn dialog
+const AgentMessageModal = ({
+  agent,
+  messages,
+  isOpen,
+  onClose,
+}: {
+  agent: string;
+  messages: any[];
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  const config = AGENT_CONFIGS[agent as keyof typeof AGENT_CONFIGS] || {
+    name: agent,
+    icon: Bot,
+    color: 'blue',
+  };
+
+  const IconComponent = config.icon;
+  const colorClasses = {
+    purple: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+    green: 'bg-green-500/10 border-green-500/30 text-green-400',
+    orange: 'bg-orange-500/10 border-orange-500/30 text-orange-400',
+    red: 'bg-red-500/10 border-red-500/30 text-red-400',
+    blue: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+  };
+
+  // Helper function to extract meaningful content from messages
+  const getMessageContent = (message: any) => {
+    // Check for text in various locations
+    if (message.text && message.text.trim()) {
+      return { content: message.text, type: 'text' };
+    }
+    if (
+      message.content?.parts?.[0]?.text &&
+      message.content.parts[0].text.trim()
+    ) {
+      return { content: message.content.parts[0].text, type: 'text' };
+    }
+    if (typeof message.content === 'string' && message.content.trim()) {
+      return { content: message.content, type: 'text' };
+    }
+
+    // Check for function calls or other structured data
+    if (message.function_calls || message.actions?.function_calls) {
+      const data = message.function_calls || message.actions.function_calls;
+      return { content: JSON.stringify(data, null, 2), type: 'json' };
+    }
+
+    if (message.function_responses || message.actions?.function_responses) {
+      const data =
+        message.function_responses || message.actions.function_responses;
+      return { content: JSON.stringify(data, null, 2), type: 'json' };
+    }
+
+    // If nothing meaningful found, return null to skip this message
+    return null;
+  };
+
+  // Helper function to detect if content is JSON
+  const isJsonContent = (content: string) => {
+    try {
+      JSON.parse(content);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Filter out messages with no meaningful content
+  const meaningfulMessages = messages.filter(
+    (message) => getMessageContent(message) !== null,
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4 border-b shrink-0">
+          <DialogTitle className="flex items-center gap-3">
+            <div
+              className={cn(
+                'w-8 h-8 rounded-lg border flex items-center justify-center',
+                colorClasses[config.color as keyof typeof colorClasses],
+              )}
+            >
+              {IconComponent && <IconComponent className="w-4 h-4" />}
+            </div>
+            <span>{config.name}</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              ({meaningfulMessages.length} messages)
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-4">
+              {meaningfulMessages.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No messages available for this agent
+                </div>
+              ) : (
+                meaningfulMessages.map((message, idx) => {
+                  const contentData = getMessageContent(message);
+                  if (!contentData) return null;
+
+                  const { content, type } = contentData;
+                  const shouldUseMarkdown =
+                    type === 'text' && !isJsonContent(content);
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-4 bg-muted/50 rounded-lg border"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="text-xs text-muted-foreground font-medium">
+                          Message {idx + 1}
+                        </div>
+                        {message.timestamp && (
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(
+                              message.timestamp * 1000,
+                            ).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-sm">
+                        {shouldUseMarkdown ? (
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            <MarkdownText
+                              text={content}
+                              className="whitespace-pre-wrap break-words"
+                            />
+                          </div>
+                        ) : (
+                          <pre className="whitespace-pre-wrap break-words font-mono text-xs bg-background p-3 rounded border overflow-x-auto">
+                            {content}
+                          </pre>
+                        )}
+                      </div>
+
+                      {/* Content type indicator */}
+                      <div className="mt-2 pt-2 border-t">
+                        <span
+                          className={cn(
+                            'inline-block px-2 py-1 text-xs rounded-full',
+                            type === 'json'
+                              ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+                          )}
+                        >
+                          {type === 'json' ? 'Structured Data' : 'Text Content'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Agent thinking avatar component with click functionality
+const AgentThinkingAvatar = ({
+  agentName,
+  config,
+  messages,
+  onClick,
+}: {
+  agentName: string;
+  config: any;
+  messages: any[];
+  onClick: () => void;
+}) => {
   const [dots, setDots] = useState('');
 
   useEffect(() => {
@@ -45,47 +273,116 @@ const LoadingMessage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
-      <div className="flex-shrink-0">
-        <div className="w-8 h-8 rounded-lg overflow-hidden">
-          <img
-            src="/face.png"
-            alt="AI Assistant"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      </div>
+  const IconComponent = config.icon;
+  const colorClasses = {
+    purple:
+      'bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30',
+    green:
+      'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30',
+    orange:
+      'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30',
+    red: 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30',
+    blue: 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30',
+  };
 
-      <div className="flex flex-col gap-1 max-w-[70%]">
-        <div className="flex items-end gap-2">
-          <div className="rounded-2xl px-4 py-3 relative bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
-            <div className="flex items-center gap-2">
-              {/* Animated thinking indicator */}
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
-              </div>
-              <span className="text-gray-600 dark:text-gray-400 text-sm">
-                Thinking{dots}
-              </span>
-            </div>
-          </div>
-        </div>
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer animate-pulse hover:animate-none',
+        colorClasses[config.color as keyof typeof colorClasses],
+      )}
+    >
+      <div
+        className={cn(
+          'w-6 h-6 rounded-lg border flex items-center justify-center',
+          colorClasses[config.color as keyof typeof colorClasses],
+        )}
+      >
+        {IconComponent && <IconComponent className="w-3 h-3" />}
       </div>
+      <span>
+        {config.name} thinking{dots}
+      </span>
+      <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-xs">
+        {messages.length}
+      </span>
+    </button>
+  );
+};
+
+// Agent activity panel that shows below user messages
+const AgentActivityPanel = ({
+  agentMessages,
+  onAgentClick,
+}: {
+  agentMessages: Record<string, any[]>;
+  onAgentClick: (agent: string) => void;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const activeAgents = Object.keys(agentMessages).filter(
+    (agent) =>
+      agent !== 'liminal_market_opportunity_coordinator' &&
+      agent !== 'user' &&
+      agentMessages[agent].length > 0,
+  );
+
+  if (activeAgents.length === 0) return null;
+
+  return (
+    <div className="mt-3 p-3 bg-gray-50 dark:bg-[#0e0e10] rounded-lg border border-gray-200 dark:border-[#2a2a30]">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 dark:text-[#d0d0d8] mb-2"
+      >
+        <span>Agent Activity ({activeAgents.length} active)</span>
+        {isExpanded ? (
+          <ChevronUp className="w-4 h-4" />
+        ) : (
+          <ChevronDown className="w-4 h-4" />
+        )}
+      </button>
+
+      {isExpanded && (
+        <div className="flex flex-wrap gap-2">
+          {activeAgents.map((agentName) => {
+            const config = AGENT_CONFIGS[
+              agentName as keyof typeof AGENT_CONFIGS
+            ] || {
+              name: agentName,
+              icon: Bot,
+              color: 'blue',
+            };
+            return (
+              <AgentThinkingAvatar
+                key={agentName}
+                agentName={agentName}
+                config={config}
+                messages={agentMessages[agentName]}
+                onClick={() => onAgentClick(agentName)}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
 
-// Enhanced loading component with more visual flair
-const EnhancedLoadingMessage = () => {
+// Loading component for main coordinator
+const CoordinatorLoadingMessage = ({
+  agentMessages,
+  onAgentClick,
+}: {
+  agentMessages: Record<string, any[]>;
+  onAgentClick: (agent: string) => void;
+}) => {
   const [currentStep, setCurrentStep] = useState(0);
   const steps = [
-    'Processing your request',
-    'Analyzing context',
-    'Generating response',
-    'Almost ready',
+    'Analyzing market opportunities',
+    'Coordinating research agents',
+    'Processing insights',
+    'Generating recommendations',
   ];
 
   useEffect(() => {
@@ -97,130 +394,86 @@ const EnhancedLoadingMessage = () => {
   }, []);
 
   return (
-    <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
-      <div className="flex-shrink-0">
-        <div className="w-8 h-8 rounded-lg overflow-hidden relative">
-          <img
-            src="/face.png"
-            alt="AI Assistant"
-            className="w-full h-full object-cover"
-          />
-          {/* Pulsing overlay */}
-          <div className="absolute inset-0 bg-blue-500/20 rounded-lg animate-pulse"></div>
+    <div className="space-y-3">
+      <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
+        <div className="flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg overflow-hidden relative">
+            <img
+              src="/face.png"
+              alt="Market Coordinator"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-blue-500/20 rounded-lg animate-pulse"></div>
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-col gap-1 max-w-[70%]">
-        <div className="flex items-end gap-2">
-          <div className="rounded-2xl px-4 py-3 relative bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200 text-gray-900 dark:from-[#1a1a1f] dark:to-[#1e1e23] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
-            <div className="flex flex-col gap-2">
-              {/* Progress bar */}
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                <div className="bg-blue-500 h-1.5 rounded-full animate-pulse transition-all duration-1000 w-3/4"></div>
-              </div>
-
-              {/* Dynamic status text */}
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+        <div className="flex flex-col gap-1 max-w-[70%]">
+          <div className="flex items-end gap-2">
+            <div className="rounded-2xl px-4 py-3 relative bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200 text-gray-900 dark:from-[#1a1a1f] dark:to-[#1e1e23] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
+              <div className="flex flex-col gap-2">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                  <div className="bg-blue-500 h-1.5 rounded-full animate-pulse transition-all duration-1000 w-3/4"></div>
                 </div>
-                <span className="text-sm font-medium transition-all duration-500">
-                  {steps[currentStep]}
-                </span>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                  </div>
+                  <span className="text-sm font-medium transition-all duration-500">
+                    {steps[currentStep]}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Show agent activity while coordinator is loading */}
+      <AgentActivityPanel
+        agentMessages={agentMessages}
+        onAgentClick={onAgentClick}
+      />
     </div>
   );
 };
-
-// Minimal elegant loading
-const MinimalLoadingMessage = () => (
-  <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
-    <div className="flex-shrink-0">
-      <div className="w-8 h-8 rounded-lg overflow-hidden">
-        <img
-          src="/face.png"
-          alt="AI Assistant"
-          className="w-full h-full object-cover"
-        />
-      </div>
-    </div>
-
-    <div className="flex flex-col gap-1 max-w-[70%]">
-      <div className="flex items-end gap-2">
-        <div className="rounded-2xl px-4 py-3 relative bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
-          <div className="flex items-center gap-3">
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full animate-ping"></div>
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full animate-ping [animation-delay:0.2s]"></div>
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full animate-ping [animation-delay:0.4s]"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
 
 // Simple markdown parser for basic formatting
 const parseMarkdown = (text: string) => {
   if (!text) return text;
 
-  return (
-    text
-      // Bold text (**text** or __text__)
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/__(.*?)__/g, '<strong>$1</strong>')
-
-      // Italic text (*text* or _text_)
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/_(.*?)_/g, '<em>$1</em>')
-
-      // Code inline (`code`)
-      .replace(
-        /`([^`]+)`/g,
-        '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>',
-      )
-
-      // Links [text](url)
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>',
-      )
-
-      // Headers (# ## ###)
-      .replace(
-        /^### (.*$)/gim,
-        '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>',
-      )
-      .replace(
-        /^## (.*$)/gim,
-        '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>',
-      )
-      .replace(
-        /^# (.*$)/gim,
-        '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>',
-      )
-
-      // Code blocks (```code```)
-      .replace(
-        /```([\s\S]*?)```/g,
-        '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2"><code class="text-sm">$1</code></pre>',
-      )
-
-      // Lists
-      .replace(/^\* (.*$)/gim, '<li class="ml-4">• $1</li>')
-      .replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
-      .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
-
-      // Line breaks
-      .replace(/\n\n/g, '</p><p class="mb-2">')
-      .replace(/\n/g, '<br />')
-  );
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    .replace(
+      /`([^`]+)`/g,
+      '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>',
+    )
+    .replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>',
+    )
+    .replace(
+      /^### (.*$)/gim,
+      '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>',
+    )
+    .replace(
+      /^## (.*$)/gim,
+      '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>',
+    )
+    .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
+    .replace(
+      /```([\s\S]*?)```/g,
+      '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2"><code class="text-sm">$1</code></pre>',
+    )
+    .replace(/^\* (.*$)/gim, '<li class="ml-4">• $1</li>')
+    .replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
+    .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
+    .replace(/\n\n/g, '</p><p class="mb-2">')
+    .replace(/\n/g, '<br />');
 };
 
-// Component to render markdown text
 const MarkdownText = ({
   text,
   className,
@@ -246,12 +499,29 @@ export function EventsTab({
   events = [],
   onResendMessage,
   onEditMessage,
-  isLoading = false, // Add this prop
+  isLoading = false,
 }: EventsTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [agentMessages, setAgentMessages] = useState<Record<string, any[]>>({});
+
+  // Group messages by agent
+  useEffect(() => {
+    const messagesByAgent: Record<string, any[]> = {};
+
+    events.forEach((event) => {
+      const author = event.author || 'unknown';
+      if (!messagesByAgent[author]) {
+        messagesByAgent[author] = [];
+      }
+      messagesByAgent[author].push(event);
+    });
+
+    setAgentMessages(messagesByAgent);
+  }, [events]);
 
   // Auto-scroll to bottom when new messages arrive or when loading state changes
   useEffect(() => {
@@ -288,6 +558,53 @@ export function EventsTab({
     setEditText('');
   };
 
+  const handleAgentClick = (agentName: string) => {
+    setSelectedAgent(agentName);
+  };
+
+  // Helper function to extract and validate message content
+  const getMessageContent = (event: any) => {
+    // Priority order for extracting content
+    let messageText = '';
+
+    // 1. Direct text property
+    if (event.text && typeof event.text === 'string' && event.text.trim()) {
+      messageText = event.text.trim();
+    }
+    // 2. Content parts array
+    else if (event.content?.parts?.length > 0) {
+      for (const part of event.content.parts) {
+        if (part.text && typeof part.text === 'string' && part.text.trim()) {
+          messageText = part.text.trim();
+          break;
+        }
+      }
+    }
+    // 3. Direct content string
+    else if (typeof event.content === 'string' && event.content.trim()) {
+      messageText = event.content.trim();
+    }
+
+    return messageText;
+  };
+
+  // Helper function to check if event has meaningful content
+  const hasValidContent = (event: any) => {
+    const text = getMessageContent(event);
+    const hasText = text && text.length > 0;
+    const hasFunctionCalls =
+      event.function_calls?.length > 0 ||
+      event.actions?.function_calls?.length > 0;
+    const hasFunctionResponses =
+      event.function_responses?.length > 0 ||
+      event.actions?.function_responses?.length > 0;
+    const hasImages = event.content?.parts?.some(
+      (part: any) => part.inline_data,
+    );
+
+    return hasText || hasFunctionCalls || hasFunctionResponses || hasImages;
+  };
+
   const formatTimestamp = (timestamp: number) => {
     try {
       const date = new Date(timestamp * 1000);
@@ -295,12 +612,10 @@ export function EventsTab({
       const isToday = date.toDateString() === now.toDateString();
 
       if (isToday) {
-        // Format as HH:mm
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
         return `${hours}:${minutes}`;
       } else {
-        // Format as MMM d, HH:mm
         const months = [
           'Jan',
           'Feb',
@@ -326,10 +641,48 @@ export function EventsTab({
     }
   };
 
-  // Show loading message if SSE is active but no events yet
-  const shouldShowLoading = isLoading && events.length === 0;
+  // Group events into conversation blocks (user message + responses + agent activity)
+  // Filter out events with no meaningful content first
+  const validEvents = events.filter(hasValidContent);
 
-  if (events.length === 0 && !isLoading) {
+  const conversationBlocks: Array<{
+    userMessage?: any;
+    coordinatorMessage?: any;
+    agentActivity: Record<string, any[]>;
+    timestamp: number;
+  }> = [];
+
+  let currentBlock: any = null;
+
+  validEvents.forEach((event) => {
+    const author = event.author || '';
+    const isUser = author === 'user' || event.content?.role === 'user';
+    const isCoordinator = author === 'liminal_market_opportunity_coordinator';
+
+    if (isUser) {
+      // Start new conversation block with user message
+      currentBlock = {
+        userMessage: event,
+        coordinatorMessage: null,
+        agentActivity: {},
+        timestamp: event.timestamp || Date.now() / 1000,
+      };
+      conversationBlocks.push(currentBlock);
+    } else if (isCoordinator && currentBlock) {
+      // Add coordinator response to current block
+      currentBlock.coordinatorMessage = event;
+    } else if (!isUser && !isCoordinator && currentBlock) {
+      // Add other agent activity to current block
+      if (!currentBlock.agentActivity[author]) {
+        currentBlock.agentActivity[author] = [];
+      }
+      currentBlock.agentActivity[author].push(event);
+    }
+  });
+
+  const shouldShowLoading = isLoading && conversationBlocks.length === 0;
+
+  if (conversationBlocks.length === 0 && !isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -338,10 +691,10 @@ export function EventsTab({
             className="w-16 h-16 text-gray-300 dark:text-[#3a3a40] mx-auto mb-4"
           />
           <p className="text-gray-600 dark:text-[#a0a0a8] text-lg">
-            Start a conversation
+            Start exploring market opportunities
           </p>
           <p className="text-gray-500 dark:text-[#6a6a70] text-sm mt-2">
-            Type a message below
+            Ask about business ideas and market validation
           </p>
         </div>
       </div>
@@ -349,283 +702,212 @@ export function EventsTab({
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6 space-y-6" ref={scrollRef}>
-        {events.map((event, index) => {
-          // Create a unique key for each event
-          const eventKey =
-            event.id || `${event.author}-${event.timestamp}-${index}`;
-          const isUser =
-            event.author === 'user' || event.content?.role === 'user';
-
-          // Extract message text and images
-          let messageText = event.text || '';
-          let messageImages: string[] = [];
-
-          if (event.content?.parts) {
-            for (const part of event.content.parts) {
-              if (part.text) {
-                messageText = part.text;
-              } else if (part.inline_data) {
-                // Convert inline_data to data URL
-                const mimeType = part.inline_data.mime_type || 'image/jpeg';
-                const dataUrl = `data:${mimeType};base64,${part.inline_data.data}`;
-                messageImages.push(dataUrl);
-              }
-            }
-          } else if (!messageText && event.content?.parts?.[0]?.text) {
-            messageText = event.content.parts[0].text;
-          } else if (!messageText && typeof event.content === 'string') {
-            messageText = event.content;
-          }
-
-          // Also check for function calls from the event
-          const functionCalls =
-            event.function_calls || event.actions?.function_calls;
-          const functionResponses =
-            event.function_responses || event.actions?.function_responses;
-
-          // Skip empty events
-          if (
-            !messageText &&
-            !functionCalls &&
-            !functionResponses &&
-            messageImages.length === 0
-          ) {
-            return null;
-          }
-
-          const isEditing = editingMessageId === eventKey;
-
-          return (
-            <div
-              key={eventKey}
-              className={cn(
-                'flex gap-3 group relative',
-                isUser ? 'justify-end' : 'justify-start',
-              )}
-            >
-              {!isUser && (
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 rounded-lg overflow-hidden">
-                    <img
-                      src="/face.png"
-                      alt="AI Assistant"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1 max-w-[70%]">
-                <div className="flex items-end gap-2">
-                  <div
-                    className={cn(
-                      'rounded-2xl px-4 py-3 relative',
-                      isUser
-                        ? 'bg-blue-600 text-white dark:bg-blue-500'
-                        : 'bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]',
-                    )}
-                  >
-                    {isEditing ? (
-                      <div className="space-y-2">
-                        <Textarea
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="min-h-[60px] bg-transparent border-0 p-0 resize-none focus:ring-0"
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleSaveEdit(eventKey)}
-                            className="h-7 px-2"
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={handleCancelEdit}
-                            className="h-7 px-2"
-                          >
-                            Cancel
-                          </Button>
+    <>
+      <ScrollArea className="h-full">
+        <div className="p-6 space-y-6" ref={scrollRef}>
+          {conversationBlocks.map((block, blockIndex) => (
+            <div key={blockIndex} className="space-y-4">
+              {/* User Message */}
+              {block.userMessage && (
+                <div className="flex gap-3 group relative justify-end">
+                  <div className="flex flex-col gap-1 max-w-[70%]">
+                    <div className="flex items-end gap-2">
+                      <div className="rounded-2xl px-4 py-3 relative bg-blue-600 text-white dark:bg-blue-500">
+                        {/* User message content */}
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <MarkdownText
+                            text={getMessageContent(block.userMessage)}
+                            className="whitespace-pre-wrap break-words"
+                          />
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        {messageText && (
-                          <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <MarkdownText
-                              text={messageText}
-                              className="whitespace-pre-wrap break-words"
-                            />
-                            {event.isStreaming && (
-                              <span className="inline-block w-1 h-4 bg-current opacity-70 animate-pulse ml-1 align-middle" />
-                            )}
-                          </div>
-                        )}
 
-                        {/* Display attached images */}
-                        {messageImages.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            {messageImages.map((imageUrl, idx) => (
-                              <img
-                                key={idx}
-                                src={imageUrl}
-                                alt={`Message attachment ${idx + 1}`}
-                                className="max-w-full rounded-lg"
-                                style={{ maxHeight: '300px' }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {functionCalls && functionCalls.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                          Function calls:
-                        </p>
-                        {functionCalls.map((call: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded text-blue-700 dark:text-blue-400 font-mono"
-                          >
-                            {call.name}(
-                            {call.arguments
-                              ? JSON.stringify(call.arguments)
-                              : ''}
-                            )
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {functionResponses && functionResponses.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                          Function responses:
-                        </p>
-                        {functionResponses.map((response: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="text-sm bg-gray-50 dark:bg-[#0e0e10] p-2 rounded"
-                          >
-                            <span className="text-green-700 dark:text-green-400 font-mono">
-                              {response.name}
-                            </span>
-                            <span className="text-gray-600 dark:text-[#a0a0a8]">
-                              :{' '}
-                              {JSON.stringify(
-                                response.response_data || response.data,
+                      {/* User message actions */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleCopy(
+                                  getMessageContent(block.userMessage),
+                                  `user-${blockIndex}`,
+                                )
+                              }
+                            >
+                              {copiedMessageId === `user-${blockIndex}` ? (
+                                <>
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Copy
+                                </>
                               )}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Menu */}
-                  {messageText && !event.isStreaming && (
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align={isUser ? 'end' : 'start'}
-                          className="bg-white dark:bg-[#2a2a30] border-gray-200 dark:border-[#3a3a40]"
-                        >
-                          <DropdownMenuItem
-                            onClick={() => handleCopy(messageText, eventKey)}
-                            className="text-gray-700 dark:text-[#d0d0d8] hover:bg-gray-100 dark:hover:bg-[#3a3a40] hover:text-gray-900 dark:hover:text-white"
-                          >
-                            {copiedMessageId === eventKey ? (
-                              <>
-                                <Check className="mr-2 h-4 w-4" />
-                                Copied!
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="mr-2 h-4 w-4" />
-                                Copy
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          {isUser && (
-                            <>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleEdit(
+                                  `user-${blockIndex}`,
+                                  getMessageContent(block.userMessage),
+                                )
+                              }
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            {onResendMessage && (
                               <DropdownMenuItem
                                 onClick={() =>
-                                  handleEdit(eventKey, messageText)
+                                  onResendMessage(
+                                    getMessageContent(block.userMessage),
+                                  )
                                 }
-                                className="text-gray-700 dark:text-[#d0d0d8] hover:bg-gray-100 dark:hover:bg-[#3a3a40] hover:text-gray-900 dark:hover:text-white"
                               >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Resend
                               </DropdownMenuItem>
-                              {onResendMessage && (
-                                <DropdownMenuItem
-                                  onClick={() => onResendMessage(messageText)}
-                                  className="text-gray-700 dark:text-[#d0d0d8] hover:bg-gray-100 dark:hover:bg-[#3a3a40] hover:text-gray-900 dark:hover:text-white"
-                                >
-                                  <RotateCcw className="mr-2 h-4 w-4" />
-                                  Resend
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Timestamp */}
-                {event.timestamp && (
-                  <span
-                    className={cn(
-                      'text-xs text-gray-500 dark:text-[#6a6a70] px-1',
-                      isUser ? 'text-right' : 'text-left',
+                    {block.userMessage.timestamp && (
+                      <span className="text-xs text-gray-500 dark:text-[#6a6a70] px-1 text-right">
+                        {formatTimestamp(block.userMessage.timestamp)}
+                      </span>
                     )}
-                  >
-                    {formatTimestamp(event.timestamp)}
-                  </span>
-                )}
-              </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-[#2a2a30] flex items-center justify-center">
+                      <User className="w-4 h-4 text-gray-600 dark:text-[#a0a0a8]" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
-              {isUser && (
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-[#2a2a30] flex items-center justify-center">
-                    <User className="w-4 h-4 text-gray-600 dark:text-[#a0a0a8]" />
+              {/* Agent Activity Panel (below user message) */}
+              <AgentActivityPanel
+                agentMessages={block.agentActivity}
+                onAgentClick={handleAgentClick}
+              />
+
+              {/* Coordinator Response */}
+              {block.coordinatorMessage && (
+                <div className="flex gap-3 group relative justify-start">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg overflow-hidden">
+                      <img
+                        src="/face.png"
+                        alt="Market Coordinator"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-[70%]">
+                    <div className="flex items-end gap-2">
+                      <div className="rounded-2xl px-4 py-3 relative bg-gray-100 border border-gray-200 text-gray-900 dark:bg-[#1a1a1f] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <MarkdownText
+                            text={getMessageContent(block.coordinatorMessage)}
+                            className="whitespace-pre-wrap break-words"
+                          />
+                          {block.coordinatorMessage.isStreaming && (
+                            <span className="inline-block w-1 h-4 bg-current opacity-70 animate-pulse ml-1 align-middle" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Coordinator message actions */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleCopy(
+                                  getMessageContent(block.coordinatorMessage),
+                                  `coordinator-${blockIndex}`,
+                                )
+                              }
+                            >
+                              {copiedMessageId ===
+                              `coordinator-${blockIndex}` ? (
+                                <>
+                                  <Check className="mr-2 h-4 w-4" />
+                                  Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Copy
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    {block.coordinatorMessage.timestamp && (
+                      <span className="text-xs text-gray-500 dark:text-[#6a6a70] px-1 text-left">
+                        {formatTimestamp(block.coordinatorMessage.timestamp)}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
             </div>
-          );
-        })}
+          ))}
 
-        {/* Show loading message when SSE is active but no events yet */}
-        {shouldShowLoading && (
-          <div className="space-y-4">
-            {/* You can choose which loading style you prefer */}
-            <EnhancedLoadingMessage />
-            {/* Alternative loading styles: */}
-            {/* <LoadingMessage /> */}
-            {/* <MinimalLoadingMessage /> */}
-          </div>
-        )}
-      </div>
-    </ScrollArea>
+          {/* Show loading when waiting for coordinator response */}
+          {shouldShowLoading && (
+            <CoordinatorLoadingMessage
+              agentMessages={agentMessages}
+              onAgentClick={handleAgentClick}
+            />
+          )}
+
+          {/* Show loading for current incomplete block */}
+          {isLoading &&
+            conversationBlocks.length > 0 &&
+            !conversationBlocks[conversationBlocks.length - 1]
+              .coordinatorMessage && (
+              <CoordinatorLoadingMessage
+                agentMessages={
+                  conversationBlocks[conversationBlocks.length - 1]
+                    .agentActivity
+                }
+                onAgentClick={handleAgentClick}
+              />
+            )}
+        </div>
+      </ScrollArea>
+
+      {/* Agent Message Modal */}
+      <AgentMessageModal
+        agent={selectedAgent || ''}
+        messages={agentMessages[selectedAgent || ''] || []}
+        isOpen={!!selectedAgent}
+        onClose={() => setSelectedAgent(null)}
+      />
+    </>
   );
 }

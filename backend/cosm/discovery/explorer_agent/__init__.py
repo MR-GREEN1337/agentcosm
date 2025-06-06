@@ -15,6 +15,8 @@ from google.adk.models.lite_llm import LiteLlm
 from cosm.settings import settings
 from cosm.tools.search import search_tool
 
+import concurrent.futures
+
 # Import consolidated Tavily tools
 from ...tools.tavily import (
     tavily_comprehensive_research,
@@ -43,13 +45,7 @@ Use your consolidated tools to provide comprehensive market intelligence in a si
 
 def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
     """
-    Consolidated market signal discovery combining exploration, trends, and gaps
-
-    Args:
-        query_context: The market domain or problem space to explore
-
-    Returns:
-        Comprehensive market intelligence including signals, trends, and gaps
+    Synchronous version with parallelized API calls using ThreadPoolExecutor
     """
     comprehensive_data = {
         "timestamp": datetime.now().isoformat(),
@@ -65,20 +61,26 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
     try:
         print(f"🔍 Comprehensive market discovery for: {query_context}")
 
-        ## Parallelize this
-        # Phase 1: Pain Point Discovery
-        pain_point_results = tavily_quick_search(query_context)
+        # Phase 1-3: Execute all three searches in parallel using ThreadPoolExecutor
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            # Submit all tasks
+            pain_point_future = executor.submit(tavily_quick_search, query_context)
+            market_research_future = executor.submit(
+                tavily_comprehensive_research, [query_context]
+            )
+            competitive_future = executor.submit(
+                tavily_comprehensive_research, [query_context]
+            )
 
-        # Phase 2: Market Research
-        market_research_results = tavily_comprehensive_research([query_context])
+            # Get results as they complete
+            pain_point_results = pain_point_future.result()
+            market_research_results = market_research_future.result()
+            competitive_results = competitive_future.result()
 
-        # Phase 3: Competitive Intelligence
-        competitive_results = tavily_comprehensive_research([query_context])
-
-        # Consolidate all collected data
+        # Rest of processing remains the same...
         all_content = []
 
-        # Process pain point data
+        # Process results (same as original)
         if not pain_point_results.get("error"):
             for signal in pain_point_results.get("pain_point_signals", []):
                 for result in signal.get("results", []):
@@ -93,7 +95,6 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
                         }
                     )
 
-        # Process market research data
         if not market_research_results.get("error"):
             for search_result in market_research_results.get("search_results", []):
                 for result in search_result.get("results", []):
@@ -108,7 +109,6 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
                         }
                     )
 
-        # Process competitive data
         if not competitive_results.get("error"):
             for profile in competitive_results.get("competitor_profiles", []):
                 for search_result in profile.get("search_results", []):
@@ -126,7 +126,6 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
 
         comprehensive_data["raw_content_collected"] = len(all_content)
 
-        # AI-powered comprehensive analysis
         if all_content:
             print(f"🤖 Analyzing {len(all_content)} pieces of content with AI...")
             comprehensive_data = analyze_comprehensive_signals_with_ai(

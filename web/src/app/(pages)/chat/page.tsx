@@ -71,10 +71,7 @@ export default function AgentDevUI() {
   useEffect(() => {
     if (sseEvents.length === 0) return;
 
-    // Get the latest event
     const latestEvent = sseEvents[sseEvents.length - 1];
-
-    // Only process events with text content
     const text = latestEvent.content?.parts?.[0]?.text;
     if (!text) return;
 
@@ -83,7 +80,6 @@ export default function AgentDevUI() {
       if (latestEvent.isStreaming || latestEvent.partial) {
         const lastIndex = prev.length - 1;
         if (lastIndex >= 0 && prev[lastIndex].author === latestEvent.author) {
-          // Update the last message with the new streaming content
           const updated = [...prev];
           updated[lastIndex] = {
             ...updated[lastIndex],
@@ -105,6 +101,19 @@ export default function AgentDevUI() {
         function_responses: latestEvent.function_responses,
       };
 
+      // 🔥 CRITICAL FIX: Update TTS state immediately when a complete AI message is finalized
+      if (
+        !latestEvent.partial &&
+        !latestEvent.isStreaming &&
+        latestEvent.author === 'liminal_market_opportunity_coordinator'
+      ) {
+        // Use setTimeout to ensure the state update happens after the current render cycle
+        setTimeout(() => {
+          console.log('🎵 Setting TTS message:', text.substring(0, 50) + '...');
+          setLastAiResponse(text);
+        }, 0);
+      }
+
       // If we were streaming and this is the final message, replace the last one
       if (!latestEvent.partial && !latestEvent.isStreaming) {
         const lastIndex = prev.length - 1;
@@ -113,25 +122,24 @@ export default function AgentDevUI() {
           prev[lastIndex].author === eventToAdd.author &&
           prev[lastIndex].isStreaming
         ) {
-          // Replace the streaming message with the final one
           const updated = [...prev];
           updated[lastIndex] = {
             ...eventToAdd,
             isStreaming: false,
           };
 
-          // 🔥 CRITICAL FIX: Update the latest complete AI message immediately
+          // 🔥 ADDITIONAL FIX: Also update TTS here for replaced streaming messages
           if (
-            eventToAdd.author !== 'user' &&
-            eventToAdd.text &&
-            !eventToAdd.isStreaming
+            eventToAdd.author === 'liminal_market_opportunity_coordinator' &&
+            eventToAdd.text
           ) {
-            console.log(
-              '🎵 Setting latest complete AI message:',
-              eventToAdd.text.substring(0, 50) + '...',
-            );
-            latestCompleteAiMessageRef.current = eventToAdd.text;
-            setLastAiResponse(eventToAdd.text);
+            setTimeout(() => {
+              console.log(
+                '🎵 Setting TTS message (replaced):',
+                eventToAdd.text.substring(0, 50) + '...',
+              );
+              setLastAiResponse(eventToAdd.text);
+            }, 0);
           }
 
           return updated;
@@ -149,20 +157,6 @@ export default function AgentDevUI() {
       if (exists) {
         console.log('Skipping duplicate in state:', eventToAdd.text);
         return prev;
-      }
-
-      // 🔥 CRITICAL FIX: Also update for new complete messages
-      if (
-        eventToAdd.author !== 'user' &&
-        eventToAdd.text &&
-        !eventToAdd.isStreaming
-      ) {
-        console.log(
-          '🎵 Setting latest complete AI message (new):',
-          eventToAdd.text.substring(0, 50) + '...',
-        );
-        latestCompleteAiMessageRef.current = eventToAdd.text;
-        setLastAiResponse(eventToAdd.text);
       }
 
       return [...prev, eventToAdd];
@@ -244,8 +238,7 @@ export default function AgentDevUI() {
     setSessionEvents([]);
     processedEventsRef.current.clear();
 
-    // 🔥 CRITICAL FIX: Clear the latest AI message when switching sessions
-    latestCompleteAiMessageRef.current = '';
+    // 🔥 CRITICAL FIX: Clear TTS state immediately when switching sessions
     setLastAiResponse('');
 
     // Load session events
@@ -257,21 +250,31 @@ export default function AgentDevUI() {
         const events = response.data.events;
         setSessionEvents(events);
 
-        // 🔥 CRITICAL FIX: Find the last complete AI message from loaded events
+        // Find the last complete AI message from loaded events
+        let lastAiMessage = '';
         for (let i = events.length - 1; i >= 0; i--) {
           const event = events[i];
-          if (event.author !== 'user' && event.text && !event.isStreaming) {
-            console.log(
-              '🎵 Found last AI message in loaded session:',
-              event.text.substring(0, 50) + '...',
-            );
-            latestCompleteAiMessageRef.current = event.text;
-            setLastAiResponse(event.text);
+          if (
+            event.author === 'liminal_market_opportunity_coordinator' &&
+            event.text &&
+            !event.isStreaming
+          ) {
+            lastAiMessage = event.text;
             break;
           }
         }
 
-        // Scroll to bottom after loading session events
+        // Set TTS state after a delay to ensure proper synchronization
+        setTimeout(() => {
+          if (lastAiMessage) {
+            console.log(
+              '🎵 Setting last AI message from session:',
+              lastAiMessage.substring(0, 50) + '...',
+            );
+            setLastAiResponse(lastAiMessage);
+          }
+        }, 100);
+
         setTimeout(scrollToBottom, 100);
       }
     } catch (error) {
@@ -285,8 +288,7 @@ export default function AgentDevUI() {
     setSessionEvents([]);
     processedEventsRef.current.clear();
 
-    // 🔥 CRITICAL FIX: Clear the latest AI message for new session
-    latestCompleteAiMessageRef.current = '';
+    // 🔥 CRITICAL FIX: Clear TTS state for new session
     setLastAiResponse('');
   };
 
@@ -595,7 +597,9 @@ export default function AgentDevUI() {
                     <MessageInput
                       onSendMessage={handleSendMessage}
                       disabled={false}
-                      lastAiMessage={lastAiResponse} // 🔥 This now gets the correct latest message
+                      lastAiMessage={lastAiResponse} // This should now be properly synchronized
+                      sendMessage={sendMessage} // Pass the SSE sendMessage as backup
+                      isLoading={isLoading} // Pass loading state for debugging
                     />
                   </div>
                 </>
