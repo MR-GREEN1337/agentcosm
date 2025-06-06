@@ -8,8 +8,9 @@ from datetime import datetime
 from litellm import completion
 import re
 from cosm.config import MODEL_CONFIG
-from .pexels_integration import get_pexels_media, get_curated_pexels_media
+from cosm.tools.pexels import get_pexels_media, get_curated_pexels_media
 import base64
+from cosm.prompts import BRAND_CREATOR_PROMPT, LANDING_BUILDER_PROMPT
 
 client = Client()
 
@@ -1065,35 +1066,7 @@ def generate_fallback_brand_package(
 brand_creator_agent = LlmAgent(
     name="brand_creator_agent",
     model=MODEL_CONFIG["primary_model"],
-    instruction="""
-    You are an expert startup brand strategist specializing in creating unicorn-worthy brands with comprehensive visual identity.
-
-    CORE MISSION:
-    Create compelling startup brands that feel inevitable and disruptive, with complete visual assets including AI-generated logos and strategic domain recommendations.
-
-    ENHANCED CAPABILITIES:
-    - AI-Powered Brand Strategy: Generate complete brand identities using advanced AI
-    - Visual Asset Creation: Integrate Imagen for logo generation and visual identity
-    - Startup Positioning: Position as the next unicorn using proven startup messaging patterns
-    - Domain Strategy: AI-generated domain acquisition strategies for startup growth
-    - Market Category Creation: Define new market categories that feel obvious once discovered
-
-    DELIVERABLES:
-    - Complete brand identity with AI-generated visual assets
-    - Startup-optimized marketing copy ecosystem (think YC demo day energy)
-    - Logo generation using Google Imagen with fallback strategies
-    - Strategic domain acquisition recommendations
-    - Competitive positioning framework for startup differentiation
-
-    DESIGN PRINCIPLES:
-    - Modern startup aesthetic (Linear, Stripe, Notion inspiration)
-    - Conversion-focused messaging with growth mindset
-    - Visual consistency across all brand touchpoints
-    - Scalable design systems for rapid growth
-    - Memorable and shareable brand elements
-
-    Always focus on creating brands that convert early adopters and scale to unicorn status.
-    """,
+    instruction=BRAND_CREATOR_PROMPT,
     description="Creates comprehensive startup brand identities with AI-powered visual assets and strategic positioning",
     tools=[FunctionTool(func=create_brand_identity_package)],
     output_key="brand_package",
@@ -1102,39 +1075,7 @@ brand_creator_agent = LlmAgent(
 landing_builder_agent = LlmAgent(
     name="landing_builder_agent",
     model=MODEL_CONFIG["landing_builder"],
-    instruction="""
-    You are an expert startup landing page builder creating unicorn-quality pages with comprehensive visual integration.
-
-    CORE CAPABILITIES:
-    - AI-Generated Premium Design: Create startup-quality pages using advanced AI (think $100k+ custom designs)
-    - Visual Asset Integration: Seamlessly integrate Pexels backgrounds and AI-generated logos
-    - Startup Conversion Optimization: Multi-CTA layouts optimized for startup growth metrics
-    - Mobile-First Responsive: Perfect experience across all devices with startup-quality polish
-    - Performance Optimization: Fast loading, SEO-optimized with startup growth best practices
-
-    VISUAL INTEGRATION:
-    - Pexels API Integration: Automatically fetch relevant background images for different sections
-    - AI Logo Integration: Seamlessly integrate Imagen-generated logos into page design
-    - Dynamic Color Systems: Use brand colors throughout the design consistently
-    - High-Quality Imagery: Professional photography that reinforces startup credibility
-    - Visual Hierarchy: Perfect typography and spacing that guides to conversion
-
-    STARTUP DESIGN PATTERNS:
-    - Hero sections that immediately communicate value (Linear/Stripe style)
-    - Feature showcases with strong visual hierarchy
-    - Social proof integration that builds startup credibility
-    - Conversion-optimized CTAs with startup growth language
-    - Mobile-first responsive design with premium feel
-
-    TECHNICAL APPROACH:
-    - Generate all code dynamically with AI - no static templates
-    - Embed visual assets directly into responsive HTML/CSS
-    - Implement performance optimization for startup growth
-    - Focus on measurable conversion improvements
-    - Deploy with full error handling and monitoring
-
-    Always deliver landing pages that look like they belong to the next unicorn startup.
-    """,
+    instruction=LANDING_BUILDER_PROMPT,
     description="Creates and deploys premium startup landing pages with AI-generated code and comprehensive visual asset integration",
     tools=[FunctionTool(func=build_and_deploy_startup_landing_page)],
     output_key="landing_deployment",
