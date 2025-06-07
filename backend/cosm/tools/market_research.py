@@ -1,17 +1,17 @@
 """
 Real Market Research Tools - Production Ready Implementation
 Uses web search and structured output for comprehensive market analysis
+Updated to use threading instead of async
 """
 
 import json
-import asyncio
-import aiohttp
+import requests
 import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from google.genai import Client, types
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import Counter
 from cosm.config import MODEL_CONFIG as CONFIG
 from litellm import completion
@@ -20,14 +20,15 @@ from cosm.settings import settings
 # Initialize Gemini client
 client = Client()
 
+# Global thread pool executor
 executor = ThreadPoolExecutor(max_workers=8)
 
 
-async def comprehensive_market_research(
+def comprehensive_market_research(
     keywords: List[str], target_audience: str = ""
 ) -> Dict[str, Any]:
     """
-    Performs comprehensive market research using real web sources
+    Performs comprehensive market research using real web sources with threading
 
     Args:
         keywords: List of market keywords to research
@@ -49,41 +50,37 @@ async def comprehensive_market_research(
     }
 
     try:
-        # Execute all research phases in parallel
-        async with aiohttp.ClientSession() as session:
-            tasks = [
-                discover_market_signals(keywords, session),
-                analyze_competition(keywords, session),
-                validate_demand(keywords, target_audience, session),
-                analyze_trends(keywords, session),
-            ]
+        # Execute all research phases in parallel using threading
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                executor.submit(discover_market_signals, keywords): "market_signals",
+                executor.submit(analyze_competition, keywords): "competition_analysis",
+                executor.submit(
+                    validate_demand, keywords, target_audience
+                ): "demand_validation",
+                executor.submit(analyze_trends, keywords): "trend_analysis",
+            }
 
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Process results
-            research_report["market_signals"] = (
-                results[0] if not isinstance(results[0], Exception) else []
-            )
-            research_report["competition_analysis"] = (
-                results[1] if not isinstance(results[1], Exception) else {}
-            )
-            research_report["demand_validation"] = (
-                results[2] if not isinstance(results[2], Exception) else {}
-            )
-            research_report["trend_analysis"] = (
-                results[3] if not isinstance(results[3], Exception) else {}
-            )
+            for future in as_completed(futures):
+                result_key = futures[future]
+                try:
+                    result = future.result()
+                    research_report[result_key] = result
+                except Exception as e:
+                    print(f"Error in {result_key}: {e}")
+                    research_report[result_key] = (
+                        {} if result_key.endswith("_analysis") else []
+                    )
 
         # Calculate opportunity score and insights in parallel
-        score_task = asyncio.create_task(calculate_opportunity_score(research_report))
-        insights_task = asyncio.create_task(
-            generate_insights_with_gemini(research_report)
-        )
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            score_future = executor.submit(calculate_opportunity_score, research_report)
+            insights_future = executor.submit(
+                generate_insights_with_gemini, research_report
+            )
 
-        (
-            research_report["opportunity_score"],
-            research_report["actionable_insights"],
-        ) = await asyncio.gather(score_task, insights_task)
+            research_report["opportunity_score"] = score_future.result()
+            research_report["actionable_insights"] = insights_future.result()
 
         return research_report
 
@@ -93,10 +90,8 @@ async def comprehensive_market_research(
         return research_report
 
 
-async def discover_market_signals(
-    keywords: List[str], session: aiohttp.ClientSession
-) -> List[Dict[str, Any]]:
-    """Async parallel market signals discovery"""
+def discover_market_signals(keywords: List[str]) -> List[Dict[str, Any]]:
+    """Threaded parallel market signals discovery"""
     signals = []
 
     # Batch queries for parallel execution
@@ -109,48 +104,60 @@ async def discover_market_signals(
         ]
 
         for query in pain_queries:
-            tasks.append(search_and_extract_signals(query, keyword, session))
+            tasks.append((query, keyword))
 
     # Execute all searches in parallel
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {
+            executor.submit(search_and_extract_signals, query, keyword): (
+                query,
+                keyword,
+            )
+            for query, keyword in tasks
+        }
 
-    # Collect valid results
-    for result in results:
-        if not isinstance(result, Exception) and result:
-            signals.extend(result)
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                if result:
+                    signals.extend(result)
+            except Exception as e:
+                print(f"Error in signal discovery: {e}")
 
     return signals[:10]
 
 
-async def search_and_extract_signals(
-    query: str, keyword: str, session: aiohttp.ClientSession
-) -> List[Dict[str, Any]]:
-    """Async search and signal extraction"""
+def search_and_extract_signals(query: str, keyword: str) -> List[Dict[str, Any]]:
+    """Threaded search and signal extraction"""
     try:
-        search_results = await search_web(
-            query, session, max_results=2
-        )  # Reduced from 3
+        search_results = search_web(query, max_results=2)
         signals = []
 
         # Process results in parallel
-        tasks = [
-            extract_pain_signals_with_gemini(result, keyword)
-            for result in search_results
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {
+                executor.submit(
+                    extract_pain_signals_with_gemini, result, keyword
+                ): result
+                for result in search_results
+            }
 
-        for result in results:
-            if not isinstance(result, Exception) and result:
-                signals.append(result)
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        signals.append(result)
+                except Exception as e:
+                    print(f"Error extracting pain signals: {e}")
 
         return signals
     except Exception as e:
-        print(f"Error in search_and_extract_signals_async: {e}")
+        print(f"Error in search_and_extract_signals: {e}")
         return []
 
 
 def analyze_competition(keywords: List[str]) -> Dict[str, Any]:
-    """Analyzes real competition data"""
+    """Analyzes real competition data using threading"""
     competition_data = {
         "direct_competitors": [],
         "indirect_competitors": [],
@@ -159,28 +166,38 @@ def analyze_competition(keywords: List[str]) -> Dict[str, Any]:
         "market_gaps": [],
     }
 
+    # Prepare all search tasks
+    search_tasks = []
     for keyword in keywords[:2]:
-        try:
-            # Search for existing solutions
-            comp_queries = [
-                f"{keyword} top companies market leaders",
-                f"best {keyword} solutions software tools",
-                f"{keyword} competitors comparison review",
-            ]
+        comp_queries = [
+            f"{keyword} top companies market leaders",
+            f"best {keyword} solutions software tools",
+            f"{keyword} competitors comparison review",
+        ]
+        for query in comp_queries:
+            search_tasks.append((query, keyword))
 
-            all_competitors = []
-            for query in comp_queries:
-                search_results = search_web(query, max_results=3)
-                competitors = extract_competitors_with_gemini(search_results, keyword)
+    # Execute searches in parallel
+    all_competitors = []
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {
+            executor.submit(search_and_extract_competitors, query, keyword): (
+                query,
+                keyword,
+            )
+            for query, keyword in search_tasks
+        }
+
+        for future in as_completed(futures):
+            try:
+                competitors = future.result()
                 all_competitors.extend(competitors)
-                time.sleep(0.5)
+            except Exception as e:
+                print(f"Error analyzing competition: {e}")
 
-            # Categorize competitors
-            competition_data["direct_competitors"].extend(all_competitors[:5])
-            competition_data["market_leaders"].extend(all_competitors[:3])
-
-        except Exception as e:
-            print(f"Error analyzing competition for {keyword}: {e}")
+    # Categorize competitors
+    competition_data["direct_competitors"].extend(all_competitors[:5])
+    competition_data["market_leaders"].extend(all_competitors[:3])
 
     # Determine competition level
     total_competitors = len(competition_data["direct_competitors"])
@@ -194,8 +211,20 @@ def analyze_competition(keywords: List[str]) -> Dict[str, Any]:
     return competition_data
 
 
+def search_and_extract_competitors(query: str, keyword: str) -> List[Dict[str, Any]]:
+    """Helper function to search and extract competitors"""
+    try:
+        search_results = search_web(query, max_results=3)
+        competitors = extract_competitors_with_gemini(search_results, keyword)
+        time.sleep(0.5)  # Rate limiting
+        return competitors
+    except Exception as e:
+        print(f"Error in search_and_extract_competitors: {e}")
+        return []
+
+
 def validate_demand(keywords: List[str], target_audience: str) -> Dict[str, Any]:
-    """Validates market demand using real data"""
+    """Validates market demand using real data with threading"""
     demand_data = {
         "search_volume_indicators": [],
         "social_mentions": [],
@@ -204,24 +233,31 @@ def validate_demand(keywords: List[str], target_audience: str) -> Dict[str, Any]
         "growth_indicators": [],
     }
 
+    # Prepare all demand search tasks
+    search_tasks = []
     for keyword in keywords[:3]:
-        try:
-            # Search for demand indicators
-            demand_queries = [
-                f"{keyword} market size statistics 2025",
-                f"{keyword} growing demand trends",
-                f"how many people use {keyword}",
-                f"{keyword} market research report",
-            ]
+        demand_queries = [
+            f"{keyword} market size statistics 2025",
+            f"{keyword} growing demand trends",
+            f"how many people use {keyword}",
+            f"{keyword} market research report",
+        ]
+        for query in demand_queries:
+            search_tasks.append((query, keyword))
 
-            for query in demand_queries:
-                search_results = search_web(query, max_results=2)
-                demand_indicators = extract_demand_with_gemini(search_results, keyword)
+    # Execute searches in parallel
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {
+            executor.submit(search_and_extract_demand, query, keyword): (query, keyword)
+            for query, keyword in search_tasks
+        }
+
+        for future in as_completed(futures):
+            try:
+                demand_indicators = future.result()
                 demand_data["search_volume_indicators"].extend(demand_indicators)
-                time.sleep(0.5)
-
-        except Exception as e:
-            print(f"Error validating demand for {keyword}: {e}")
+            except Exception as e:
+                print(f"Error validating demand: {e}")
 
     # Calculate demand score
     demand_data["demand_score"] = calculate_demand_score(demand_data)
@@ -229,8 +265,20 @@ def validate_demand(keywords: List[str], target_audience: str) -> Dict[str, Any]
     return demand_data
 
 
+def search_and_extract_demand(query: str, keyword: str) -> List[Dict[str, Any]]:
+    """Helper function to search and extract demand data"""
+    try:
+        search_results = search_web(query, max_results=2)
+        demand_indicators = extract_demand_with_gemini(search_results, keyword)
+        time.sleep(0.5)  # Rate limiting
+        return demand_indicators
+    except Exception as e:
+        print(f"Error in search_and_extract_demand: {e}")
+        return []
+
+
 def analyze_trends(keywords: List[str]) -> Dict[str, Any]:
-    """Analyzes real market trends"""
+    """Analyzes real market trends using threading"""
     trend_data = {
         "trend_direction": "stable",
         "growth_indicators": [],
@@ -239,23 +287,31 @@ def analyze_trends(keywords: List[str]) -> Dict[str, Any]:
         "future_predictions": [],
     }
 
+    # Prepare all trend search tasks
+    search_tasks = []
     for keyword in keywords[:2]:
-        try:
-            trend_queries = [
-                f"{keyword} trends 2024 2025 future",
-                f"{keyword} market growth predictions",
-                f"{keyword} emerging technologies innovations",
-                f"{keyword} industry outlook report",
-            ]
+        trend_queries = [
+            f"{keyword} trends 2024 2025 future",
+            f"{keyword} market growth predictions",
+            f"{keyword} emerging technologies innovations",
+            f"{keyword} industry outlook report",
+        ]
+        for query in trend_queries:
+            search_tasks.append((query, keyword))
 
-            for query in trend_queries:
-                search_results = search_web(query, max_results=2)
-                trends = extract_trends_with_gemini(search_results, keyword)
+    # Execute searches in parallel
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {
+            executor.submit(search_and_extract_trends, query, keyword): (query, keyword)
+            for query, keyword in search_tasks
+        }
+
+        for future in as_completed(futures):
+            try:
+                trends = future.result()
                 trend_data["growth_indicators"].extend(trends)
-                time.sleep(0.5)
-
-        except Exception as e:
-            print(f"Error analyzing trends for {keyword}: {e}")
+            except Exception as e:
+                print(f"Error analyzing trends: {e}")
 
     # Determine overall trend direction
     positive_indicators = len(
@@ -273,10 +329,20 @@ def analyze_trends(keywords: List[str]) -> Dict[str, Any]:
     return trend_data
 
 
-async def search_web(
-    query: str, session: aiohttp.ClientSession, max_results: int = 3
-) -> List[Dict[str, str]]:
-    """Async web search using aiohttp"""
+def search_and_extract_trends(query: str, keyword: str) -> List[Dict[str, Any]]:
+    """Helper function to search and extract trend data"""
+    try:
+        search_results = search_web(query, max_results=2)
+        trends = extract_trends_with_gemini(search_results, keyword)
+        time.sleep(0.5)  # Rate limiting
+        return trends
+    except Exception as e:
+        print(f"Error in search_and_extract_trends: {e}")
+        return []
+
+
+def search_web(query: str, max_results: int = 3) -> List[Dict[str, str]]:
+    """Web search using requests instead of aiohttp"""
     results = []
 
     try:
@@ -285,31 +351,28 @@ async def search_web(
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
 
-        async with session.get(
-            search_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-        ) as response:
-            if response.status == 200:
-                content = await response.text()
+        response = requests.get(search_url, headers=headers, timeout=10)
 
-                # Parse results (simplified for performance)
-                import re
+        if response.status_code == 200:
+            content = response.text
 
-                url_pattern = r'href="([^"]*)" class="result__a"[^>]*>([^<]*)</a>'
-                matches = re.findall(url_pattern, content)
+            # Parse results (simplified for performance)
+            url_pattern = r'href="([^"]*)" class="result__a"[^>]*>([^<]*)</a>'
+            matches = re.findall(url_pattern, content)
 
-                for url, title in matches[:max_results]:
-                    if url and title:
-                        results.append(
-                            {
-                                "title": title.strip(),
-                                "url": url,
-                                "snippet": "",  # Skip snippet extraction for speed
-                                "source": "web_search",
-                            }
-                        )
+            for url, title in matches[:max_results]:
+                if url and title:
+                    results.append(
+                        {
+                            "title": title.strip(),
+                            "url": url,
+                            "snippet": "",  # Skip snippet extraction for speed
+                            "source": "web_search",
+                        }
+                    )
 
     except Exception as e:
-        print(f"Error in async web search: {e}")
+        print(f"Error in web search: {e}")
 
     return results
 
@@ -640,7 +703,7 @@ def analyze_market_size(
     keywords: List[str], target_audience: str = ""
 ) -> Dict[str, Any]:
     """
-    Analyzes market size for given keywords and target audience
+    Analyzes market size for given keywords and target audience using threading
 
     Args:
         keywords: List of market keywords to analyze
@@ -665,7 +728,8 @@ def analyze_market_size(
     }
 
     try:
-        # Search for market size data
+        # Prepare all market size search tasks
+        search_tasks = []
         for keyword in keywords[:3]:  # Limit to prevent rate limiting
             market_queries = [
                 f"{keyword} market size 2025 billion",
@@ -673,23 +737,31 @@ def analyze_market_size(
                 f"{keyword} TAM total addressable market",
                 f"{keyword} market research report value",
             ]
-
-            market_data_points = []
-
             for query in market_queries:
+                search_tasks.append((query, keyword))
+
+        # Execute searches in parallel
+        market_data_points = []
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {
+                executor.submit(search_and_extract_market_size, query, keyword): (
+                    query,
+                    keyword,
+                )
+                for query, keyword in search_tasks
+            }
+
+            for future in as_completed(futures):
                 try:
-                    search_results = search_web(query, max_results=3)
-                    size_data = extract_market_size_with_gemini(search_results, keyword)
+                    size_data = future.result()
                     if size_data:
                         market_data_points.extend(size_data)
-                    time.sleep(0.5)
                 except Exception as e:
-                    print(f"Error searching market size for {query}: {e}")
-                    continue
+                    print(f"Error searching market size: {e}")
 
-            # Process market data points
-            if market_data_points:
-                market_size_data["data_sources"].extend(market_data_points)
+        # Process market data points
+        if market_data_points:
+            market_size_data["data_sources"].extend(market_data_points)
 
         # Calculate TAM, SAM, SOM from collected data
         tam_sam_som = calculate_tam_sam_som(
@@ -718,11 +790,23 @@ def analyze_market_size(
         return market_size_data
 
 
+def search_and_extract_market_size(query: str, keyword: str) -> List[Dict[str, Any]]:
+    """Helper function to search and extract market size data"""
+    try:
+        search_results = search_web(query, max_results=3)
+        size_data = extract_market_size_with_gemini(search_results, keyword)
+        time.sleep(0.5)  # Rate limiting
+        return size_data
+    except Exception as e:
+        print(f"Error in search_and_extract_market_size: {e}")
+        return []
+
+
 def research_competition(
     keywords: List[str], solution_type: str = ""
 ) -> Dict[str, Any]:
     """
-    Researches competition in the market space
+    Researches competition in the market space using threading
 
     Args:
         keywords: Market keywords to research
@@ -749,7 +833,8 @@ def research_competition(
     }
 
     try:
-        # Research direct competitors
+        # Prepare all competitor search tasks
+        search_tasks = []
         for keyword in keywords[:2]:
             competitor_queries = [
                 f"{keyword} {solution_type} competitors top companies",
@@ -757,28 +842,32 @@ def research_competition(
                 f"{keyword} {solution_type} pricing comparison review",
                 f"{keyword} {solution_type} market share leaders",
             ]
-
-            all_competitors = []
-
             for query in competitor_queries:
-                try:
-                    search_results = search_web(query, max_results=3)
-                    competitors = extract_competitors_with_gemini(
-                        search_results, keyword
-                    )
-                    all_competitors.extend(competitors)
-                    time.sleep(0.5)
-                except Exception as e:
-                    print(f"Error researching competition for {query}: {e}")
-                    continue
+                search_tasks.append((query, keyword))
 
-            # Categorize competitors
-            direct_comps, indirect_comps, leaders = categorize_competitors(
-                all_competitors
-            )
-            competition_data["direct_competitors"].extend(direct_comps)
-            competition_data["indirect_competitors"].extend(indirect_comps)
-            competition_data["market_leaders"].extend(leaders)
+        # Execute searches in parallel
+        all_competitors = []
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {
+                executor.submit(search_and_extract_competitors, query, keyword): (
+                    query,
+                    keyword,
+                )
+                for query, keyword in search_tasks
+            }
+
+            for future in as_completed(futures):
+                try:
+                    competitors = future.result()
+                    all_competitors.extend(competitors)
+                except Exception as e:
+                    print(f"Error researching competition: {e}")
+
+        # Categorize competitors
+        direct_comps, indirect_comps, leaders = categorize_competitors(all_competitors)
+        competition_data["direct_competitors"].extend(direct_comps)
+        competition_data["indirect_competitors"].extend(indirect_comps)
+        competition_data["market_leaders"].extend(leaders)
 
         # Determine competition level
         competition_data["competition_level"] = assess_competition_level(
@@ -812,7 +901,7 @@ def validate_demand_signals(
     keywords: List[str], pain_points: List[str]
 ) -> Dict[str, Any]:
     """
-    Validates demand signals for the market opportunity
+    Validates demand signals for the market opportunity using threading
 
     Args:
         keywords: Market keywords to validate
@@ -839,6 +928,9 @@ def validate_demand_signals(
     }
 
     try:
+        # Prepare all demand validation search tasks
+        search_tasks = []
+
         # Validate demand through multiple signals
         for keyword in keywords[:3]:
             demand_queries = [
@@ -848,23 +940,8 @@ def validate_demand_signals(
                 f"{keyword} patent applications innovation",
                 f"{keyword} social media mentions discussions",
             ]
-
-            demand_indicators = []
-
             for query in demand_queries:
-                try:
-                    search_results = search_web(query, max_results=2)
-                    signals = extract_demand_signals_with_gemini(
-                        search_results, keyword
-                    )
-                    if signals:
-                        demand_indicators.extend(signals)
-                    time.sleep(0.5)
-                except Exception as e:
-                    print(f"Error validating demand for {query}: {e}")
-                    continue
-
-            demand_data["demand_sources"].extend(demand_indicators)
+                search_tasks.append(("demand", query, keyword))
 
         # Validate pain points specifically
         for pain_point in pain_points[:3]:
@@ -873,19 +950,25 @@ def validate_demand_signals(
                 f'"{pain_point}" solution need market demand',
                 f'"{pain_point}" reddit twitter complaints',
             ]
-
             for query in pain_queries:
+                search_tasks.append(("pain", query, pain_point))
+
+        # Execute all searches in parallel
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(
+                    search_and_extract_demand_validation, search_type, query, keyword
+                ): (search_type, query, keyword)
+                for search_type, query, keyword in search_tasks
+            }
+
+            for future in as_completed(futures):
                 try:
-                    search_results = search_web(query, max_results=2)
-                    pain_validation = extract_pain_validation_with_gemini(
-                        search_results, pain_point
-                    )
-                    if pain_validation:
-                        demand_data["demand_sources"].extend(pain_validation)
-                    time.sleep(0.5)
+                    validation_data = future.result()
+                    if validation_data:
+                        demand_data["demand_sources"].extend(validation_data)
                 except Exception as e:
-                    print(f"Error validating pain point {pain_point}: {e}")
-                    continue
+                    print(f"Error in demand validation: {e}")
 
         # Calculate overall signal strength
         demand_data["signal_strength"] = calculate_signal_strength_score(
@@ -909,95 +992,27 @@ def validate_demand_signals(
         return demand_data
 
 
-def calculate_tam_sam_som(
-    market_data_points: List[Dict[str, Any]], target_audience: str = ""
-) -> Dict[str, Any]:
-    """
-    Calculates TAM, SAM, and SOM from market data points
-
-    Args:
-        market_data_points: List of market size data points
-        target_audience: Target audience description
-
-    Returns:
-        TAM, SAM, SOM calculations with methodology
-    """
-    tam_sam_som = {
-        "tam_estimate": 0,
-        "sam_estimate": 0,
-        "som_estimate": 0,
-        "tam_methodology": "aggregated_sources",
-        "sam_methodology": "target_segment_analysis",
-        "som_methodology": "realistic_capture_rate",
-        "calculation_confidence": "medium",
-        "data_points_used": len(market_data_points),
-        "geographic_scope": "global",
-        "time_horizon": "current_year",
-        "assumptions": [],
-    }
-
+def search_and_extract_demand_validation(
+    search_type: str, query: str, keyword: str
+) -> List[Dict[str, Any]]:
+    """Helper function to search and extract demand validation data"""
     try:
-        if not market_data_points:
-            return tam_sam_som
+        search_results = search_web(query, max_results=2)
 
-        # Extract TAM estimates from data points
-        tam_values = []
-        for data_point in market_data_points:
-            if data_point.get("market_size_value"):
-                try:
-                    # Convert various formats to numbers
-                    value = parse_market_size_value(data_point["market_size_value"])
-                    if value > 0:
-                        tam_values.append(value)
-                except ValueError:
-                    continue
-
-        # Calculate TAM
-        if tam_values:
-            # Use median to avoid outliers
-            tam_values.sort()
-            tam_estimate = tam_values[len(tam_values) // 2]
-            tam_sam_som["tam_estimate"] = int(tam_estimate)
-
-            # Calculate SAM (typically 10-30% of TAM for focused markets)
-            if target_audience:
-                sam_multiplier = 0.25  # 25% of TAM for specific audience
-            else:
-                sam_multiplier = 0.15  # 15% of TAM for general market
-
-            tam_sam_som["sam_estimate"] = int(tam_estimate * sam_multiplier)
-
-            # Calculate SOM (typically 1-5% of SAM for new entrants)
-            som_multiplier = 0.03  # 3% of SAM - realistic for new market entrant
-            tam_sam_som["som_estimate"] = int(
-                tam_sam_som["sam_estimate"] * som_multiplier
+        if search_type == "demand":
+            validation_data = extract_demand_signals_with_gemini(
+                search_results, keyword
+            )
+        else:  # pain validation
+            validation_data = extract_pain_validation_with_gemini(
+                search_results, keyword
             )
 
-            # Set confidence based on data quality
-            if len(tam_values) >= 3:
-                tam_sam_som["calculation_confidence"] = "high"
-            elif len(tam_values) >= 2:
-                tam_sam_som["calculation_confidence"] = "medium"
-            else:
-                tam_sam_som["calculation_confidence"] = "low"
-
-        # Add assumptions
-        tam_sam_som["assumptions"] = [
-            f"TAM calculated from {len(tam_values)} market size data points",
-            f"SAM estimated as {int(sam_multiplier*100)}% of based on target focus",
-            f"SOM estimated as {int(som_multiplier*100)}% of SAM for new market entrant",
-            "Calculations assume current market conditions and growth rates",
-        ]
-
-        return tam_sam_som
-
+        time.sleep(0.5)  # Rate limiting
+        return validation_data
     except Exception as e:
-        print(f"Error calculating TAM/SAM/SOM: {e}")
-        tam_sam_som["error"] = str(e)
-        return tam_sam_som
-
-
-# Helper functions for new market research functions
+        print(f"Error in search_and_extract_demand_validation: {e}")
+        return []
 
 
 def extract_market_size_with_gemini(
@@ -1413,12 +1428,97 @@ def assess_market_readiness(demand_data: Dict[str, Any]) -> str:
         return "early"
 
 
+def calculate_tam_sam_som(
+    market_data_points: List[Dict[str, Any]], target_audience: str = ""
+) -> Dict[str, Any]:
+    """
+    Calculates TAM, SAM, and SOM from market data points
+
+    Args:
+        market_data_points: List of market size data points
+        target_audience: Target audience description
+
+    Returns:
+        TAM, SAM, SOM calculations with methodology
+    """
+    tam_sam_som = {
+        "tam_estimate": 0,
+        "sam_estimate": 0,
+        "som_estimate": 0,
+        "tam_methodology": "aggregated_sources",
+        "sam_methodology": "target_segment_analysis",
+        "som_methodology": "realistic_capture_rate",
+        "calculation_confidence": "medium",
+        "data_points_used": len(market_data_points),
+        "geographic_scope": "global",
+        "time_horizon": "current_year",
+        "assumptions": [],
+    }
+
+    try:
+        if not market_data_points:
+            return tam_sam_som
+
+        # Extract TAM estimates from data points
+        tam_values = []
+        for data_point in market_data_points:
+            if data_point.get("market_size_value"):
+                try:
+                    # Convert various formats to numbers
+                    value = parse_market_size_value(data_point["market_size_value"])
+                    if value > 0:
+                        tam_values.append(value)
+                except ValueError:
+                    continue
+
+        # Calculate TAM
+        if tam_values:
+            # Use median to avoid outliers
+            tam_values.sort()
+            tam_estimate = tam_values[len(tam_values) // 2]
+            tam_sam_som["tam_estimate"] = int(tam_estimate)
+
+            # Calculate SAM (typically 10-30% of TAM for focused markets)
+            if target_audience:
+                sam_multiplier = 0.25  # 25% of TAM for specific audience
+            else:
+                sam_multiplier = 0.15  # 15% of TAM for general market
+
+            tam_sam_som["sam_estimate"] = int(tam_estimate * sam_multiplier)
+
+            # Calculate SOM (typically 1-5% of SAM for new entrants)
+            som_multiplier = 0.03  # 3% of SAM - realistic for new market entrant
+            tam_sam_som["som_estimate"] = int(
+                tam_sam_som["sam_estimate"] * som_multiplier
+            )
+
+            # Set confidence based on data quality
+            if len(tam_values) >= 3:
+                tam_sam_som["calculation_confidence"] = "high"
+            elif len(tam_values) >= 2:
+                tam_sam_som["calculation_confidence"] = "medium"
+            else:
+                tam_sam_som["calculation_confidence"] = "low"
+
+        # Add assumptions
+        tam_sam_som["assumptions"] = [
+            f"TAM calculated from {len(tam_values)} market size data points",
+            f"SAM estimated as {int(sam_multiplier*100)}% of TAM based on target focus",
+            f"SOM estimated as {int(som_multiplier*100)}% of SAM for new market entrant",
+            "Calculations assume current market conditions and growth rates",
+        ]
+
+        return tam_sam_som
+
+    except Exception as e:
+        print(f"Error calculating TAM/SAM/SOM: {e}")
+        tam_sam_som["error"] = str(e)
+        return tam_sam_som
+
+
 """
 Market Risk Assessment and Recommendation Functions using Gemini AI
 """
-
-# Initialize Gemini client
-client = Client()
 
 
 def assess_market_risks(
@@ -1584,7 +1684,7 @@ def assess_market_risks(
 def generate_recommendation(
     opportunity_score: float,
     risk_assessment: Dict[str, Any],
-    market_data: Dict[str, Any],
+    market_data: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """
     Generates intelligent market entry recommendation using Gemini AI
@@ -1611,13 +1711,6 @@ def generate_recommendation(
     }
 
     try:
-        # Prepare comprehensive analysis for Gemini
-        analysis_context = {  # noqa: F841
-            "opportunity_score": opportunity_score,
-            "risk_assessment": risk_assessment,
-            "market_data": market_data or {},
-        }
-
         prompt = f"""
         Based on the following market analysis data, provide a comprehensive recommendation for this market opportunity.
 
@@ -1797,16 +1890,6 @@ def validate_market_opportunity_comprehensive(
     Returns:
         Complete market validation report with recommendations
     """
-    from datetime import datetime
-
-    # Import required functions (these would be in the same module)
-    from .market_research import (
-        analyze_market_size,
-        research_competition,
-        validate_demand_signals,
-        calculate_opportunity_score,
-    )
-
     validation_report = {
         "validation_id": datetime.now().isoformat(),
         "input_parameters": {
@@ -1828,39 +1911,32 @@ def validate_market_opportunity_comprehensive(
     try:
         print("Starting comprehensive market validation...")
 
-        # 1. Market Size Analysis
-        print("Analyzing market size...")
-        validation_report["market_size_analysis"] = analyze_market_size(
-            keywords, target_audience
-        )
+        # Execute all analyses in parallel using threading
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                executor.submit(
+                    analyze_market_size, keywords, target_audience
+                ): "market_size_analysis",
+                executor.submit(
+                    research_competition, keywords, solution_type
+                ): "competition_analysis",
+                executor.submit(
+                    validate_demand_signals, keywords, pain_points or []
+                ): "demand_validation",
+                executor.submit(analyze_trends, keywords): "trend_analysis",
+            }
 
-        # 2. Competition Research
-        print("Researching competition...")
-        validation_report["competition_analysis"] = research_competition(
-            keywords, solution_type
-        )
+            for future in as_completed(futures):
+                result_key = futures[future]
+                try:
+                    result = future.result()
+                    validation_report[result_key] = result
+                    print(f"Completed {result_key}")
+                except Exception as e:
+                    print(f"Error in {result_key}: {e}")
+                    validation_report[result_key] = {}
 
-        # 3. Demand Validation
-        print("Validating demand signals...")
-        validation_report["demand_validation"] = validate_demand_signals(
-            keywords, pain_points or []
-        )
-
-        # 4. Trend Analysis (placeholder - would integrate with trend analysis function)
-        validation_report["trend_analysis"] = {
-            "trend_direction": "stable",
-            "growth_indicators": [],
-            "market_maturity": "developing",
-        }
-
-        # 5. Risk Assessment
-        print("Assessing market risks...")
-        validation_report["risk_assessment"] = assess_market_risks(
-            validation_report["competition_analysis"],
-            validation_report["trend_analysis"],
-        )
-
-        # 6. Calculate Opportunity Score
+        # Calculate opportunity score
         print("Calculating opportunity score...")
         validation_report["opportunity_score"] = calculate_opportunity_score(
             {
@@ -1873,17 +1949,30 @@ def validate_market_opportunity_comprehensive(
             }
         )
 
-        # 7. Generate Final Recommendation
-        print("Generating recommendation...")
-        validation_report["final_recommendation"] = generate_recommendation(
-            validation_report["opportunity_score"],
-            validation_report["risk_assessment"],
-            {
-                "market_size": validation_report["market_size_analysis"],
-                "competition": validation_report["competition_analysis"],
-                "demand": validation_report["demand_validation"],
-            },
-        )
+        # Assess risks and generate recommendation in parallel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            risk_future = executor.submit(
+                assess_market_risks,
+                validation_report["competition_analysis"],
+                validation_report["trend_analysis"],
+            )
+
+            # Wait for risk assessment before generating recommendation
+            validation_report["risk_assessment"] = risk_future.result()
+
+            # Generate recommendation
+            recommendation_future = executor.submit(
+                generate_recommendation,
+                validation_report["opportunity_score"],
+                validation_report["risk_assessment"],
+                {
+                    "market_size": validation_report["market_size_analysis"],
+                    "competition": validation_report["competition_analysis"],
+                    "demand": validation_report["demand_validation"],
+                },
+            )
+
+            validation_report["final_recommendation"] = recommendation_future.result()
 
         print("Market validation completed successfully!")
         return validation_report
@@ -1892,3 +1981,343 @@ def validate_market_opportunity_comprehensive(
         print(f"Error in comprehensive validation: {e}")
         validation_report["error"] = str(e)
         return validation_report
+
+
+# Additional utility functions for comprehensive analysis
+
+
+def batch_analyze_keywords(
+    keywords_list: List[List[str]], max_workers: int = 3
+) -> List[Dict[str, Any]]:
+    """
+    Analyze multiple keyword sets in parallel
+
+    Args:
+        keywords_list: List of keyword lists to analyze
+        max_workers: Maximum number of parallel workers
+
+    Returns:
+        List of analysis results for each keyword set
+    """
+    results = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(comprehensive_market_research, keywords): keywords
+            for keywords in keywords_list
+        }
+
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                print(f"Error analyzing keywords {futures[future]}: {e}")
+                results.append({"error": str(e), "keywords": futures[future]})
+
+    return results
+
+
+def parallel_domain_check(domain_list: List[str]) -> List[Dict[str, Any]]:
+    """
+    Check multiple domains for availability in parallel
+
+    Args:
+        domain_list: List of domains to check
+
+    Returns:
+        List of domain availability results
+    """
+    results = []
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(check_domain_availability, domain): domain
+            for domain in domain_list
+        }
+
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                domain = futures[future]
+                results.append(
+                    {
+                        "domain": domain,
+                        "available": False,
+                        "error": str(e),
+                        "checked_at": datetime.now().isoformat(),
+                    }
+                )
+
+    return results
+
+
+def multi_market_comparison(
+    market_opportunities: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """
+    Compare multiple market opportunities and rank them
+
+    Args:
+        market_opportunities: List of market opportunity data
+
+    Returns:
+        Comparison analysis with rankings
+    """
+    comparison = {
+        "total_markets_analyzed": len(market_opportunities),
+        "market_rankings": [],
+        "comparison_metrics": {
+            "highest_opportunity_score": 0.0,
+            "lowest_risk_market": "",
+            "most_competitive_market": "",
+            "best_demand_signals": "",
+            "recommended_market": "",
+        },
+        "analysis_timestamp": datetime.now().isoformat(),
+    }
+
+    try:
+        # Analyze each market in parallel
+        with ThreadPoolExecutor(max_workers=len(market_opportunities)) as executor:
+            futures = {
+                executor.submit(
+                    validate_market_opportunity_comprehensive,
+                    opp.get("keywords", []),
+                    opp.get("target_audience", ""),
+                    opp.get("solution_type", ""),
+                    opp.get("pain_points", []),
+                ): opp
+                for opp in market_opportunities
+            }
+
+            analyzed_markets = []
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    analyzed_markets.append(result)
+                except Exception as e:
+                    print(f"Error analyzing market: {e}")
+
+        # Rank markets by opportunity score
+        ranked_markets = sorted(
+            analyzed_markets, key=lambda x: x.get("opportunity_score", 0), reverse=True
+        )
+
+        comparison["market_rankings"] = [
+            {
+                "rank": idx + 1,
+                "keywords": market.get("input_parameters", {}).get("keywords", []),
+                "opportunity_score": market.get("opportunity_score", 0),
+                "risk_level": market.get("risk_assessment", {}).get(
+                    "overall_risk_level", "unknown"
+                ),
+                "recommendation": market.get("final_recommendation", {}).get(
+                    "recommendation", "unknown"
+                ),
+                "confidence": market.get("final_recommendation", {}).get(
+                    "confidence", "unknown"
+                ),
+            }
+            for idx, market in enumerate(ranked_markets)
+        ]
+
+        # Calculate comparison metrics
+        if ranked_markets:
+            comparison["comparison_metrics"]["highest_opportunity_score"] = max(
+                m.get("opportunity_score", 0) for m in ranked_markets
+            )
+
+            # Find best markets by different criteria
+            best_opportunity = max(
+                ranked_markets, key=lambda x: x.get("opportunity_score", 0)
+            )
+            comparison["comparison_metrics"]["recommended_market"] = str(
+                best_opportunity.get("input_parameters", {}).get("keywords", [])
+            )
+
+            # Find lowest risk market
+            risk_levels = {"low": 1, "medium": 2, "high": 3, "unknown": 4}
+            lowest_risk = min(
+                ranked_markets,
+                key=lambda x: risk_levels.get(
+                    x.get("risk_assessment", {}).get("overall_risk_level", "unknown"), 4
+                ),
+            )
+            comparison["comparison_metrics"]["lowest_risk_market"] = str(
+                lowest_risk.get("input_parameters", {}).get("keywords", [])
+            )
+
+        return comparison
+
+    except Exception as e:
+        print(f"Error in multi_market_comparison: {e}")
+        comparison["error"] = str(e)
+        return comparison
+
+
+def generate_market_report(validation_data: Dict[str, Any]) -> str:
+    """
+    Generate a comprehensive markdown report from validation data
+
+    Args:
+        validation_data: Market validation data
+
+    Returns:
+        Formatted markdown report
+    """
+    try:
+        keywords = validation_data.get("input_parameters", {}).get("keywords", [])
+        opportunity_score = validation_data.get("opportunity_score", 0)
+        recommendation = validation_data.get("final_recommendation", {})
+
+        report = f"""# Market Research Report
+
+## Executive Summary
+
+**Keywords Analyzed:** {', '.join(keywords)}
+**Opportunity Score:** {int(opportunity_score * 100)}%
+**Recommendation:** {recommendation.get('recommendation', 'Unknown').replace('_', ' ').title()}
+**Analysis Date:** {validation_data.get('validation_timestamp', 'Unknown')}
+
+{recommendation.get('summary', 'No summary available')}
+
+## Market Size Analysis
+
+"""
+
+        market_size = validation_data.get("market_size_analysis", {})
+        if market_size:
+            report += f"""
+**TAM (Total Addressable Market):** ${market_size.get('tam_estimate', 0):,}
+**SAM (Serviceable Addressable Market):** ${market_size.get('sam_estimate', 0):,}
+**SOM (Serviceable Obtainable Market):** ${market_size.get('som_estimate', 0):,}
+**Growth Rate:** {market_size.get('growth_rate', 0):.1f}%
+**Confidence Level:** {market_size.get('size_confidence', 'Unknown').title()}
+
+"""
+
+        # Competition Analysis
+        competition = validation_data.get("competition_analysis", {})
+        if competition:
+            report += f"""## Competition Analysis
+
+**Competition Level:** {competition.get('competition_level', 'Unknown').title()}
+**Market Concentration:** {competition.get('market_concentration', 'Unknown').title()}
+**Direct Competitors:** {len(competition.get('direct_competitors', []))}
+**Market Leaders:** {len(competition.get('market_leaders', []))}
+
+"""
+
+        # Demand Validation
+        demand = validation_data.get("demand_validation", {})
+        if demand:
+            report += f"""## Demand Validation
+
+**Signal Strength:** {demand.get('signal_strength', 0):.1f}/100
+**Validation Confidence:** {demand.get('validation_confidence', 'Unknown').title()}
+**Market Readiness:** {demand.get('market_readiness', 'Unknown').title()}
+
+"""
+
+        # Risk Assessment
+        risks = validation_data.get("risk_assessment", {})
+        if risks:
+            report += f"""## Risk Assessment
+
+**Overall Risk Level:** {risks.get('overall_risk_level', 'Unknown').title()}
+**Risk Score:** {risks.get('risk_score', 0):.1f}/100
+
+### Key Risks
+"""
+            # Add top risks from each category
+            for category, risk_list in risks.get("risk_categories", {}).items():
+                if risk_list:
+                    report += f"**{category.replace('_', ' ').title()}:**\n"
+                    for risk in risk_list[:2]:  # Top 2 risks per category
+                        report += f"- {risk.get('risk', 'Unknown risk')} (Severity: {risk.get('severity', 'unknown')})\n"
+                    report += "\n"
+
+        # Recommendations
+        if recommendation:
+            report += f"""## Recommendations
+
+**Primary Recommendation:** {recommendation.get('recommendation', 'Unknown').replace('_', ' ').title()}
+**Success Probability:** {recommendation.get('success_probability', 0)}%
+**Investment Approach:** {recommendation.get('investment_recommendation', 'Unknown').title()}
+**Timeline:** {recommendation.get('timeline_recommendation', 'Unknown').replace('_', ' ')}
+
+### Key Success Factors
+"""
+            for factor in recommendation.get("key_success_factors", [])[:5]:
+                report += f"- {factor}\n"
+
+            report += "\n### Next Steps\n"
+            for step in recommendation.get("next_steps", [])[:5]:
+                priority = step.get("priority", "medium")
+                report += f"- **{priority.title()} Priority:** {step.get('step', 'Unknown step')}\n"
+
+        report += f"""
+## Methodology
+
+This analysis was conducted using automated web research and AI-powered analysis of:
+- Market size data from multiple sources
+- Competitive landscape analysis
+- Demand signal validation
+- Risk assessment across multiple categories
+- AI-generated insights and recommendations
+
+**Analysis Tools:** Web search, Gemini AI, structured data extraction
+**Data Sources:** {len(validation_data.get('market_size_analysis', {}).get('data_sources', []))} market data points analyzed
+"""
+
+        return report
+
+    except Exception as e:
+        return f"Error generating report: {str(e)}"
+
+
+# Example usage and test functions
+
+
+def test_market_research():
+    """Test function to demonstrate the market research capabilities"""
+    test_keywords = ["AI chatbot", "customer service automation"]
+    test_audience = "small businesses"
+
+    print("Testing market research with threading...")
+
+    # Test comprehensive market research
+    result = comprehensive_market_research(test_keywords, test_audience)
+    print(
+        f"Analysis completed. Opportunity score: {result.get('opportunity_score', 0):.2f}"
+    )
+
+    # Test domain checking
+    test_domains = ["aichatbot.com", "customerserviceai.com", "chatbotpro.com"]
+    domain_results = parallel_domain_check(test_domains)
+    print(f"Checked {len(domain_results)} domains")
+
+    # Test comprehensive validation
+    validation_result = validate_market_opportunity_comprehensive(
+        keywords=test_keywords,
+        target_audience=test_audience,
+        solution_type="software",
+        pain_points=["slow customer service", "high support costs"],
+    )
+
+    print(
+        f"Validation completed. Recommendation: {validation_result.get('final_recommendation', {}).get('recommendation', 'unknown')}"
+    )
+
+    return validation_result
+
+
+if __name__ == "__main__":
+    # Run test if script is executed directly
+    test_result = test_market_research()
+    print("\nGenerating report...")
+    report = generate_market_report(test_result)
+    print("Report generated successfully!")
