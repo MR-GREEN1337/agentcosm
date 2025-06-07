@@ -707,9 +707,7 @@ def build_premium_startup_landing_experience(
 
         # Generate advanced landing page with AI
         print("🤖 Generating premium landing page with advanced AI...")
-        landing_html = generate_premium_landing_page_with_ai(
-            brand_data, copy_data, visual_assets
-        )
+        landing_html = generate_premium_landing_page_with_ai(brand_data, visual_assets)
 
         if not landing_html:
             print("⚠️ AI generation failed, using advanced fallback...")
@@ -1033,7 +1031,6 @@ def extract_industry_keywords(
 
 def generate_premium_landing_page_with_ai(
     brand_data: Dict[str, Any],
-    copy_data: Dict[str, Any],
     visual_assets: Dict[str, Any],
 ) -> str:
     """Generate premium startup landing page with advanced AI and modern design patterns."""
