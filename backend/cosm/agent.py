@@ -8,9 +8,12 @@ from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool
 from google.genai import types
 
-from .discovery.explorer_agent import market_explorer_agent
-from .discovery.adjacent_market_agent import adjacent_market_agent
-from .discovery.cross_industry_agent import cross_industry_agent
+from .discovery import (
+    market_explorer_agent,
+    adjacent_market_agent,
+    cross_industry_agent,
+    connection_synthesizer_agent,
+)
 
 from .analysis import market_analyzer_agent
 from .analysis.data_intelligence import data_intelligence_agent
@@ -63,6 +66,7 @@ class MarketOpportunityAgent:
                 market_explorer_agent,  # Primary market signals & pain points
                 adjacent_market_agent,  # Adjacent/complementary markets
                 cross_industry_agent,  # Cross-industry patterns & arbitrage
+                connection_synthesizer_agent,  # Synthesize parallel discoveries
             ],
         )
 
