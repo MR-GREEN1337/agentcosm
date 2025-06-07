@@ -1,20 +1,4 @@
 # agentcosm
-## Reintegrate adk builtin tools(google_Search) and understand utility of bigquery --> Englobe agents that englobe builtin adk tools and set em as subagents
-## Improve code agent to be both robust and fast
-## implement retry mechanism for failed model call
-## assistant sholuldn't ask itself should be answering -- Done
-## Be able to stream agent steps
-## Audio reads previous ai messages@
-## Abstract instructions, ai is to user an in-between business ideas finder -- Done
-## Add loading state while no messagee streamed
-
-## Agent exhibits difficulties to retrieve from state on asking
-## root agent needs to report to user after each finding, not just asking permission to advance
-
-## Agent needs to help find idea -> validate it --> build landing page and pitch deck with plots, and all relies on seamlessly doing pull/push ops on state
-## make agent thining unique from message id
-
-## liminal discovery
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 

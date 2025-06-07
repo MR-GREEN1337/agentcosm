@@ -92,7 +92,7 @@ const AgentMessageModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const config: any = AGENT_CONFIGS[agent as keyof typeof AGENT_CONFIGS] || {
+  const config = AGENT_CONFIGS[agent as keyof typeof AGENT_CONFIGS] || {
     name: agent,
     icon: Bot,
     color: 'blue',
@@ -248,65 +248,247 @@ const AgentMessageModal = ({
   );
 };
 
-// Agent thinking avatar component with click functionality
+// Enhanced Agent thinking avatar component with advanced animations
 const AgentThinkingAvatar = ({
   agentName,
   config,
   messages,
   onClick,
+  isLoading,
 }: {
   agentName: string;
   config: any;
   messages: any[];
   onClick: () => void;
+  isLoading: boolean;
 }) => {
-  const [dots, setDots] = useState('');
+  const [animationPhase, setAnimationPhase] = useState(0);
+  const [pulseIntensity, setPulseIntensity] = useState(0);
+  const [sparkles, setSparkles] = useState<
+    Array<{ id: number; x: number; y: number; delay: number }>
+  >([]);
 
+  // Only animate when loading
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((prev) => {
-        if (prev === '...') return '';
-        return prev + '.';
-      });
-    }, 500);
+    if (!isLoading) return;
 
-    return () => clearInterval(interval);
-  }, []);
+    // Advanced multi-phase animation cycle
+    const phaseInterval = setInterval(() => {
+      setAnimationPhase((prev) => (prev + 1) % 4);
+    }, 1200);
+
+    // Dynamic pulse intensity
+    const pulseInterval = setInterval(() => {
+      setPulseIntensity((prev) => Math.sin(Date.now() / 400) * 0.5 + 0.5);
+    }, 100);
+
+    // Generate sparkle particles
+    const sparkleInterval = setInterval(() => {
+      setSparkles((prev) => {
+        const newSparkles = Array.from({ length: 3 }, (_, i) => ({
+          id: Date.now() + i,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          delay: Math.random() * 500,
+        }));
+        return [...prev.slice(-5), ...newSparkles]; // Keep last 8 sparkles
+      });
+    }, 800);
+
+    return () => {
+      clearInterval(phaseInterval);
+      clearInterval(pulseInterval);
+      clearInterval(sparkleInterval);
+    };
+  }, [isLoading]);
+
+  // Clear animations when not loading
+  useEffect(() => {
+    if (!isLoading) {
+      setSparkles([]);
+      setAnimationPhase(0);
+      setPulseIntensity(0);
+    }
+  }, [isLoading]);
 
   const IconComponent = config.icon;
+
   const colorClasses = {
-    purple:
-      'bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30',
-    green:
-      'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30',
-    orange:
-      'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30',
-    red: 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30',
-    blue: 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30',
+    purple: {
+      base: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      hover: 'hover:bg-purple-500/30 hover:border-purple-500/50',
+      glow: 'shadow-purple-500/25',
+      gradient: 'from-purple-500/30 to-purple-600/20',
+    },
+    green: {
+      base: 'bg-green-500/20 text-green-400 border-green-500/30',
+      hover: 'hover:bg-green-500/30 hover:border-green-500/50',
+      glow: 'shadow-green-500/25',
+      gradient: 'from-green-500/30 to-green-600/20',
+    },
+    orange: {
+      base: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      hover: 'hover:bg-orange-500/30 hover:border-orange-500/50',
+      glow: 'shadow-orange-500/25',
+      gradient: 'from-orange-500/30 to-orange-600/20',
+    },
+    red: {
+      base: 'bg-red-500/20 text-red-400 border-red-500/30',
+      hover: 'hover:bg-red-500/30 hover:border-red-500/50',
+      glow: 'shadow-red-500/25',
+      gradient: 'from-red-500/30 to-red-600/20',
+    },
+    blue: {
+      base: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      hover: 'hover:bg-blue-500/30 hover:border-blue-500/50',
+      glow: 'shadow-blue-500/25',
+      gradient: 'from-blue-500/30 to-blue-600/20',
+    },
   };
+
+  const colors = colorClasses[config.color as keyof typeof colorClasses];
+
+  // Animation phase descriptions
+  const phaseTexts = ['analyzing', 'processing', 'computing', 'synthesizing'];
+
+  // Don't render if not loading and no messages
+  if (!isLoading && messages.length === 0) {
+    return null;
+  }
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer animate-pulse hover:animate-none',
-        colorClasses[config.color as keyof typeof colorClasses],
+        'relative flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-300 cursor-pointer overflow-hidden',
+        colors.base,
+        colors.hover,
+        isLoading && 'animate-pulse',
+        isLoading && `shadow-lg ${colors.glow}`,
       )}
+      style={{
+        transform: isLoading
+          ? `scale(${1 + pulseIntensity * 0.05})`
+          : 'scale(1)',
+        boxShadow: isLoading
+          ? `0 0 ${20 + pulseIntensity * 10}px ${colors.glow.split('/')[0].split('-')[1]}/0.3`
+          : 'none',
+      }}
     >
+      {/* Animated background gradient when loading */}
+      {isLoading && (
+        <div
+          className={cn(
+            'absolute inset-0 bg-gradient-to-r opacity-30 transition-opacity duration-1000',
+            colors.gradient,
+          )}
+          style={{
+            transform: `translateX(${-100 + animationPhase * 50}%)`,
+            transition: 'transform 1.2s ease-in-out',
+          }}
+        />
+      )}
+
+      {/* Sparkle particles when loading */}
+      {isLoading &&
+        sparkles.map((sparkle) => (
+          <div
+            key={sparkle.id}
+            className="absolute w-1 h-1 bg-white rounded-full animate-ping opacity-60"
+            style={{
+              left: `${sparkle.x}%`,
+              top: `${sparkle.y}%`,
+              animationDelay: `${sparkle.delay}ms`,
+              animationDuration: '1s',
+            }}
+          />
+        ))}
+
+      {/* Agent icon with enhanced animations */}
       <div
         className={cn(
-          'w-6 h-6 rounded-lg border flex items-center justify-center',
-          colorClasses[config.color as keyof typeof colorClasses],
+          'relative w-6 h-6 rounded-lg border flex items-center justify-center transition-all duration-300',
+          colors.base,
+          isLoading && 'animate-spin',
         )}
+        style={{
+          animationDuration: isLoading
+            ? `${2000 + Math.sin(pulseIntensity * Math.PI) * 500}ms`
+            : 'none',
+          transform: isLoading
+            ? `rotate(${animationPhase * 90}deg)`
+            : 'rotate(0deg)',
+        }}
       >
-        {IconComponent && <IconComponent className="w-3 h-3" />}
+        {IconComponent && (
+          <IconComponent
+            className={cn(
+              'w-3 h-3 transition-all duration-300',
+              isLoading && 'animate-pulse',
+            )}
+            style={{
+              transform: isLoading
+                ? `scale(${1 + Math.sin(pulseIntensity * Math.PI) * 0.2})`
+                : 'scale(1)',
+            }}
+          />
+        )}
+
+        {/* Orbital ring when loading */}
+        {isLoading && (
+          <div
+            className="absolute inset-0 border border-current rounded-lg opacity-40 animate-ping"
+            style={{
+              animationDuration: '2s',
+              animationDelay: `${animationPhase * 0.3}s`,
+            }}
+          />
+        )}
       </div>
-      <span>
-        {config.name} thinking{dots}
+
+      {/* Agent name with typing effect when loading */}
+      <span className="relative z-10 flex items-center gap-1">
+        {config.name} {isLoading ? phaseTexts[animationPhase] : 'idle'}
+        {isLoading && (
+          <>
+            <span
+              className="inline-block w-1 h-3 bg-current animate-pulse ml-1"
+              style={{
+                animationDelay: `${animationPhase * 200}ms`,
+              }}
+            />
+            <span
+              className="inline-block animate-bounce"
+              style={{
+                animationDelay: `${animationPhase * 100}ms`,
+              }}
+            >
+              ⚡
+            </span>
+          </>
+        )}
       </span>
-      <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-xs">
+
+      {/* Message count with enhanced styling */}
+      <span
+        className={cn(
+          'ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold transition-all duration-300',
+          isLoading ? 'bg-white/30 animate-pulse' : 'bg-white/20',
+          isLoading && 'shadow-inner',
+        )}
+        style={{
+          transform: isLoading
+            ? `scale(${1 + pulseIntensity * 0.1})`
+            : 'scale(1)',
+        }}
+      >
         {messages.length}
       </span>
+
+      {/* Glowing edge effect when loading */}
+      {isLoading && (
+        <div className="absolute inset-0 rounded-full border border-current opacity-20 animate-ping" />
+      )}
     </button>
   );
 };
@@ -315,9 +497,11 @@ const AgentThinkingAvatar = ({
 const AgentActivityPanel = ({
   agentMessages,
   onAgentClick,
+  isLoading,
 }: {
   agentMessages: Record<string, any[]>;
   onAgentClick: (agent: string) => void;
+  isLoading?: boolean;
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const activeAgents = Object.keys(agentMessages).filter(
@@ -327,15 +511,27 @@ const AgentActivityPanel = ({
       agentMessages[agent].length > 0,
   );
 
-  if (activeAgents.length === 0) return null;
+  if (activeAgents.length === 0 && !isLoading) return null;
 
   return (
-    <div className="mt-3 p-3 bg-gray-50 dark:bg-[#0e0e10] rounded-lg border border-gray-200 dark:border-[#2a2a30]">
+    <div
+      className={cn(
+        'mt-3 p-3 rounded-lg border transition-all duration-300',
+        isLoading
+          ? 'bg-gradient-to-r from-gray-50/80 to-blue-50/40 dark:from-[#0e0e10]/80 dark:to-[#1a1a2e]/40 border-blue-200/50 dark:border-blue-500/20'
+          : 'bg-gray-50 dark:bg-[#0e0e10] border-gray-200 dark:border-[#2a2a30]',
+      )}
+    >
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center justify-between w-full text-sm font-medium text-gray-700 dark:text-[#d0d0d8] mb-2"
       >
-        <span>Agent Activity ({activeAgents.length} active)</span>
+        <span className="flex items-center gap-2">
+          Agent Activity ({activeAgents.length} active)
+          {isLoading && (
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          )}
+        </span>
         {isExpanded ? (
           <ChevronUp className="w-4 h-4" />
         ) : (
@@ -360,6 +556,7 @@ const AgentActivityPanel = ({
                 config={config}
                 messages={agentMessages[agentName]}
                 onClick={() => onAgentClick(agentName)}
+                isLoading={isLoading || false}
               />
             );
           })}
@@ -369,58 +566,165 @@ const AgentActivityPanel = ({
   );
 };
 
-// Loading component for main coordinator
+// Enhanced Loading component for main coordinator
 const CoordinatorLoadingMessage = ({
   agentMessages,
   onAgentClick,
+  isLoading,
 }: {
   agentMessages: Record<string, any[]>;
   onAgentClick: (agent: string) => void;
+  isLoading?: boolean;
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [particleAnimation, setParticleAnimation] = useState(0);
+
   const steps = [
-    'Analyzing market opportunities',
-    'Coordinating research agents',
-    'Processing insights',
-    'Generating recommendations',
+    { text: 'Analyzing market opportunities', icon: '🔍' },
+    { text: 'Coordinating research agents', icon: '🤝' },
+    { text: 'Processing insights', icon: '⚡' },
+    { text: 'Generating recommendations', icon: '💡' },
   ];
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStep((prev) => (prev + 1) % steps.length);
-    }, 1500);
+    if (!isLoading) return;
 
-    return () => clearInterval(interval);
-  }, []);
+    const stepInterval = setInterval(() => {
+      setCurrentStep((prev) => (prev + 1) % steps.length);
+    }, 1800);
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        const newProgress = (prev + Math.random() * 15) % 100;
+        return Math.min(newProgress, 85); // Cap at 85% until complete
+      });
+    }, 300);
+
+    const particleInterval = setInterval(() => {
+      setParticleAnimation((prev) => prev + 1);
+    }, 150);
+
+    return () => {
+      clearInterval(stepInterval);
+      clearInterval(progressInterval);
+      clearInterval(particleInterval);
+    };
+  }, [isLoading]);
+
+  if (!isLoading) return null;
 
   return (
     <div className="space-y-3">
       <div className="flex gap-3 group relative justify-start animate-in fade-in-0 duration-300">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative">
           <div className="w-8 h-8 rounded-lg overflow-hidden relative">
             <img
               src="/face.png"
               alt="Market Coordinator"
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-blue-500/20 rounded-lg animate-pulse"></div>
+            {/* Enhanced overlay with multiple effects */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-purple-500/20 to-blue-600/30 rounded-lg">
+              <div className="absolute inset-0 animate-pulse bg-blue-400/20 rounded-lg" />
+              <div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                style={{
+                  transform: `translateX(${-100 + (particleAnimation % 4) * 50}%)`,
+                  transition: 'transform 0.8s ease-in-out',
+                }}
+              />
+            </div>
+
+            {/* Orbital rings */}
+            <div
+              className="absolute -inset-1 border border-blue-400/30 rounded-lg animate-spin"
+              style={{ animationDuration: '3s' }}
+            />
+            <div
+              className="absolute -inset-0.5 border border-purple-400/20 rounded-lg animate-spin"
+              style={{ animationDuration: '2s', animationDirection: 'reverse' }}
+            />
+
+            {/* Floating particles */}
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-white rounded-full animate-ping opacity-60"
+                style={{
+                  top: `${20 + i * 20}%`,
+                  left: `${10 + i * 30}%`,
+                  animationDelay: `${i * 0.5}s`,
+                  animationDuration: '1.5s',
+                }}
+              />
+            ))}
           </div>
         </div>
 
         <div className="flex flex-col gap-1 max-w-[70%]">
           <div className="flex items-end gap-2">
-            <div className="rounded-2xl px-4 py-3 relative bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200 text-gray-900 dark:from-[#1a1a1f] dark:to-[#1e1e23] dark:border-[#2a2a30] dark:text-[#d0d0d8]">
-              <div className="flex flex-col gap-2">
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                  <div className="bg-blue-500 h-1.5 rounded-full animate-pulse transition-all duration-1000 w-3/4"></div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+            <div className="rounded-2xl px-4 py-3 relative bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200 text-gray-900 dark:from-[#1a1a1f] dark:to-[#1e1e23] dark:border-[#2a2a30] dark:text-[#d0d0d8] overflow-hidden">
+              {/* Animated background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 animate-pulse" />
+
+              <div className="relative z-10 flex flex-col gap-3">
+                {/* Enhanced progress bar */}
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden relative">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600 h-2 rounded-full transition-all duration-500 relative"
+                    style={{ width: `${progress}%` }}
+                  >
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
                   </div>
-                  <span className="text-sm font-medium transition-all duration-500">
-                    {steps[currentStep]}
-                  </span>
+
+                  {/* Progress sparkles */}
+                  <div
+                    className="absolute top-0 w-1 h-2 bg-white rounded-full opacity-80 animate-bounce"
+                    style={{ left: `${Math.min(progress, 85)}%` }}
+                  />
+                </div>
+
+                {/* Enhanced status with icons and effects */}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    {/* Multi-layer spinner */}
+                    <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    <div
+                      className="absolute inset-0 w-5 h-5 border border-purple-500/20 border-r-purple-500 rounded-full animate-spin"
+                      style={{
+                        animationDirection: 'reverse',
+                        animationDuration: '1.5s',
+                      }}
+                    />
+                    <div className="absolute inset-1 w-3 h-3 bg-blue-400 rounded-full animate-pulse opacity-50" />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-xl animate-bounce"
+                      style={{ animationDelay: `${currentStep * 0.2}s` }}
+                    >
+                      {steps[currentStep].icon}
+                    </span>
+                    <span className="text-sm font-medium transition-all duration-500">
+                      {steps[currentStep].text}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Processing indicators */}
+                <div className="flex items-center gap-1 text-xs opacity-70">
+                  <span>Processing</span>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="inline-block w-1 h-1 bg-current rounded-full animate-bounce"
+                      style={{ animationDelay: `${i * 0.2}s` }}
+                    />
+                  ))}
+                  <span className="ml-1">{Math.round(progress)}%</span>
                 </div>
               </div>
             </div>
@@ -428,10 +732,11 @@ const CoordinatorLoadingMessage = ({
         </div>
       </div>
 
-      {/* Show agent activity while coordinator is loading */}
+      {/* Enhanced agent activity while coordinator is loading */}
       <AgentActivityPanel
         agentMessages={agentMessages}
         onAgentClick={onAgentClick}
+        isLoading={isLoading}
       />
     </div>
   );
@@ -800,6 +1105,7 @@ export function EventsTab({
               <AgentActivityPanel
                 agentMessages={block.agentActivity}
                 onAgentClick={handleAgentClick}
+                isLoading={isLoading && !block.coordinatorMessage}
               />
 
               {/* Coordinator Response */}
@@ -882,6 +1188,7 @@ export function EventsTab({
             <CoordinatorLoadingMessage
               agentMessages={agentMessages}
               onAgentClick={handleAgentClick}
+              isLoading={isLoading}
             />
           )}
 
@@ -896,6 +1203,7 @@ export function EventsTab({
                     .agentActivity
                 }
                 onAgentClick={handleAgentClick}
+                isLoading={isLoading}
               />
             )}
         </div>
