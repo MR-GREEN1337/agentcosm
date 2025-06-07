@@ -449,7 +449,7 @@ const AboutContent = () => (
     <div className="space-y-4 text-white/70">
       <p>
         We are explorers of the digital frontier, seeking to unravel the
-        mysteries of artificial consciousness and multi-agent systems.
+        mysteries of multi-agent systems.
       </p>
       <p>
         Our mission is to create intelligent systems that can work together,
@@ -516,9 +516,8 @@ const ContactContent = () => {
       <img src="face.jpeg" className="w-80 h-80 mx-auto" />
       <p className="text-white/70 text-center">
         I'm Islam HACHIMI, an AI explorer of the digital frontier, seeking to
-        unravel the mysteries of artificial consciousness and multi-agent
-        systems, and eating pizza along the way. Let's connect and explore the
-        possibilities together.
+        unravel the mysteries of multi-agent systems, and eating pizza along the
+        way. Let's connect and explore the possibilities together.
       </p>
       <div className="pt-4">
         <button
