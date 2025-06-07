@@ -20,10 +20,10 @@ client = Client()
 # =============================================================================
 
 
-def create_comprehensive_brand_identity(
+def create_brand_identity(
     opportunity_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Creates a comprehensive brand identity with AI-powered strategy, visual assets, and competitive analysis."""
+    """Creates a brand identity with AI-powered strategy, visual assets, and competitive analysis."""
 
     package = {
         "opportunity_name": opportunity_data.get("name", "Market Opportunity"),
@@ -678,7 +678,7 @@ def create_dark_logo_variation(brand_name: str, color: str) -> Dict[str, Any]:
 # =============================================================================
 
 
-def build_premium_startup_landing_experience(
+def build_landing_experience(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -1878,7 +1878,7 @@ def generate_logo_with_imagen(
             config=types.GenerateImagesConfig(
                 number_of_images=1,
                 aspect_ratio="1:1",
-                safety_filter_level="block_few",
+                safety_filter_level="block_low_and_above",
                 person_generation="dont_allow",
             ),
         )
@@ -2043,7 +2043,7 @@ brand_creator_agent = LlmAgent(
     Think unicorn potential with sophisticated execution.
     """,
     description="Creates comprehensive startup brand identities with advanced AI-powered visual assets, strategic positioning, and conversion optimization",
-    tools=[FunctionTool(func=create_comprehensive_brand_identity)],
+    tools=[FunctionTool(func=create_brand_identity)],
     output_key="brand_package",
 )
 
@@ -2081,6 +2081,6 @@ landing_builder_agent = LlmAgent(
     Create landing pages that feel like $100M+ startups with enterprise-grade polish.
     """,
     description="Creates and deploys premium startup landing pages with advanced AI-generated code, comprehensive visual asset integration, and conversion optimization",
-    tools=[FunctionTool(func=build_premium_startup_landing_experience)],
+    tools=[FunctionTool(func=build_landing_experience)],
     output_key="landing_package",
 )

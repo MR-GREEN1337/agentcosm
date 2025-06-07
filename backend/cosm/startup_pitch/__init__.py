@@ -131,8 +131,8 @@ def generate_and_deploy_pitch_deck(
     opportunity_data: Dict[str, Any],
     brand_data: Dict[str, Any],
     competitive_data: Dict[str, Any],
-    deployment_options: Dict[str, Any] = None,
-    additional_context: Dict[str, Any] = None,
+    deployment_options: Dict[str, Any],
+    additional_context: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Generate comprehensive startup pitch deck, deploy to renderer, and return access links
@@ -777,7 +777,7 @@ def generate_pitch_deck_pdf(
         return None
 
 
-def get_deployment_status(pdf_id: str = None, site_id: str = None) -> Dict[str, Any]:
+def get_deployment_status(pdf_id: str, site_id: str) -> Dict[str, Any]:
     """
     Check the deployment status and get analytics from the renderer
     """

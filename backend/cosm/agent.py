@@ -130,6 +130,7 @@ class MarketOpportunityAgent:
             sub_agents=[
                 brand_creator_agent,  # Brand identity & marketing copy
                 landing_builder_agent,  # Landing page & deployment
+                startup_pitch_agent,  # Pitch deck & deployment
             ],
         )
 

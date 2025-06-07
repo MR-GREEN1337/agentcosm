@@ -1,9 +1,9 @@
 """
-Market Analyzer Agent with Advanced Performance Optimizations
-Combines comprehensive market analysis with AI-powered scoring using concurrent execution
+Market Analyzer Agent with Pure Threading Implementation
+Removes all async/await to avoid OpenTelemetry context issues
+Uses ThreadPoolExecutor and concurrent.futures for parallel execution
 """
 
-import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Any, Optional
 import json
@@ -58,7 +58,8 @@ class ValidationResult:
 
 class ParallelMarketAnalyzer:
     """
-    Advanced parallel market analyzer with optimized concurrent execution
+    Pure threading-based parallel market analyzer
+    No async/await to avoid OpenTelemetry context issues
     """
 
     def __init__(self, max_workers: int = 6, batch_size: int = 10):
@@ -86,19 +87,18 @@ class ParallelMarketAnalyzer:
         return wrapper
 
     @performance_monitor
-    async def comprehensive_market_validation_parallel(
+    def comprehensive_market_validation_parallel(
         self, opportunity_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        PARALLELIZED comprehensive market validation with integrated AI scoring
-
-        This version runs all validation phases concurrently for maximum performance
+        PARALLEL comprehensive market validation using pure threading
+        No async/await - only ThreadPoolExecutor
         """
         validation_report = {
             "opportunity_id": opportunity_data.get("id", datetime.now().isoformat()),
             "market_name": opportunity_data.get("market_name", "Unknown"),
             "validation_timestamp": datetime.now().isoformat(),
-            "execution_method": "parallel_optimization",
+            "execution_method": "pure_threading",
             "performance_metrics": {},
             # Market validation components (populated in parallel)
             "market_size_analysis": {},
@@ -124,7 +124,9 @@ class ParallelMarketAnalyzer:
             pain_points = opportunity_data.get("pain_points", [])
             solution_type = opportunity_data.get("solution_type", "")
 
-            print("🚀 Starting PARALLEL comprehensive market validation...")
+            print(
+                "🚀 Starting PARALLEL comprehensive market validation (pure threading)..."
+            )
 
             # PHASE 1: PARALLEL MARKET VALIDATION
             validation_tasks = [
@@ -158,7 +160,7 @@ class ParallelMarketAnalyzer:
             ]
 
             # Execute validation tasks in parallel
-            validation_results = await self.execute_validation_tasks_parallel(
+            validation_results = self.execute_validation_tasks_parallel(
                 validation_tasks
             )
 
@@ -172,11 +174,10 @@ class ParallelMarketAnalyzer:
                     elif result.task_id == "demand":
                         validation_report["demand_validation"] = result.result
 
-            # PHASE 2: RISK ASSESSMENT (depends on competition analysis)
+            # PHASE 2: RISK ASSESSMENT (sequential after parallel tasks)
             print("⚠️ Assessing market risks...")
             risk_task_start = time.time()
-            validation_report["risk_assessment"] = await asyncio.to_thread(
-                assess_market_risks,
+            validation_report["risk_assessment"] = assess_market_risks(
                 validation_report["competition_analysis"],
                 {"trend_direction": "stable", "growth_indicators": []},
             )
@@ -184,33 +185,48 @@ class ParallelMarketAnalyzer:
             print(f"✅ Risk assessment completed in {risk_time:.2f}s")
 
             # PHASE 3: PARALLEL AI ANALYSIS AND RECOMMENDATIONS
-            ai_tasks = [
-                asyncio.create_task(
-                    self.calculate_ai_powered_score_async(
-                        validation_report["market_size_analysis"],
-                        validation_report["competition_analysis"],
-                        validation_report["demand_validation"],
-                        validation_report["risk_assessment"],
-                        opportunity_data,
-                    )
-                ),
-                asyncio.create_task(
-                    self.generate_strategic_recommendations_async(validation_report)
-                ),
-            ]
+            ai_analysis_futures = []
+            with ThreadPoolExecutor(max_workers=2) as ai_executor:
+                # Submit AI scoring task
+                scoring_future = ai_executor.submit(
+                    self.calculate_ai_powered_score_threading,
+                    validation_report["market_size_analysis"],
+                    validation_report["competition_analysis"],
+                    validation_report["demand_validation"],
+                    validation_report["risk_assessment"],
+                    opportunity_data,
+                )
 
-            ai_results = await asyncio.gather(*ai_tasks, return_exceptions=True)
+                # Submit recommendations task
+                recommendations_future = ai_executor.submit(
+                    self.generate_strategic_recommendations_threading, validation_report
+                )
+
+                ai_analysis_futures = [scoring_future, recommendations_future]
+
+                # Collect AI results
+                ai_results = []
+                for future in as_completed(ai_analysis_futures, timeout=60):
+                    try:
+                        result = future.result()
+                        ai_results.append(result)
+                    except Exception as e:
+                        print(f"❌ AI task failed: {e}")
+                        ai_results.append({"error": str(e)})
 
             # Process AI results
-            if not isinstance(ai_results[0], Exception):
-                validation_report.update(ai_results[0])
-
-            if not isinstance(ai_results[1], Exception):
-                validation_report["strategic_recommendation"] = ai_results[1]
-                validation_report["recommendation"] = ai_results[1].get(
-                    "recommendation", "investigate"
-                )
-                validation_report["next_actions"] = ai_results[1].get("next_steps", [])
+            for result in ai_results:
+                if not result.get("error"):
+                    if "ai_analysis" in result:
+                        # This is the scoring result
+                        validation_report.update(result)
+                    elif "recommendation" in result:
+                        # This is the recommendations result
+                        validation_report["strategic_recommendation"] = result
+                        validation_report["recommendation"] = result.get(
+                            "recommendation", "investigate"
+                        )
+                        validation_report["next_actions"] = result.get("next_steps", [])
 
             # Add performance metrics
             total_time = time.time() - start_time
@@ -221,6 +237,7 @@ class ParallelMarketAnalyzer:
                 "failed_tasks": len([r for r in validation_results if not r.success]),
                 "average_task_time": sum([r.execution_time for r in validation_results])
                 / len(validation_results),
+                "execution_method": "pure_threading",
             }
 
             print(f"✅ PARALLEL validation completed in {total_time:.2f}s")
@@ -239,11 +256,12 @@ class ParallelMarketAnalyzer:
             }
             return validation_report
 
-    async def execute_validation_tasks_parallel(
+    def execute_validation_tasks_parallel(
         self, tasks: List[ValidationTask]
     ) -> List[ValidationResult]:
         """
         Execute validation tasks in parallel using ThreadPoolExecutor
+        Pure threading implementation - no async
         """
         results = []
 
@@ -275,7 +293,7 @@ class ParallelMarketAnalyzer:
                     error=str(e),
                 )
 
-        # Execute tasks in parallel
+        # Execute tasks in parallel using ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Sort tasks by priority
             sorted_tasks = sorted(tasks, key=lambda x: x.priority, reverse=True)
@@ -287,12 +305,26 @@ class ParallelMarketAnalyzer:
 
             # Collect results as they complete
             for future in as_completed(future_to_task, timeout=60):
-                result = future.result()
-                results.append(result)
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    task = future_to_task[future]
+                    print(f"❌ Task {task.task_id} execution failed: {e}")
+                    results.append(
+                        ValidationResult(
+                            task_id=task.task_id,
+                            task_type=task.task_type,
+                            result={},
+                            execution_time=0,
+                            success=False,
+                            error=str(e),
+                        )
+                    )
 
         return results
 
-    async def calculate_ai_powered_score_async(
+    def calculate_ai_powered_score_threading(
         self,
         market_size_data: Dict[str, Any],
         competition_data: Dict[str, Any],
@@ -301,7 +333,8 @@ class ParallelMarketAnalyzer:
         opportunity_context: Dict[str, Any],
     ) -> Dict[str, Any]:
         """
-        Async AI-powered comprehensive opportunity scoring
+        Threading-based AI-powered comprehensive opportunity scoring
+        No async - pure synchronous execution
         """
         scoring_result = {
             "ai_analysis": {},
@@ -312,7 +345,7 @@ class ParallelMarketAnalyzer:
         }
 
         try:
-            print("🧠 Running ASYNC AI-powered market dynamics analysis...")
+            print("🧠 Running AI-powered market dynamics analysis (threading)...")
 
             # Prepare analysis data (limit size for performance)
             analysis_data = {
@@ -353,9 +386,8 @@ class ParallelMarketAnalyzer:
             RETURN ONLY JSON!
             """
 
-            # Execute AI analysis asynchronously
-            response = await asyncio.to_thread(
-                completion,
+            # Execute AI analysis synchronously
+            response = completion(
                 model=MODEL_CONFIG["primary_model"],
                 api_key=settings.OPENAI_API_KEY,
                 messages=[{"role": "user", "content": analysis_prompt}],
@@ -394,22 +426,22 @@ class ParallelMarketAnalyzer:
             return scoring_result
 
         except Exception as e:
-            print(f"❌ Error in ASYNC AI scoring: {e}")
+            print(f"❌ Error in AI scoring: {e}")
             scoring_result["error"] = str(e)
             return scoring_result
 
-    async def generate_strategic_recommendations_async(
+    def generate_strategic_recommendations_threading(
         self, validation_report: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Async strategic recommendations generation
+        Threading-based strategic recommendations generation
+        No async - pure synchronous execution
         """
         try:
-            print("💡 Generating ASYNC strategic recommendations...")
+            print("💡 Generating strategic recommendations (threading)...")
 
-            # Execute recommendation generation asynchronously
-            recommendation = await asyncio.to_thread(
-                generate_recommendation,
+            # Execute recommendation generation synchronously
+            recommendation = generate_recommendation(
                 validation_report.get("overall_opportunity_score", 0.5),
                 validation_report.get("risk_assessment", {}),
                 validation_report,
@@ -418,20 +450,21 @@ class ParallelMarketAnalyzer:
             return recommendation
 
         except Exception as e:
-            print(f"❌ Error in ASYNC recommendations: {e}")
+            print(f"❌ Error in recommendations: {e}")
             return {"error": str(e)}
 
     @performance_monitor
-    async def batch_validate_opportunities_parallel(
+    def batch_validate_opportunities_parallel(
         self, opportunities: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
-        BATCH PARALLEL validation of multiple opportunities with optimized resource usage
+        BATCH PARALLEL validation using pure threading
+        No async - only ThreadPoolExecutor
         """
         batch_results = {
             "timestamp": datetime.now().isoformat(),
             "total_opportunities": len(opportunities),
-            "execution_method": "batch_parallel",
+            "execution_method": "batch_threading",
             "ranked_opportunities": [],
             "portfolio_analysis": {},
             "performance_metrics": {},
@@ -441,10 +474,10 @@ class ParallelMarketAnalyzer:
 
         try:
             print(
-                f"🚀 Starting BATCH PARALLEL validation of {len(opportunities)} opportunities..."
+                f"🚀 Starting BATCH PARALLEL validation of {len(opportunities)} opportunities (threading)..."
             )
 
-            # Process opportunities in optimized batches
+            # Process opportunities in batches using ThreadPoolExecutor
             all_results = []
 
             for i in range(0, len(opportunities), self.batch_size):
@@ -455,40 +488,50 @@ class ParallelMarketAnalyzer:
                     f"📦 Processing batch {i//self.batch_size + 1} ({len(batch)} opportunities)..."
                 )
 
-                # Create async tasks for this batch
-                batch_tasks = [
-                    self.comprehensive_market_validation_parallel(opp) for opp in batch
-                ]
+                # Execute batch in parallel using ThreadPoolExecutor
+                with ThreadPoolExecutor(
+                    max_workers=min(len(batch), self.max_workers)
+                ) as executor:
+                    # Submit all opportunities in this batch
+                    future_to_opp = {
+                        executor.submit(
+                            self.comprehensive_market_validation_parallel, opp
+                        ): opp
+                        for opp in batch
+                    }
 
-                # Execute batch in parallel
-                batch_results_raw = await asyncio.gather(
-                    *batch_tasks, return_exceptions=True
-                )
+                    # Collect results as they complete
+                    for j, future in enumerate(
+                        as_completed(future_to_opp, timeout=120)
+                    ):
+                        try:
+                            result = future.result()
+                            opp = future_to_opp[future]
 
-                # Process batch results
-                for j, result in enumerate(batch_results_raw):
-                    if not isinstance(result, Exception):
-                        scored_opp = {
-                            "opportunity_id": batch[j].get(
-                                "id", f"opportunity_{i+j+1}"
-                            ),
-                            "name": batch[j].get("name", f"Opportunity {i+j+1}"),
-                            "overall_score": result.get(
-                                "overall_opportunity_score", 0.0
-                            ),
-                            "component_scores": result.get("component_scores", {}),
-                            "strategic_insights": result.get("strategic_insights", {}),
-                            "recommendation": result.get(
-                                "recommendation", "investigate"
-                            ),
-                            "confidence_level": result.get(
-                                "confidence_level", "medium"
-                            ),
-                            "performance_metrics": result.get(
-                                "performance_metrics", {}
-                            ),
-                        }
-                        all_results.append(scored_opp)
+                            scored_opp = {
+                                "opportunity_id": opp.get("id", f"opportunity_{i+j+1}"),
+                                "name": opp.get("name", f"Opportunity {i+j+1}"),
+                                "overall_score": result.get(
+                                    "overall_opportunity_score", 0.0
+                                ),
+                                "component_scores": result.get("component_scores", {}),
+                                "strategic_insights": result.get(
+                                    "strategic_insights", {}
+                                ),
+                                "recommendation": result.get(
+                                    "recommendation", "investigate"
+                                ),
+                                "confidence_level": result.get(
+                                    "confidence_level", "medium"
+                                ),
+                                "performance_metrics": result.get(
+                                    "performance_metrics", {}
+                                ),
+                            }
+                            all_results.append(scored_opp)
+
+                        except Exception as e:
+                            print(f"❌ Opportunity validation failed: {e}")
 
                 batch_time = time.time() - batch_start
                 print(
@@ -497,7 +540,7 @@ class ParallelMarketAnalyzer:
 
                 # Small delay between batches to prevent rate limiting
                 if i + self.batch_size < len(opportunities):
-                    await asyncio.sleep(0.5)
+                    time.sleep(0.5)
 
             # Sort all results by score
             all_results.sort(key=lambda x: x["overall_score"], reverse=True)
@@ -519,6 +562,7 @@ class ParallelMarketAnalyzer:
                 "failed_validations": len(opportunities) - len(all_results),
                 "batch_size_used": self.batch_size,
                 "max_workers": self.max_workers,
+                "execution_method": "pure_threading",
             }
 
             print("🎯 BATCH PARALLEL validation completed!")
@@ -595,102 +639,28 @@ class ParallelMarketAnalyzer:
 parallel_analyzer = ParallelMarketAnalyzer(max_workers=6, batch_size=5)
 
 
-# Wrapper functions for ADK integration
-async def comprehensive_market_validation_with_scoring_parallel(
+# Pure threading wrappers for ADK integration
+def comprehensive_market_validation_with_scoring_threading(
     opportunity_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Parallelized wrapper for the comprehensive market validation function
+    Pure threading wrapper for comprehensive market validation
+    No async/await - completely thread-safe
     """
-    return await parallel_analyzer.comprehensive_market_validation_parallel(
-        opportunity_data
-    )
+    return parallel_analyzer.comprehensive_market_validation_parallel(opportunity_data)
 
 
-async def rank_opportunities_with_integrated_analysis_parallel(
+def rank_opportunities_with_integrated_analysis_threading(
     opportunities: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """
-    Parallelized wrapper for ranking multiple opportunities
+    Pure threading wrapper for ranking multiple opportunities
+    No async/await - completely thread-safe
     """
-    return await parallel_analyzer.batch_validate_opportunities_parallel(opportunities)
+    return parallel_analyzer.batch_validate_opportunities_parallel(opportunities)
 
 
-# Sync wrappers for ADK compatibility
-def comprehensive_market_validation_with_scoring_sync(
-    opportunity_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Synchronous wrapper that runs the async parallel validation
-    """
-    try:
-        # Try to get existing event loop
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If loop is running, create a new thread for async execution
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    asyncio.run,
-                    parallel_analyzer.comprehensive_market_validation_parallel(
-                        opportunity_data
-                    ),
-                )
-                return future.result(timeout=60)
-        else:
-            # If no loop is running, use asyncio.run
-            return asyncio.run(
-                parallel_analyzer.comprehensive_market_validation_parallel(
-                    opportunity_data
-                )
-            )
-    except Exception as e:
-        print(f"Error in sync wrapper: {e}")
-        # Fallback to original non-parallel implementation
-        return {
-            "opportunity_id": opportunity_data.get("id", datetime.now().isoformat()),
-            "error": f"Parallel execution failed: {str(e)}",
-            "fallback_used": True,
-            "overall_opportunity_score": 0.5,
-        }
-
-
-def rank_opportunities_with_integrated_analysis_sync(
-    opportunities: List[Dict[str, Any]],
-) -> Dict[str, Any]:
-    """
-    Synchronous wrapper for batch parallel opportunity ranking
-    """
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    asyncio.run,
-                    parallel_analyzer.batch_validate_opportunities_parallel(
-                        opportunities
-                    ),
-                )
-                return future.result(timeout=180)  # Longer timeout for batch processing
-        else:
-            return asyncio.run(
-                parallel_analyzer.batch_validate_opportunities_parallel(opportunities)
-            )
-    except Exception as e:
-        print(f"Error in batch sync wrapper: {e}")
-        return {
-            "timestamp": datetime.now().isoformat(),
-            "total_opportunities": len(opportunities),
-            "error": f"Batch parallel execution failed: {str(e)}",
-            "fallback_used": True,
-            "ranked_opportunities": [],
-        }
-
-
-# Enhanced Market Analyzer Agent with parallel capabilities
+# Enhanced Market Analyzer Agent with pure threading
 ANALYZER_PROMPT = """
 You are the Market Analyzer Agent, a specialist in comprehensive market validation and opportunity scoring. You only engage when specifically requested for deep analysis.
 
@@ -707,6 +677,12 @@ You should only be activated when:
 - Risk assessment and mitigation strategies
 - Quantified opportunity scoring (0-100 scale)
 - Investment-grade market validation
+
+## Execution Method:
+- Pure threading implementation (no async/await)
+- Parallel processing using ThreadPoolExecutor
+- OpenTelemetry context-safe execution
+- High-performance concurrent analysis
 
 ## Engagement Protocol:
 When activated, start with:
@@ -747,6 +723,7 @@ What's your preference?"
 - **Transparent Process**: Explain what you're doing
 - **Clear Boundaries**: Stay within analytical scope
 - **User Choice**: Always offer next step options
+- **Thread-Safe Execution**: No async/await context issues
 """
 
 market_analyzer_agent = LlmAgent(
@@ -754,12 +731,12 @@ market_analyzer_agent = LlmAgent(
     model=MODEL_CONFIG["primary_model"],
     instruction=ANALYZER_PROMPT,
     description=(
-        "Enhanced market validation agent with parallel processing capabilities "
-        "for high-performance market analysis and opportunity scoring."
+        "Enhanced market validation agent with pure threading implementation "
+        "for high-performance market analysis without async/await context issues."
     ),
     tools=[
-        FunctionTool(func=comprehensive_market_validation_with_scoring_sync),
-        FunctionTool(func=rank_opportunities_with_integrated_analysis_sync),
+        FunctionTool(func=comprehensive_market_validation_with_scoring_threading),
+        FunctionTool(func=rank_opportunities_with_integrated_analysis_threading),
     ],
     output_key="market_validation",
 )
