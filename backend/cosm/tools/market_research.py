@@ -486,7 +486,7 @@ def extract_demand_with_gemini(
             """
 
             response = client.models.generate_content(
-                model=CONFIG["primary_model"],
+                model=CONFIG["market_research"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -1041,7 +1041,7 @@ def extract_market_size_with_gemini(
             """
 
             response = client.models.generate_content(
-                model=CONFIG["primary_model"],
+                model=CONFIG["market_research"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -1085,7 +1085,7 @@ def extract_demand_signals_with_gemini(
             """
 
             response = client.models.generate_content(
-                model=CONFIG["primary_model"],
+                model=CONFIG["market_research"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3
@@ -1129,7 +1129,7 @@ def extract_pain_validation_with_gemini(
             """
 
             response = client.models.generate_content(
-                model=CONFIG["primary_model"],
+                model=CONFIG["market_research"],
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json", temperature=0.3

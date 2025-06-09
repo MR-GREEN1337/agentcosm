@@ -1225,7 +1225,6 @@ async def root():
         "stored_pdfs": len(STORED_PDFS),
         "core_endpoints": {
             "deploy_site": "POST /api/deploy",
-            "deploy_premium": "POST /api/deploy/premium",
             "deploy_pitch_deck": "POST /api/pitch/deploy",
             "store_pdf": "POST /api/pdf/store",
             "download_pdf": "GET /api/pdf/{pdf_id}/download",

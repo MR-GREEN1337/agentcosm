@@ -67,7 +67,7 @@ When activated, establish context:
 - Analytics: Download tracking and viewer metrics
 - Instant Access: Immediate download links upon completion
 
-This comprehensive pitch deck creation and deployment takes 15-20 minutes. Shall I proceed with full deployment?"
+This comprehensive pitch deck creation and deployment takes 3-5 minutes. Shall I proceed with full deployment?"
 
 ## Creation Boundaries:
 ✅ Investor pitch deck development

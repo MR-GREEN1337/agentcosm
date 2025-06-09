@@ -1,6 +1,6 @@
 """
-Data Intelligence Agent - Consolidated functionality
-Combines BigQuery Intelligence + Code Executor capabilities
+Data Intelligence Agent - Fixed File Access Security
+Combines BigQuery Intelligence + Code Executor capabilities with proper file access controls
 """
 
 from google.adk.agents import LlmAgent
@@ -136,6 +136,369 @@ def integrated_data_analysis_and_storage(
         return analysis_result
 
 
+def execute_python_code_integrated(code: str, timeout: int = 30) -> Dict[str, Any]:
+    """
+    Integrated Python code execution with enhanced error handling and proper file access control
+    """
+    result = {
+        "success": False,
+        "output": "",
+        "error": "",
+        "execution_time": 0,
+        "files_created": [],
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        try:
+            start_time = datetime.now()
+
+            # Write code to temporary file
+            code_file = temp_path / "exec_code.py"
+
+            # Fixed safety wrapper with proper path handling
+            safe_code = f"""
+import sys
+import os
+import json
+import traceback
+from pathlib import Path
+
+# Restrict file access to temp directory
+import builtins
+original_open = builtins.open
+
+def safe_open(file, mode='r', **kwargs):
+    if isinstance(file, (str, Path)):
+        try:
+            # Convert to Path object and resolve
+            file_path = Path(file)
+
+            # If path is relative, make it relative to current working directory (temp_dir)
+            if not file_path.is_absolute():
+                file_path = Path.cwd() / file_path
+            else:
+                file_path = file_path.resolve()
+
+            # Get the temp directory path
+            temp_path = Path(r"{temp_dir}").resolve()
+
+            # Check if the resolved file path is within temp directory
+            try:
+                file_path.relative_to(temp_path)
+            except ValueError:
+                raise PermissionError(f"File access outside temp directory not allowed: {{file_path}}")
+
+        except Exception as e:
+            # If there's any issue with path resolution, block the access
+            raise PermissionError(f"Invalid file path: {{file}} - {{str(e)}}")
+
+    return original_open(file, mode, **kwargs)
+
+builtins.open = safe_open
+
+# Set working directory to temp directory
+os.chdir(r"{temp_dir}")
+
+# Execute analysis code
+try:
+{_indent_code(code, 4)}
+except Exception as e:
+    print(f"EXECUTION_ERROR: {{type(e).__name__}}: {{str(e)}}")
+    traceback.print_exc()
+"""
+
+            code_file.write_text(safe_code, encoding="utf-8")
+
+            # Execute the code with proper working directory
+            process = subprocess.run(
+                [sys.executable, str(code_file)],
+                cwd=temp_dir,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env={
+                    **os.environ,
+                    "PYTHONPATH": str(temp_dir),
+                    "TMPDIR": temp_dir,
+                    "TEMP": temp_dir,
+                    "TMP": temp_dir,
+                },
+            )
+
+            end_time = datetime.now()
+            result["execution_time"] = (end_time - start_time).total_seconds()
+
+            # Capture output
+            result["output"] = process.stdout
+            if process.stderr:
+                result["error"] = process.stderr
+
+            # Check for execution errors
+            if "EXECUTION_ERROR:" in result["output"]:
+                result["error"] = result["output"]
+                result["output"] = ""
+            else:
+                result["success"] = process.returncode == 0
+
+            # List created files with proper error handling
+            created_files = []
+            try:
+                for file_path in temp_path.iterdir():
+                    if file_path.name != "exec_code.py" and file_path.is_file():
+                        try:
+                            file_size = file_path.stat().st_size
+                            if file_size < 1024 * 1024:  # 1MB limit
+                                if file_path.suffix in [".txt", ".json", ".csv"]:
+                                    content = file_path.read_text(
+                                        encoding="utf-8", errors="ignore"
+                                    )
+                                    created_files.append(
+                                        {
+                                            "name": file_path.name,
+                                            "size": file_size,
+                                            "content": content[
+                                                :10000
+                                            ],  # Limit content size
+                                            "type": "text",
+                                        }
+                                    )
+                                else:
+                                    created_files.append(
+                                        {
+                                            "name": file_path.name,
+                                            "size": file_size,
+                                            "type": "binary",
+                                        }
+                                    )
+                            else:
+                                created_files.append(
+                                    {
+                                        "name": file_path.name,
+                                        "size": file_size,
+                                        "type": "large_file",
+                                        "note": "File too large to include content",
+                                    }
+                                )
+                        except Exception as e:
+                            created_files.append(
+                                {
+                                    "name": file_path.name,
+                                    "error": f"Error reading file: {str(e)}",
+                                }
+                            )
+            except Exception as e:
+                result["file_listing_error"] = f"Error listing files: {str(e)}"
+
+            result["files_created"] = created_files
+
+        except subprocess.TimeoutExpired:
+            result["error"] = f"Code execution timed out after {timeout} seconds"
+        except Exception as e:
+            result["error"] = f"Execution failed: {str(e)}"
+            result["traceback"] = traceback.format_exc()
+
+    return result
+
+
+def execute_market_data_analysis(
+    keywords: List[str],
+    market_data: Dict[str, Any],
+    bigquery_data: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Execute comprehensive market data analysis using Python code
+    """
+    # Escape the data for safe string interpolation
+    market_data_json = (
+        json.dumps(market_data or {}, default=str, indent=2)
+        .replace("\\", "\\\\")
+        .replace('"', '\\"')
+    )
+    bigquery_data_json = (
+        json.dumps(bigquery_data or {}, default=str, indent=2)
+        .replace("\\", "\\\\")
+        .replace('"', '\\"')
+    )
+
+    analysis_code = f'''
+import pandas as pd
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime
+import json
+
+print("=== INTEGRATED MARKET DATA ANALYSIS ===")
+print(f"Analysis timestamp: {{datetime.now()}}")
+print(f"Keywords: {keywords}")
+
+# Market data analysis
+try:
+    market_data = json.loads("""{market_data_json}""")
+except json.JSONDecodeError as e:
+    print(f"Error parsing market data: {{e}}")
+    market_data = {{}}
+
+try:
+    bigquery_data = json.loads("""{bigquery_data_json}""")
+except json.JSONDecodeError as e:
+    print(f"Error parsing BigQuery data: {{e}}")
+    bigquery_data = {{}}
+
+print("\\n1. MARKET DATA SUMMARY")
+if market_data:
+    print(f"Market data keys: {{list(market_data.keys())}}")
+
+    # Analyze market signals if available
+    if 'market_signals' in market_data:
+        signals = market_data['market_signals']
+        print(f"Total market signals: {{len(signals) if isinstance(signals, list) else 'N/A'}}")
+
+        if isinstance(signals, list) and signals:
+            # Signal sentiment analysis
+            sentiments = {{'positive': 0, 'negative': 0, 'neutral': 0}}
+            for signal in signals:
+                sentiment = signal.get('sentiment', 'neutral')
+                if sentiment in sentiments:
+                    sentiments[sentiment] += 1
+
+            print(f"Signal sentiment distribution: {{sentiments}}")
+
+            # Create sentiment visualization with error handling
+            try:
+                plt.figure(figsize=(10, 6))
+                plt.subplot(1, 2, 1)
+                if sum(sentiments.values()) > 0:
+                    plt.pie(sentiments.values(), labels=sentiments.keys(), autopct='%1.1f%%')
+                    plt.title('Market Signal Sentiment Distribution')
+                else:
+                    plt.text(0.5, 0.5, 'No sentiment data available', ha='center', va='center')
+                    plt.title('Market Signal Sentiment Distribution')
+
+                # Signal strength analysis
+                strengths = {{'high': 0, 'medium': 0, 'low': 0}}
+                for signal in signals:
+                    strength = signal.get('strength', 'medium')
+                    if strength in strengths:
+                        strengths[strength] += 1
+
+                plt.subplot(1, 2, 2)
+                if sum(strengths.values()) > 0:
+                    plt.bar(strengths.keys(), strengths.values())
+                    plt.title('Signal Strength Distribution')
+                    plt.ylabel('Count')
+                else:
+                    plt.text(0.5, 0.5, 'No strength data available', ha='center', va='center')
+                    plt.title('Signal Strength Distribution')
+
+                plt.tight_layout()
+                plt.savefig('market_signals_analysis.png', dpi=150, bbox_inches='tight')
+                plt.close()
+                print("Market signals visualization saved successfully")
+
+            except Exception as e:
+                print(f"Error creating visualization: {{e}}")
+
+            print(f"Signal strength distribution: {{strengths}}")
+
+print("\\n2. BIGQUERY DATA ANALYSIS")
+if bigquery_data and 'analysis_results' in bigquery_data:
+    bq_results = bigquery_data['analysis_results']
+    print(f"BigQuery analysis keys: {{list(bq_results.keys()) if isinstance(bq_results, dict) else 'N/A'}}")
+
+print("\\n3. OPPORTUNITY SCORING FACTORS")
+opportunity_factors = {{}}
+
+# Calculate market readiness score
+if market_data:
+    signals_count = len(market_data.get('market_signals', []))
+    liminal_opps = len(market_data.get('liminal_opportunities', []))
+
+    opportunity_factors['signal_strength'] = min(signals_count / 10.0, 1.0)
+    opportunity_factors['liminal_potential'] = min(liminal_opps / 3.0, 1.0)
+
+    # Competition analysis
+    competition = market_data.get('competition_analysis', {{}})
+    comp_level = competition.get('competition_level', 'high')
+    opportunity_factors['competition_advantage'] = {{
+        'low': 0.8, 'medium': 0.5, 'high': 0.2
+    }}.get(comp_level, 0.5)
+
+print(f"Opportunity factors: {{opportunity_factors}}")
+
+# Calculate composite opportunity score
+composite_score = 0.0
+if opportunity_factors:
+    composite_score = sum(opportunity_factors.values()) / len(opportunity_factors)
+    print(f"\\nCOMPOSITE OPPORTUNITY SCORE: {{composite_score:.3f}}")
+
+    # Create opportunity scoring visualization with error handling
+    try:
+        plt.figure(figsize=(12, 8))
+
+        # Factor breakdown
+        plt.subplot(2, 2, 1)
+        if opportunity_factors:
+            plt.bar(list(opportunity_factors.keys()), list(opportunity_factors.values()))
+            plt.title('Opportunity Scoring Factors')
+            plt.xticks(rotation=45, ha='right')
+            plt.ylabel('Score (0-1)')
+
+        # Overall score gauge
+        plt.subplot(2, 2, 2)
+        colors = ['red' if composite_score < 0.3 else 'orange' if composite_score < 0.6 else 'green']
+        plt.pie([composite_score, 1-composite_score], labels=['Opportunity', 'Gap'],
+                colors=colors + ['lightgray'], startangle=90)
+        plt.title(f'Overall Score: {{composite_score:.1%}}')
+
+        plt.tight_layout()
+        plt.savefig('opportunity_analysis.png', dpi=150, bbox_inches='tight')
+        plt.close()
+        print("Opportunity analysis visualization saved successfully")
+
+    except Exception as e:
+        print(f"Error creating opportunity visualization: {{e}}")
+
+print("\\n4. MARKET TREND INDICATORS")
+trend_data = market_data.get('trend_analysis', {{}}) if market_data else {{}}
+if trend_data:
+    print(f"Trend direction: {{trend_data.get('trend_direction', 'unknown')}}")
+    print(f"Growth drivers: {{trend_data.get('growth_drivers', [])}}")
+
+# Save analysis summary
+summary = {{
+    'analysis_timestamp': datetime.now().isoformat(),
+    'keywords_analyzed': {keywords},
+    'opportunity_factors': opportunity_factors,
+    'composite_score': composite_score,
+    'data_quality': 'high' if market_data and len(market_data.get('market_signals', [])) > 5 else 'medium'
+}}
+
+try:
+    with open('analysis_summary.json', 'w') as f:
+        json.dump(summary, f, indent=2)
+    print("Analysis summary saved successfully")
+except Exception as e:
+    print(f"Error saving analysis summary: {{e}}")
+
+print("\\n=== ANALYSIS COMPLETE ===")
+print("Expected files: market_signals_analysis.png, opportunity_analysis.png, analysis_summary.json")
+'''
+
+    return execute_python_code_integrated(analysis_code)
+
+
+def _indent_code(code: str, spaces: int) -> str:
+    """Indent code by specified number of spaces"""
+    indent = " " * spaces
+    return "\n".join(indent + line for line in code.splitlines())
+
+
 def setup_and_analyze_bigquery_data(
     keywords: List[str],
     market_data: Dict[str, Any],
@@ -179,268 +542,6 @@ def setup_and_analyze_bigquery_data(
         print(f"Error in BigQuery analysis: {e}")
         bigquery_result["error"] = str(e)
         return bigquery_result
-
-
-def execute_market_data_analysis(
-    keywords: List[str],
-    market_data: Dict[str, Any],
-    bigquery_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Execute comprehensive market data analysis using Python code
-    """
-    analysis_code = f"""
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import datetime
-import json
-
-print("=== INTEGRATED MARKET DATA ANALYSIS ===")
-print(f"Analysis timestamp: {{datetime.now()}}")
-print(f"Keywords: {keywords}")
-
-# Market data analysis
-market_data = {json.dumps(market_data or {}, default=str, indent=2)}
-bigquery_data = {json.dumps(bigquery_data or {}, default=str, indent=2)}
-
-print("\\n1. MARKET DATA SUMMARY")
-if market_data:
-    print(f"Market data keys: {{list(market_data.keys())}}")
-
-    # Analyze market signals if available
-    if 'market_signals' in market_data:
-        signals = market_data['market_signals']
-        print(f"Total market signals: {{len(signals) if isinstance(signals, list) else 'N/A'}}")
-
-        if isinstance(signals, list) and signals:
-            # Signal sentiment analysis
-            sentiments = {{'positive': 0, 'negative': 0, 'neutral': 0}}
-            for signal in signals:
-                sentiment = signal.get('sentiment', 'neutral')
-                if sentiment in sentiments:
-                    sentiments[sentiment] += 1
-
-            print(f"Signal sentiment distribution: {{sentiments}}")
-
-            # Create sentiment visualization
-            plt.figure(figsize=(10, 6))
-            plt.subplot(1, 2, 1)
-            plt.pie(sentiments.values(), labels=sentiments.keys(), autopct='%1.1f%%')
-            plt.title('Market Signal Sentiment Distribution')
-
-            # Signal strength analysis
-            strengths = {{'high': 0, 'medium': 0, 'low': 0}}
-            for signal in signals:
-                strength = signal.get('strength', 'medium')
-                if strength in strengths:
-                    strengths[strength] += 1
-
-            plt.subplot(1, 2, 2)
-            plt.bar(strengths.keys(), strengths.values())
-            plt.title('Signal Strength Distribution')
-            plt.ylabel('Count')
-
-            plt.tight_layout()
-            plt.savefig('market_signals_analysis.png', dpi=150, bbox_inches='tight')
-            plt.close()
-
-            print(f"Signal strength distribution: {{strengths}}")
-
-print("\\n2. BIGQUERY DATA ANALYSIS")
-if bigquery_data and 'analysis_results' in bigquery_data:
-    bq_results = bigquery_data['analysis_results']
-    print(f"BigQuery analysis keys: {{list(bq_results.keys()) if isinstance(bq_results, dict) else 'N/A'}}")
-
-print("\\n3. OPPORTUNITY SCORING FACTORS")
-opportunity_factors = {{}}
-
-# Calculate market readiness score
-if market_data:
-    signals_count = len(market_data.get('market_signals', []))
-    liminal_opps = len(market_data.get('liminal_opportunities', []))
-
-    opportunity_factors['signal_strength'] = min(signals_count / 10.0, 1.0)
-    opportunity_factors['liminal_potential'] = min(liminal_opps / 3.0, 1.0)
-
-    # Competition analysis
-    competition = market_data.get('competition_analysis', {{}})
-    comp_level = competition.get('competition_level', 'high')
-    opportunity_factors['competition_advantage'] = {{
-        'low': 0.8, 'medium': 0.5, 'high': 0.2
-    }}.get(comp_level, 0.5)
-
-print(f"Opportunity factors: {{opportunity_factors}}")
-
-# Calculate composite opportunity score
-if opportunity_factors:
-    composite_score = sum(opportunity_factors.values()) / len(opportunity_factors)
-    print(f"\\nCOMPOSITE OPPORTUNITY SCORE: {{composite_score:.3f}}")
-
-    # Create opportunity scoring visualization
-    plt.figure(figsize=(12, 8))
-
-    # Factor breakdown
-    plt.subplot(2, 2, 1)
-    plt.bar(opportunity_factors.keys(), opportunity_factors.values())
-    plt.title('Opportunity Scoring Factors')
-    plt.xticks(rotation=45)
-    plt.ylabel('Score (0-1)')
-
-    # Overall score gauge
-    plt.subplot(2, 2, 2)
-    colors = ['red' if composite_score < 0.3 else 'orange' if composite_score < 0.6 else 'green']
-    plt.pie([composite_score, 1-composite_score], labels=['Opportunity', 'Gap'],
-            colors=colors + ['lightgray'], startangle=90)
-    plt.title(f'Overall Score: {{composite_score:.1%}}')
-
-print("\\n4. MARKET TREND INDICATORS")
-trend_data = market_data.get('trend_analysis', {{}}) if market_data else {{}}
-if trend_data:
-    print(f"Trend direction: {{trend_data.get('trend_direction', 'unknown')}}")
-    print(f"Growth drivers: {{trend_data.get('growth_drivers', [])}}")
-
-# Save analysis summary
-summary = {{
-    'analysis_timestamp': datetime.now().isoformat(),
-    'keywords_analyzed': {keywords},
-    'opportunity_factors': opportunity_factors,
-    'composite_score': composite_score if 'composite_score' in locals() else 0.0,
-    'data_quality': 'high' if market_data and len(market_data.get('market_signals', [])) > 5 else 'medium'
-}}
-
-with open('analysis_summary.json', 'w') as f:
-    json.dump(summary, f, indent=2)
-
-print("\\n=== ANALYSIS COMPLETE ===")
-print("Files generated: market_signals_analysis.png, analysis_summary.json")
-"""
-
-    return execute_python_code_integrated(analysis_code)
-
-
-def execute_python_code_integrated(code: str, timeout: int = 30) -> Dict[str, Any]:
-    """
-    Integrated Python code execution with enhanced error handling
-    """
-    result = {
-        "success": False,
-        "output": "",
-        "error": "",
-        "execution_time": 0,
-        "files_created": [],
-        "timestamp": datetime.now().isoformat(),
-    }
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-
-        try:
-            start_time = datetime.now()
-
-            # Write code to temporary file
-            code_file = temp_path / "exec_code.py"
-
-            # Add safety wrapper
-            safe_code = f"""
-import sys
-import os
-import json
-import traceback
-from pathlib import Path
-
-# Restrict file access to temp directory
-import builtins
-original_open = builtins.open
-
-def safe_open(file, mode='r', **kwargs):
-    if isinstance(file, (str, Path)):
-        file_path = Path(file).resolve()
-        temp_path = Path(r"{temp_dir}").resolve()
-        if not str(file_path).startswith(str(temp_path)):
-            raise PermissionError("File access outside temp directory not allowed")
-    return original_open(file, mode, **kwargs)
-
-builtins.open = safe_open
-
-# Execute analysis code
-try:
-{_indent_code(code, 4)}
-except Exception as e:
-    print(f"EXECUTION_ERROR: {{type(e).__name__}}: {{str(e)}}")
-    traceback.print_exc()
-"""
-
-            code_file.write_text(safe_code, encoding="utf-8")
-
-            # Execute the code
-            process = subprocess.run(
-                [sys.executable, str(code_file)],
-                cwd=temp_dir,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                env={**os.environ, "PYTHONPATH": str(temp_dir)},
-            )
-
-            end_time = datetime.now()
-            result["execution_time"] = (end_time - start_time).total_seconds()
-
-            # Capture output
-            result["output"] = process.stdout
-            if process.stderr:
-                result["error"] = process.stderr
-
-            # Check for execution errors
-            if "EXECUTION_ERROR:" in result["output"]:
-                result["error"] = result["output"]
-                result["output"] = ""
-            else:
-                result["success"] = process.returncode == 0
-
-            # List created files
-            created_files = []
-            for file_path in temp_path.iterdir():
-                if file_path.name != "exec_code.py":
-                    try:
-                        if file_path.stat().st_size < 1024 * 1024:  # 1MB limit
-                            if file_path.suffix in [".txt", ".json", ".csv"]:
-                                created_files.append(
-                                    {
-                                        "name": file_path.name,
-                                        "size": file_path.stat().st_size,
-                                        "content": file_path.read_text(
-                                            encoding="utf-8"
-                                        )[:10000],
-                                    }
-                                )
-                            else:
-                                created_files.append(
-                                    {
-                                        "name": file_path.name,
-                                        "size": file_path.stat().st_size,
-                                        "type": "binary",
-                                    }
-                                )
-                    except Exception as e:
-                        created_files.append({"name": file_path.name, "error": str(e)})
-
-            result["files_created"] = created_files
-
-        except subprocess.TimeoutExpired:
-            result["error"] = f"Code execution timed out after {timeout} seconds"
-        except Exception as e:
-            result["error"] = f"Execution failed: {str(e)}"
-            result["traceback"] = traceback.format_exc()
-
-    return result
-
-
-def _indent_code(code: str, spaces: int) -> str:
-    """Indent code by specified number of spaces"""
-    indent = " " * spaces
-    return "\n".join(indent + line for line in code.splitlines())
 
 
 def setup_bigquery_tables_integrated(dataset_id: str = "agentcosm_market") -> bool:
@@ -615,7 +716,7 @@ def generate_integrated_market_intelligence(
         """
 
         response = completion(
-            model=MODEL_CONFIG["primary_model"],
+            model=MODEL_CONFIG["data_intelligence"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": intelligence_prompt}],
             response_format={"type": "json_object"},
@@ -740,7 +841,7 @@ def extract_visualization_data(
 
 data_intelligence_agent = LlmAgent(
     name="data_intelligence_agent",
-    model=MODEL_CONFIG["primary_model"],
+    model=MODEL_CONFIG["data_intelligence"],
     instruction=DATA_INTELLIGENCE_PROMPT,
     description=(
         "Integrated data intelligence agent that combines BigQuery analytics with "

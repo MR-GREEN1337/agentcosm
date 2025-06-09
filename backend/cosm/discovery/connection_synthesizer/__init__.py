@@ -207,7 +207,7 @@ def perform_comprehensive_synthesis_with_ai(
         """
 
         response = completion(
-            model=MODEL_CONFIG["primary_model"],
+            model=MODEL_CONFIG["discovery_agent"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": synthesis_prompt}],
             response_format={"type": "json_object"},
@@ -411,7 +411,7 @@ def calculate_synthesis_confidence(synthesis_result: Dict[str, Any]) -> float:
 # Create the connection synthesizer agent
 connection_synthesizer_agent = LlmAgent(
     name="connection_synthesizer_agent",
-    model=MODEL_CONFIG["primary_model"],
+    model=MODEL_CONFIG["discovery_agent"],
     instruction=CONNECTION_SYNTHESIZER_PROMPT,
     description=(
         "Synthesizes discoveries from parallel market exploration agents to find "

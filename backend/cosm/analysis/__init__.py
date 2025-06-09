@@ -1,7 +1,5 @@
 """
-Market Analyzer Agent with Pure Threading Implementation
-Removes all async/await to avoid OpenTelemetry context issues
-Uses ThreadPoolExecutor and concurrent.futures for parallel execution
+Market Analyzer Agent
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -59,7 +57,6 @@ class ValidationResult:
 class ParallelMarketAnalyzer:
     """
     Pure threading-based parallel market analyzer
-    No async/await to avoid OpenTelemetry context issues
     """
 
     def __init__(self, max_workers: int = 6, batch_size: int = 10):
@@ -92,7 +89,6 @@ class ParallelMarketAnalyzer:
     ) -> Dict[str, Any]:
         """
         PARALLEL comprehensive market validation using pure threading
-        No async/await - only ThreadPoolExecutor
         """
         validation_report = {
             "opportunity_id": opportunity_data.get("id", datetime.now().isoformat()),
@@ -388,7 +384,7 @@ class ParallelMarketAnalyzer:
 
             # Execute AI analysis synchronously
             response = completion(
-                model=MODEL_CONFIG["primary_model"],
+                model=MODEL_CONFIG["market_analyzer"],
                 api_key=settings.OPENAI_API_KEY,
                 messages=[{"role": "user", "content": analysis_prompt}],
                 response_format={"type": "json_object"},
@@ -645,7 +641,6 @@ def comprehensive_market_validation_with_scoring_threading(
 ) -> Dict[str, Any]:
     """
     Pure threading wrapper for comprehensive market validation
-    No async/await - completely thread-safe
     """
     return parallel_analyzer.comprehensive_market_validation_parallel(opportunity_data)
 
@@ -655,7 +650,6 @@ def rank_opportunities_with_integrated_analysis_threading(
 ) -> Dict[str, Any]:
     """
     Pure threading wrapper for ranking multiple opportunities
-    No async/await - completely thread-safe
     """
     return parallel_analyzer.batch_validate_opportunities_parallel(opportunities)
 
@@ -728,7 +722,7 @@ What's your preference?"
 
 market_analyzer_agent = LlmAgent(
     name="market_analyzer_agent",
-    model=MODEL_CONFIG["primary_model"],
+    model=MODEL_CONFIG["market_analyzer"],
     instruction=ANALYZER_PROMPT,
     description=(
         "Enhanced market validation agent with pure threading implementation "

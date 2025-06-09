@@ -1538,7 +1538,7 @@ def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, A
         }
 
         response = requests.post(
-            f"{RENDERER_SERVICE_URL}/api/deploy/premium",
+            f"{RENDERER_SERVICE_URL}/api/deploy",
             json=deployment_payload,
             headers={"Content-Type": "application/json"},
             timeout=90,  # Longer timeout for premium features
@@ -2019,7 +2019,7 @@ def generate_fallback_domain_strategy(brand_name: str) -> Dict[str, Any]:
 
 brand_creator_agent = LlmAgent(
     name="brand_creator_agent",
-    model=MODEL_CONFIG["primary_model"],
+    model=MODEL_CONFIG["landing_builder"],
     instruction=BRAND_CREATOR_PROMPT
     + """
 
