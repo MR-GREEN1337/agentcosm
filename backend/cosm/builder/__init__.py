@@ -678,11 +678,11 @@ def create_dark_logo_variation(brand_name: str, color: str) -> Dict[str, Any]:
 # =============================================================================
 
 
-def build_landing_experience(
+def build_landing_page(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Build premium, conversion-optimized startup landing page with advanced features."""
+    """Build conversion-optimized startup landing page with advanced features."""
 
     deployment_result = {
         "deployment_timestamp": datetime.now().isoformat(),
@@ -696,18 +696,16 @@ def build_landing_experience(
     }
 
     try:
-        print(
-            "🚀 Building premium startup landing experience with advanced features..."
-        )
+        print("🚀 Building startup landing experience with advanced features...")
 
         # Get curated visual assets
-        print("📸 Curating premium visual assets...")
+        print("📸 Curating visual assets...")
         visual_assets = get_premium_visual_assets(brand_data, copy_data)
         deployment_result["visual_assets"] = visual_assets
 
         # Generate advanced landing page with AI
-        print("🤖 Generating premium landing page with advanced AI...")
-        landing_html = generate_premium_landing_page_with_ai(brand_data, visual_assets)
+        print("🤖 Generating landing page with advanced AI...")
+        landing_html = generate_landing_page_with_ai(brand_data, visual_assets)
 
         # Generate comprehensive content data
         content_data = generate_advanced_content_data(brand_data, copy_data)
@@ -1025,7 +1023,7 @@ def extract_industry_keywords(
     return list(set(keywords))
 
 
-def generate_premium_landing_page_with_ai(
+def generate_landing_page_with_ai(
     brand_data: Dict[str, Any],
     visual_assets: Dict[str, Any],
 ) -> str:
@@ -2080,7 +2078,7 @@ landing_builder_agent = LlmAgent(
 
     Create landing pages that feel like $100M+ startups with enterprise-grade polish.
     """,
-    description="Creates and deploys premium startup landing pages with advanced AI-generated code, comprehensive visual asset integration, and conversion optimization",
-    tools=[FunctionTool(func=build_landing_experience)],
+    description="Creates and deploys startup landing pages with advanced AI-generated code, comprehensive visual asset integration, and conversion optimization",
+    tools=[FunctionTool(func=build_landing_page)],
     output_key="landing_package",
 )

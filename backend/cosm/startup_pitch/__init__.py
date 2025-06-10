@@ -1245,7 +1245,7 @@ def create_due_diligence_package(pitch_result: Dict[str, Any]) -> Dict[str, Any]
 # Enhanced agent initialization with all tools
 startup_pitch_agent = LlmAgent(
     name="startup_pitch_agent",
-    model=MODEL_CONFIG["primary_model"],
+    model=MODEL_CONFIG["landing_builder"],
     instruction=STARTUP_PITCH_PROMPT
     + """
 

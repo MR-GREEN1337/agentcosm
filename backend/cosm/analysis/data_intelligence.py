@@ -22,6 +22,7 @@ from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from ..tools.search import search_tool
+from google.adk.models.lite_llm import LiteLlm
 
 # Initialize clients
 bq_client = (
@@ -841,7 +842,9 @@ def extract_visualization_data(
 
 data_intelligence_agent = LlmAgent(
     name="data_intelligence_agent",
-    model=MODEL_CONFIG["data_intelligence"],
+    model=LiteLlm(
+        model=MODEL_CONFIG["data_intelligence"], api_key=settings.OPENAI_API_KEY
+    ),
     instruction=DATA_INTELLIGENCE_PROMPT,
     description=(
         "Integrated data intelligence agent that combines BigQuery analytics with "

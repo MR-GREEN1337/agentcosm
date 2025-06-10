@@ -17,6 +17,7 @@ from google.genai import Client
 from cosm.config import MODEL_CONFIG
 from litellm import completion
 from cosm.settings import settings
+from google.adk.models.lite_llm import LiteLlm
 
 from ..tools.market_research import (
     analyze_market_size,
@@ -722,7 +723,9 @@ What's your preference?"
 
 market_analyzer_agent = LlmAgent(
     name="market_analyzer_agent",
-    model=MODEL_CONFIG["market_analyzer"],
+    model=LiteLlm(
+        model=MODEL_CONFIG["market_analyzer"], api_key=settings.OPENAI_API_KEY
+    ),
     instruction=ANALYZER_PROMPT,
     description=(
         "Enhanced market validation agent with pure threading implementation "

@@ -12,6 +12,7 @@ from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
+from google.adk.models.lite_llm import LiteLlm
 
 CONNECTION_SYNTHESIZER_PROMPT = """
 You are the Connection Synthesizer Agent, the master synthesizer who finds
@@ -411,7 +412,9 @@ def calculate_synthesis_confidence(synthesis_result: Dict[str, Any]) -> float:
 # Create the connection synthesizer agent
 connection_synthesizer_agent = LlmAgent(
     name="connection_synthesizer_agent",
-    model=MODEL_CONFIG["discovery_agent"],
+    model=LiteLlm(
+        model=MODEL_CONFIG["discovery_agent"], api_key=settings.OPENAI_API_KEY
+    ),
     instruction=CONNECTION_SYNTHESIZER_PROMPT,
     description=(
         "Synthesizes discoveries from parallel market exploration agents to find "
