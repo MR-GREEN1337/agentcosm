@@ -116,7 +116,7 @@ def synthesize_liminal_connections(
         """
 
         response = completion(
-            model=MODEL_CONFIG["primary_model"],
+            model=MODEL_CONFIG["market_explorer"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": synthesis_prompt}],
             response_format={"type": "json_object"},
@@ -125,7 +125,9 @@ def synthesize_liminal_connections(
         )
 
         if response and response.choices[0].message.content:
-            ai_synthesis = json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            ai_synthesis = safe_json_loads(response.choices[0].message.content)
             synthesis_result.update(ai_synthesis)
 
             # Enhance each opportunity with additional analysis

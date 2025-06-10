@@ -217,7 +217,9 @@ def perform_comprehensive_synthesis_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            return safe_json_loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"❌ Error in AI synthesis: {e}")

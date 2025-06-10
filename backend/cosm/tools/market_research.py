@@ -16,6 +16,7 @@ from collections import Counter
 from cosm.config import MODEL_CONFIG as CONFIG
 from litellm import completion
 from cosm.settings import settings
+from cosm.discovery.explorer_agent import safe_json_loads
 
 # Initialize Gemini client
 client = Client()
@@ -407,7 +408,7 @@ def extract_pain_signals_with_gemini(
         )
 
         if response and response.choices[0].message.content:
-            pain_signal = json.loads(response.choices[0].message.content)
+            pain_signal = safe_json_loads(response.choices[0].message.content)
             pain_signal["source"] = search_result.get("url", "")
             pain_signal["keyword"] = keyword
             return pain_signal
@@ -451,7 +452,9 @@ def extract_competitors_with_gemini(
             )
 
             if response and response.choices[0].message.content:
-                result_competitors = json.loads(response.choices[0].message.content)
+                result_competitors = safe_json_loads(
+                    response.choices[0].message.content
+                )
                 competitors.extend(result_competitors)
 
         except Exception as e:
@@ -537,7 +540,7 @@ def extract_trends_with_gemini(
             )
 
             if response and response.choices[0].message.content:
-                trend_data = json.loads(response.choices[0].message.content)
+                trend_data = safe_json_loads(response.choices[0].message.content)
                 trends.extend(trend_data)
 
         except Exception as e:
@@ -633,7 +636,7 @@ def generate_insights_with_gemini(research_data: Dict[str, Any]) -> List[str]:
         )
 
         if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
+            return safe_json_loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"Error generating insights: {e}")
@@ -1660,7 +1663,7 @@ def assess_market_risks(
         )
 
         if response and response.choices[0].message.content:
-            risk_data = json.loads(response.choices[0].message.content)
+            risk_data = safe_json_loads(response.choices[0].message.content)
             risk_assessment.update(risk_data)
 
         return risk_assessment
@@ -1809,7 +1812,7 @@ def generate_recommendation(
         )
 
         if response and response.choices[0].message.content:
-            recommendation_data = json.loads(response.choices[0].message.content)
+            recommendation_data = safe_json_loads(response.choices[0].message.content)
             recommendation.update(recommendation_data)
 
         # Add summary recommendation based on score and risk

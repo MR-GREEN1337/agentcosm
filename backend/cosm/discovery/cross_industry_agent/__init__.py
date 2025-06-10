@@ -170,7 +170,9 @@ def analyze_cross_industry_arbitrage_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            return safe_json_loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"❌ Error in AI analysis of cross-industry arbitrage: {e}")
@@ -199,7 +201,9 @@ def analyze_cost_disparities_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            result = json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            result = safe_json_loads(response.choices[0].message.content)
             return {
                 "keyword": keyword,
                 "cost_disparities": result.get("cost_disparities", []),
@@ -235,7 +239,9 @@ def analyze_asset_utilization_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            result = json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            result = safe_json_loads(response.choices[0].message.content)
             return {
                 "keyword": keyword,
                 "underutilized_assets": result.get("underutilized_assets", []),

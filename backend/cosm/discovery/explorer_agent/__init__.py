@@ -1,6 +1,5 @@
 """
-Market Explorer Agent - Consolidated functionality
-Combines Market Explorer + Trend Analyzer + Gap Mapper capabilities
+Market Explorer Agent
 """
 
 from google.adk.agents import LlmAgent
@@ -14,8 +13,6 @@ from cosm.config import MODEL_CONFIG
 from google.adk.models.lite_llm import LiteLlm
 from cosm.settings import settings
 from cosm.tools.search import search_tool
-
-import concurrent.futures
 
 # Import consolidated Tavily tools
 from ...tools.tavily import (
@@ -40,12 +37,42 @@ Your mission is to efficiently discover opportunities in liminal market spaces b
 - Finding underserved niches between established market categories
 
 Use your consolidated tools to provide comprehensive market intelligence in a single pass.
+
+IMPORTANT: Only call ONE function at a time to avoid JSON parsing issues.
 """
+
+
+def safe_json_loads(json_string: str) -> dict:
+    """
+    Safely parse JSON with error handling for concatenated JSON objects
+    """
+    try:
+        return json.loads(json_string)
+    except json.JSONDecodeError as e:
+        if "Extra data" in str(e):
+            # Handle concatenated JSON objects (known ADK bug)
+            print(
+                "⚠️  Detected concatenated JSON, attempting to parse first valid object..."
+            )
+            try:
+                # Find the end of the first JSON object
+                decoder = json.JSONDecoder()
+                first_obj, idx = decoder.raw_decode(json_string)
+                print(
+                    f"✅ Successfully parsed first JSON object, ignoring {len(json_string) - idx} extra characters"
+                )
+                return first_obj
+            except json.JSONDecodeError as e:
+                print(f"❌ Failed to parse concatenated JSON: {json_string[:100]}...")
+                return {}
+        else:
+            print(f"❌ JSON parsing error: {e}")
+            return {}
 
 
 def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
     """
-    Synchronous version with parallelized API calls using ThreadPoolExecutor
+    FIXED: Sequential execution to avoid parallel tool call issues
     """
     comprehensive_data = {
         "timestamp": datetime.now().isoformat(),
@@ -61,26 +88,17 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
     try:
         print(f"🔍 Comprehensive market discovery for: {query_context}")
 
-        # Phase 1-3: Execute all three searches in parallel using ThreadPoolExecutor
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            # Submit all tasks
-            pain_point_future = executor.submit(tavily_quick_search, query_context)
-            market_research_future = executor.submit(
-                tavily_comprehensive_research, [query_context]
-            )
-            competitive_future = executor.submit(
-                tavily_comprehensive_research, [query_context]
-            )
+        print("🔍 Phase 1: Pain point discovery...")
+        pain_point_results = tavily_quick_search(query_context)
 
-            # Get results as they complete
-            pain_point_results = pain_point_future.result()
-            market_research_results = market_research_future.result()
-            competitive_results = competitive_future.result()
+        print("🔍 Phase 2: Market research...")
+        market_research_results = tavily_comprehensive_research([query_context])
 
-        # Rest of processing remains the same...
+        print("🔍 Phase 3: Competitive analysis...")
+        competitive_results = tavily_comprehensive_research([query_context])
+
         all_content = []
 
-        # Process results (same as original)
         if not pain_point_results.get("error"):
             for signal in pain_point_results.get("pain_point_signals", []):
                 for result in signal.get("results", []):
@@ -135,7 +153,7 @@ def discover_comprehensive_market_signals(query_context: str) -> Dict[str, Any]:
         return comprehensive_data
 
     except Exception as e:
-        print(f"Error in comprehensive market discovery: {e}")
+        print(f"❌ Error in comprehensive market discovery: {e}")
         comprehensive_data["error"] = str(e)
         return comprehensive_data
 
@@ -144,7 +162,7 @@ def analyze_comprehensive_signals_with_ai(
     content_collection: List[Dict], query_context: str, base_data: Dict
 ) -> Dict[str, Any]:
     """
-    Comprehensive AI analysis combining signal detection, trend analysis, and gap mapping
+    FIXED: Enhanced error handling and JSON parsing
     """
     try:
         # Prepare content for analysis
@@ -164,23 +182,23 @@ def analyze_comprehensive_signals_with_ai(
         Content to analyze:
         {content_summary}
 
-        Provide comprehensive analysis in JSON format:
+        Provide comprehensive analysis in JSON format. RETURN ONLY VALID JSON - NO MARKDOWN, NO EXPLANATIONS:
         {{
             "market_signals": [
                 {{
-                    "signal_type": "pain_point/trend/gap/opportunity",
+                    "signal_type": "pain_point",
                     "description": "Clear description of the signal",
-                    "strength": "high/medium/low",
+                    "strength": "high",
                     "frequency": "how often mentioned",
                     "affected_users": "who experiences this",
                     "evidence": "supporting evidence from content"
                 }}
             ],
             "trend_analysis": {{
-                "trend_direction": "growing/stable/declining",
+                "trend_direction": "growing",
                 "momentum_indicators": ["specific momentum signals"],
                 "emerging_technologies": ["technologies enabling change"],
-                "market_timing": "optimal/early/late",
+                "market_timing": "optimal",
                 "growth_drivers": ["key factors driving growth"]
             }},
             "gap_mapping": {{
@@ -194,58 +212,76 @@ def analyze_comprehensive_signals_with_ai(
                     "opportunity_description": "specific liminal market opportunity",
                     "target_segment": "who would benefit most",
                     "solution_approach": "how to address this opportunity",
-                    "market_readiness": "high/medium/low",
+                    "market_readiness": "high",
                     "competitive_advantage": "why this would succeed"
                 }}
             ],
             "consolidated_insights": {{
                 "primary_pain_themes": ["main user frustration themes"],
-                "market_momentum": "accelerating/stable/declining",
-                "competitive_landscape": "fragmented/competitive/concentrated",
+                "market_momentum": "accelerating",
+                "competitive_landscape": "fragmented",
                 "technology_enablers": ["key technologies making solutions possible"],
                 "timing_factors": ["factors affecting market timing"],
                 "success_requirements": ["what would be needed to succeed"]
             }},
             "confidence_assessment": {{
-                "data_quality": "high/medium/low",
-                "source_diversity": "high/medium/low",
-                "signal_consistency": "high/medium/low",
-                "overall_confidence": "0.0-1.0 score"
+                "data_quality": "high",
+                "source_diversity": "high",
+                "signal_consistency": "high",
+                "overall_confidence": 0.8
             }},
             "strategic_recommendations": [
                 "actionable recommendations for entrepreneurs"
             ]
         }}
-
-        Focus on finding genuine liminal opportunities - gaps between established market categories where new solutions could thrive.
-
-        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
-        response = completion(
-            model=MODEL_CONFIG["market_explorer"],
-            api_key=settings.OPENAI_API_KEY,
-            messages=[{"role": "user", "content": analysis_prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-        )
+        # SOLUTION 3: Enhanced API call with retry logic
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            try:
+                response = completion(
+                    model=MODEL_CONFIG["market_explorer"],
+                    api_key=settings.OPENAI_API_KEY,
+                    messages=[{"role": "user", "content": analysis_prompt}],
+                    response_format={"type": "json_object"},
+                    temperature=0.1,  # Lower temperature for more consistent JSON
+                    max_tokens=2000,  # Limit response size
+                )
 
-        if response and response.choices[0].message.content:
-            ai_analysis = json.loads(response.choices[0].message.content)
+                if response and response.choices[0].message.content:
+                    # Use safe JSON parsing
+                    ai_analysis = safe_json_loads(response.choices[0].message.content)
 
-            # Merge AI analysis into base data structure
-            base_data.update(ai_analysis)
+                    if ai_analysis:  # Only proceed if we got valid JSON
+                        # Merge AI analysis into base data structure
+                        base_data.update(ai_analysis)
 
-            # Extract confidence score
-            confidence_data = ai_analysis.get("confidence_assessment", {})
-            base_data["confidence_score"] = float(
-                confidence_data.get("overall_confidence", 0.5)
-            )
+                        # Extract confidence score safely
+                        confidence_data = ai_analysis.get("confidence_assessment", {})
+                        base_data["confidence_score"] = float(
+                            confidence_data.get("overall_confidence", 0.5)
+                        )
 
-            return base_data
+                        print("✅ AI analysis completed successfully")
+                        return base_data
+                    else:
+                        print(
+                            f"⚠️  Attempt {attempt + 1}: Invalid JSON received, retrying..."
+                        )
+                        if attempt == max_retries:
+                            break
+                        continue
+
+            except Exception as e:
+                print(f"⚠️  Attempt {attempt + 1} failed: {e}")
+                if attempt == max_retries:
+                    base_data["ai_analysis_error"] = str(e)
+                    break
+                continue
 
     except Exception as e:
-        print(f"Error in AI analysis: {e}")
+        print(f"❌ Error in AI analysis: {e}")
         base_data["ai_analysis_error"] = str(e)
 
     return base_data
@@ -271,7 +307,6 @@ def validate_signals_cross_platform(signals_data: Dict[str, Any]) -> Dict[str, A
         high_confidence_signals = len(
             [s for s in market_signals if s.get("strength") == "high"]
         )
-
         ready_opportunities = len(
             [o for o in liminal_opportunities if o.get("market_readiness") == "high"]
         )
@@ -296,12 +331,11 @@ def validate_signals_cross_platform(signals_data: Dict[str, Any]) -> Dict[str, A
         return validation
 
     except Exception as e:
-        print(f"Error in signal validation: {e}")
+        print(f"❌ Error in signal validation: {e}")
         validation["error"] = str(e)
         return validation
 
 
-# Create the market explorer agent
 market_explorer_agent = LlmAgent(
     name="market_explorer_agent",
     model=LiteLlm(
@@ -310,7 +344,8 @@ market_explorer_agent = LlmAgent(
     instruction=EXPLORER_AGENT_PROMPT,
     description=(
         "Optimized market intelligence agent that combines signal discovery, trend analysis, "
-        "and gap mapping to efficiently identify liminal market opportunities in a single pass."
+        "and gap mapping to efficiently identify liminal market opportunities. "
+        "Fixed for ADK JSON parsing issues."
     ),
     tools=[
         FunctionTool(func=discover_comprehensive_market_signals),

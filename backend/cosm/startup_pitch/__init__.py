@@ -396,7 +396,9 @@ def create_investment_narrative_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            return safe_json_loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"❌ Error creating investment narrative: {e}")
@@ -908,7 +910,7 @@ def create_pitch_summary_report(
 # Updated agent with enhanced integration
 startup_pitch_agent = LlmAgent(
     name="startup_pitch_agent",
-    model=MODEL_CONFIG["primary_model"],
+    model=MODEL_CONFIG["landing_builder"],
     instruction=STARTUP_PITCH_PROMPT
     + """
 

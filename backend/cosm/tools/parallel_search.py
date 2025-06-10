@@ -383,7 +383,9 @@ def extract_liminal_signals_from_parallel_results(
         )
 
         if response and response.choices[0].message.content:
-            result = json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            result = safe_json_loads(response.choices[0].message.content)
             return result.get("liminal_signals", [])
 
     except Exception as e:

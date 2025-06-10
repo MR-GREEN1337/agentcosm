@@ -8,7 +8,6 @@ from google.adk.tools import FunctionTool
 from google.genai import Client
 from google.adk.models.lite_llm import LiteLlm
 from typing import Dict, List, Any
-import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
@@ -17,6 +16,7 @@ from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
 from cosm.tools.parallel_search import parallel_adjacent_market_search
+import json
 
 client = Client()
 thread_local = threading.local()
@@ -156,7 +156,9 @@ def analyze_adjacent_connections_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            return safe_json_loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"❌ Error in AI analysis of adjacent connections: {e}")
@@ -184,7 +186,9 @@ def analyze_upstream_market_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            result = json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            result = safe_json_loads(response.choices[0].message.content)
             return {
                 "keyword": keyword,
                 "upstream_dependencies": result.get("upstream_dependencies", []),
@@ -220,7 +224,9 @@ def analyze_downstream_market_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            result = json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            result = safe_json_loads(response.choices[0].message.content)
             return {
                 "keyword": keyword,
                 "downstream_outcomes": result.get("downstream_outcomes", []),

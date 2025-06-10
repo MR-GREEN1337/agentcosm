@@ -4,7 +4,6 @@ Market Analyzer Agent
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Any, Optional
-import json
 import time
 from datetime import datetime
 from dataclasses import dataclass
@@ -393,7 +392,9 @@ class ParallelMarketAnalyzer:
             )
 
             if response and response.choices[0].message.content:
-                ai_analysis = json.loads(response.choices[0].message.content)
+                from cosm.discovery.explorer_agent import safe_json_loads
+
+                ai_analysis = safe_json_loads(response.choices[0].message.content)
                 scoring_result.update(ai_analysis)
 
                 # Calculate component scores

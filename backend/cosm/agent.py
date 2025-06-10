@@ -5,7 +5,7 @@ Uses ADK Multi-Agent Patterns for Breakthrough Opportunity Finding
 
 from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.tools.agent_tool import AgentTool
-from google.adk.tools import FunctionTool
+from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.genai import types
 
 from .discovery import (
@@ -181,13 +181,13 @@ class MarketOpportunityAgent:
             ),
             tools=[
                 # Core market research tools
-                FunctionTool(func=comprehensive_market_research),
-                FunctionTool(func=analyze_competitive_landscape),
+                LongRunningFunctionTool(func=comprehensive_market_research),
+                LongRunningFunctionTool(func=analyze_competitive_landscape),
                 FunctionTool(func=check_domain_availability),
                 # Enhanced liminal discovery tools
                 FunctionTool(func=synthesize_liminal_connections),
-                FunctionTool(func=validate_connection_strength),
-                FunctionTool(func=rank_liminal_opportunities),
+                LongRunningFunctionTool(func=validate_connection_strength),
+                LongRunningFunctionTool(func=rank_liminal_opportunities),
                 # Agent orchestration tools - FIXED: Only include workflow as sub-agent
                 AgentTool(agent=self.discovery_workflow),
                 search_tool,

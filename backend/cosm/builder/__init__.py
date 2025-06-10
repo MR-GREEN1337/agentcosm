@@ -2,7 +2,6 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client, types
 from typing import Dict, Any, List
-import json
 import requests
 from datetime import datetime
 from litellm import completion
@@ -210,7 +209,9 @@ def generate_advanced_brand_strategy(market_context: Dict[str, Any]) -> Dict[str
         )
 
         if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            return safe_json_loads(response.choices[0].message.content)
         else:
             return {"error": "Empty AI response"}
 
@@ -1121,13 +1122,15 @@ def generate_landing_page_with_ai(
 
         response = completion(
             model=MODEL_CONFIG["landing_builder"],
-            messages=[{"role": "user", "content": landing_prompt}],
+            messages=[{"role": "user", "content": landing_prompt[:1048176]}],
             temperature=0.7,
             max_tokens=6000,  # Increased for more comprehensive output
         )
 
         if response and response.choices[0].message.content:
-            html_content = response.choices[0].message.content.strip()
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            html_content = safe_json_loads(response.choices[0].message.content.strip())
 
             # Clean up response
             if "```html" in html_content:
@@ -1341,7 +1344,9 @@ def generate_advanced_content_data(
         )
 
         if response and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
+            from cosm.discovery.explorer_agent import safe_json_loads
+
+            return safe_json_loads(response.choices[0].message.content)
 
     except Exception as e:
         print(f"❌ Error generating advanced content data: {e}")
@@ -1539,7 +1544,7 @@ def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, A
             f"{RENDERER_SERVICE_URL}/api/deploy",
             json=deployment_payload,
             headers={"Content-Type": "application/json"},
-            timeout=90,  # Longer timeout for premium features
+            timeout=90,
         )
 
         if response.status_code == 200:
