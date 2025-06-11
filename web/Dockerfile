@@ -1,8 +1,8 @@
-FROM node:20-alpine AS base
+FROM node:23-slim AS base
 
 # Dependencies stage
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apt-get update && apt-get install -y --no-install-recommends libc6 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Add caching for npm

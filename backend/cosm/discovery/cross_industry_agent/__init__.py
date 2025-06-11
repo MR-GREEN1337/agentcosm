@@ -5,7 +5,6 @@ Uses parallel search to find patterns across different industries for arbitrage 
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from google.adk.models.lite_llm import LiteLlm
 from typing import Dict, List, Any
 import json
 from datetime import datetime
@@ -157,12 +156,10 @@ def analyze_cross_industry_arbitrage_with_ai(
                 }}
             ]
         }}
-
-        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": analysis_prompt}],
             response_format={"type": "json_object"},
@@ -193,7 +190,7 @@ def analyze_cost_disparities_with_ai(
     """
     try:
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": cost_analysis_prompt}],
             response_format={"type": "json_object"},
@@ -231,7 +228,7 @@ def analyze_asset_utilization_with_ai(
     """
     try:
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": asset_analysis_prompt}],
             response_format={"type": "json_object"},
@@ -314,8 +311,6 @@ def find_industry_cost_disparities(keywords: List[str]) -> Dict[str, Any]:
                     ],
                     "cost_drivers": ["factor1", "factor2", "factor3"]
                 }}
-
-                RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
                 """
 
                 future = executor.submit(
@@ -412,8 +407,6 @@ def identify_underutilized_industry_assets(keywords: List[str]) -> Dict[str, Any
                         }}
                     ]
                 }}
-
-                RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
                 """
 
                 future = executor.submit(
@@ -452,9 +445,7 @@ def identify_underutilized_industry_assets(keywords: List[str]) -> Dict[str, Any
 # Create the cross-industry pattern agent
 cross_industry_agent = LlmAgent(
     name="cross_industry_agent",
-    model=LiteLlm(
-        model=MODEL_CONFIG["market_explorer"], api_key=settings.OPENAI_API_KEY
-    ),
+    model=MODEL_CONFIG["market_explorer"],
     instruction=CROSS_INDUSTRY_PROMPT,
     description=(
         "Discovers patterns, solutions, and arbitrage opportunities across different "

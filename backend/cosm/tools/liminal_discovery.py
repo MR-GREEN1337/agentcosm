@@ -112,11 +112,10 @@ def synthesize_liminal_connections(
 
         FOCUS: Find opportunities that entrepreneurs can actually build and scale.
         Make each opportunity SPECIFIC and ACTIONABLE with clear next steps.
-        RETURN ONLY JSON, NO OTHER TEXT!!!!!!!!!
         """
 
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": synthesis_prompt}],
             response_format={"type": "json_object"},

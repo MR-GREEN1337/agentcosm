@@ -1,18 +1,109 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client, types
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import requests
 from datetime import datetime
 from litellm import completion
 import re
 import base64
+import json
+import time
 
 from cosm.config import MODEL_CONFIG
 from cosm.tools.pexels import get_pexels_media, get_curated_pexels_media
 from cosm.prompts import BRAND_CREATOR_PROMPT, LANDING_BUILDER_PROMPT
 
 client = Client()
+
+
+# =============================================================================
+# UTILS
+# =============================================================================
+
+
+def safe_json_parse_function_args(args_string: str) -> Dict[str, Any]:
+    """
+    Safely parse function call arguments with robust error handling.
+
+    Args:
+        args_string: Raw JSON string from LLM function call
+
+    Returns:
+        Parsed dictionary or empty dict if parsing fails
+    """
+    if not args_string or args_string.strip() == "":
+        return {}
+
+    try:
+        # First attempt: direct parsing
+        return json.loads(args_string)
+    except json.JSONDecodeError as e:
+        print(f"Initial JSON parse failed: {e}")
+
+        # Second attempt: clean and retry
+        cleaned_args = clean_json_string(args_string)
+        try:
+            return json.loads(cleaned_args)
+        except json.JSONDecodeError as e2:
+            print(f"Cleaned JSON parse failed: {e2}")
+
+            # Third attempt: extract valid JSON portion
+            extracted_json = extract_valid_json(args_string)
+            if extracted_json:
+                try:
+                    return json.loads(extracted_json)
+                except json.JSONDecodeError:
+                    pass
+
+            # Final fallback: return empty dict
+            print(f"All JSON parsing attempts failed for: {args_string[:100]}...")
+            return {}
+
+
+def clean_json_string(json_str: str) -> str:
+    """
+    Clean common JSON formatting issues.
+    """
+    # Remove extra whitespace
+    json_str = json_str.strip()
+
+    # Remove trailing commas before closing braces/brackets
+    json_str = re.sub(r",(\s*[}\]])", r"\1", json_str)
+
+    # Fix common quote issues
+    json_str = re.sub(r"([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:", r'\1"\2":', json_str)
+
+    # Remove control characters
+    json_str = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", json_str)
+
+    return json_str
+
+
+def extract_valid_json(text: str) -> Optional[str]:
+    """
+    Extract the first valid JSON object from a string.
+    """
+    # Find potential JSON start
+    start_indices = [i for i, char in enumerate(text) if char == "{"]
+
+    for start in start_indices:
+        brace_count = 0
+        for i, char in enumerate(text[start:], start):
+            if char == "{":
+                brace_count += 1
+            elif char == "}":
+                brace_count -= 1
+                if brace_count == 0:
+                    potential_json = text[start : i + 1]
+                    try:
+                        json.loads(potential_json)
+                        return potential_json
+                    except json.JSONDecodeError:
+                        continue
+
+    return None
+
 
 # =============================================================================
 # ADVANCED BRAND CREATOR AGENT
@@ -113,6 +204,42 @@ def create_brand_identity(
         return generate_fallback_brand_package(opportunity_data, package)
 
 
+def robust_completion(model: str, messages: list, **kwargs) -> Optional[Dict[str, Any]]:
+    """
+    Wrapper around completion() with enhanced error handling and retries.
+    """
+    max_retries = 3
+    base_delay = 1.0
+
+    for attempt in range(max_retries):
+        try:
+            response = completion(model=model, messages=messages, **kwargs)
+
+            # Validate response structure
+            if response and hasattr(response, "choices") and response.choices:
+                return response
+            else:
+                raise ValueError("Invalid response structure")
+
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error on attempt {attempt + 1}: {e}")
+            if attempt == max_retries - 1:
+                return None
+
+        except Exception as e:
+            print(f"Completion error on attempt {attempt + 1}: {e}")
+            if attempt == max_retries - 1:
+                return None
+
+        # Exponential backoff
+        if attempt < max_retries - 1:
+            delay = base_delay * (2**attempt)
+            print(f"Retrying in {delay} seconds...")
+            time.sleep(delay)
+
+    return None
+
+
 def generate_advanced_brand_strategy(market_context: Dict[str, Any]) -> Dict[str, Any]:
     """AI-powered comprehensive brand strategy generation with advanced market positioning."""
 
@@ -197,21 +324,18 @@ def generate_advanced_brand_strategy(market_context: Dict[str, Any]) -> Dict[str
         }}
 
         Focus on venture-scale ambition. Think YC Demo Day energy meets enterprise-grade credibility.
-        RETURN ONLY JSON AND NOTHING ELSE!
         """
 
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["brand_creator"],
             messages=[{"role": "user", "content": brand_prompt}],
             response_format={"type": "json_object"},
-            temperature=0.8,  # Higher creativity
-            max_tokens=MODEL_CONFIG["max_tokens"],
+            temperature=0.8,
+            max_tokens=3000,
         )
 
         if response and response.choices[0].message.content:
-            from cosm.discovery.explorer_agent import safe_json_loads
-
-            return safe_json_loads(response.choices[0].message.content)
+            return safe_json_parse_function_args(response.choices[0].message.content)
         else:
             return {"error": "Empty AI response"}
 
@@ -1125,6 +1249,7 @@ def generate_landing_page_with_ai(
             messages=[{"role": "user", "content": landing_prompt[:1048176]}],
             temperature=0.7,
             max_tokens=6000,  # Increased for more comprehensive output
+            stream=False,
         )
 
         if response and response.choices[0].message.content:
@@ -1332,7 +1457,6 @@ def generate_advanced_content_data(
         }}
 
         Make it venture-scale ambitious with clear conversion psychology.
-        RETURN ONLY JSON AND NOTHING ELSE!
         """
 
         response = completion(

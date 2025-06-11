@@ -6,7 +6,6 @@ Uses parallel web search to discover markets adjacent to primary market for limi
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client
-from google.adk.models.lite_llm import LiteLlm
 from typing import Dict, List, Any
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -143,12 +142,10 @@ def analyze_adjacent_connections_with_ai(
                 }}
             ]
         }}
-
-        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": analysis_prompt}],
             response_format={"type": "json_object"},
@@ -178,7 +175,7 @@ def analyze_upstream_market_with_ai(
     """
     try:
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": upstream_prompt}],
             response_format={"type": "json_object"},
@@ -216,7 +213,7 @@ def analyze_downstream_market_with_ai(
     """
     try:
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": downstream_prompt}],
             response_format={"type": "json_object"},
@@ -439,9 +436,7 @@ def identify_integration_opportunities(
 # Create the adjacent market agent
 adjacent_market_agent = LlmAgent(
     name="adjacent_market_agent",
-    model=LiteLlm(
-        model=MODEL_CONFIG["market_explorer"], api_key=settings.OPENAI_API_KEY
-    ),
+    model=MODEL_CONFIG["market_explorer"],
     instruction=ADJACENT_MARKET_PROMPT,
     description=(
         "Discovers markets adjacent to primary market using parallel web search "

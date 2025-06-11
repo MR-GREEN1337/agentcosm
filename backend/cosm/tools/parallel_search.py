@@ -375,7 +375,7 @@ def extract_liminal_signals_from_parallel_results(
         """
 
         response = completion(
-            model=MODEL_CONFIG["market_explorer"],
+            model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": liminal_analysis_prompt}],
             response_format={"type": "json_object"},

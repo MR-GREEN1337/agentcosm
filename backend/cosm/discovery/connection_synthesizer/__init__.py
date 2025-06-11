@@ -12,7 +12,6 @@ from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
-from google.adk.models.lite_llm import LiteLlm
 
 CONNECTION_SYNTHESIZER_PROMPT = """
 You are the Connection Synthesizer Agent, the master synthesizer who finds
@@ -203,12 +202,10 @@ def perform_comprehensive_synthesis_with_ai(
         - ECONOMICALLY VIABLE (clear value creation and capture)
         - TECHNICALLY FEASIBLE (can be built with current technology)
         - MARKET READY (timing is right for adoption)
-
-        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
-            model=MODEL_CONFIG["discovery_agent"],
+            model=MODEL_CONFIG["discovery_agent_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": synthesis_prompt}],
             response_format={"type": "json_object"},
@@ -414,9 +411,7 @@ def calculate_synthesis_confidence(synthesis_result: Dict[str, Any]) -> float:
 # Create the connection synthesizer agent
 connection_synthesizer_agent = LlmAgent(
     name="connection_synthesizer_agent",
-    model=LiteLlm(
-        model=MODEL_CONFIG["discovery_agent"], api_key=settings.OPENAI_API_KEY
-    ),
+    model=MODEL_CONFIG["discovery_agent"],
     instruction=CONNECTION_SYNTHESIZER_PROMPT,
     description=(
         "Synthesizes discoveries from parallel market exploration agents to find "

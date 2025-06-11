@@ -137,7 +137,7 @@ def process_jinja_template(template_str: str, content_data: Dict[str, Any]) -> s
 
 
 def create_complete_html(
-    assets: WebsiteAssets, content_data: Dict[str, Any], site_id: str
+    assets: WebsiteAssets, content_data: Dict[str, Any], site_id: str, base_url: str
 ) -> str:
     """Create complete HTML with embedded CSS and JS"""
 
@@ -146,7 +146,7 @@ def create_complete_html(
         **content_data,
         "current_year": datetime.now().year,
         "site_id": site_id,
-        "site_url": f"http://localhost:8001/site/{site_id}",
+        "site_url": f"{base_url}/site/{site_id}",
     }
 
     # Process the Jinja template
@@ -464,18 +464,18 @@ def create_pitch_landing_page_template() -> str:
     """
 
 
-# Original deployment endpoints (unchanged)
 @app.post("/api/deploy")
-async def deploy_website(deployment: DeploymentRequest):
+async def deploy_website(deployment: DeploymentRequest, request: Request):
     """Deploy a new website - Core endpoint used by builder agents"""
 
     try:
         # Generate unique site ID
         site_id = generate_id()
 
+        base_url = f"https://{request.headers.get('X-Forwarded-Host')}"
         # Create complete HTML
         complete_html = create_complete_html(
-            deployment.assets, deployment.content_data, site_id
+            deployment.assets, deployment.content_data, site_id, base_url
         )
 
         # Calculate performance score based on content size and features
@@ -513,8 +513,6 @@ async def deploy_website(deployment: DeploymentRequest):
             "last_activity": None,
         }
 
-        # Generate URLs
-        base_url = "http://localhost:8001"
         live_url = f"{base_url}/site/{site_id}"
         preview_url = f"{base_url}/preview/{site_id}"
 
@@ -542,11 +540,9 @@ async def deploy_website(deployment: DeploymentRequest):
         raise HTTPException(status_code=500, detail=f"Deployment failed: {str(e)}")
 
 
-# NEW PDF STORAGE ENDPOINTS
-
-
+# Update the PDF storage endpoint similarly
 @app.post("/api/pdf/store")
-async def store_pdf(pdf_request: PDFStorageRequest):
+async def store_pdf(pdf_request: PDFStorageRequest, request: Request):
     """Store a PDF file and return access details"""
 
     try:
@@ -585,8 +581,8 @@ async def store_pdf(pdf_request: PDFStorageRequest):
             "last_accessed": None,
         }
 
-        # Generate URLs
-        base_url = "http://localhost:8001"
+        # Generate base URL from request
+        base_url = f"https://{request.headers.get('X-Forwarded-Host')}"
         download_url = f"{base_url}/api/pdf/{pdf_id}/download"
         view_url = f"{base_url}/api/pdf/{pdf_id}/view"
 
@@ -779,9 +775,10 @@ async def view_pdf_inline(pdf_id: str, request: Request):
 
 
 @app.get("/api/pdf/{pdf_id}/info")
-async def get_pdf_info(pdf_id: str):
+async def get_pdf_info(pdf_id: str, request: Request):
     """Get PDF information and metrics"""
 
+    base_url = f"https://{request.headers.get('X-Forwarded-Host')}"
     if pdf_id not in STORED_PDFS:
         raise HTTPException(status_code=404, detail="PDF not found")
 
@@ -803,9 +800,9 @@ async def get_pdf_info(pdf_id: str):
             "last_accessed": pdf_metrics.get("last_accessed"),
         },
         "urls": {
-            "download": f"http://localhost:8001/api/pdf/{pdf_id}/download",
-            "view": f"http://localhost:8001/api/pdf/{pdf_id}/view",
-            "info": f"http://localhost:8001/api/pdf/{pdf_id}/info",
+            "download": f"{base_url}/api/pdf/{pdf_id}/download",
+            "view": f"{base_url}/api/pdf/{pdf_id}/view",
+            "info": f"{base_url}/api/pdf/{pdf_id}/info",
         },
     }
 

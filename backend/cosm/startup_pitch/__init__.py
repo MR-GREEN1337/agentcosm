@@ -126,7 +126,7 @@ How would you like to proceed with your pitch deck?"
 """
 
 
-def generate_and_deploy_pitch_deck(
+def generate_pitch_deck(
     market_analysis: Dict[str, Any],
     opportunity_data: Dict[str, Any],
     brand_data: Dict[str, Any],
@@ -382,8 +382,6 @@ def create_investment_narrative_with_ai(
         3. Shows realistic path to success
         4. Addresses investor concerns proactively
         5. Presents compelling risk/reward ratio
-
-        RETURN ONLY JSON AND NOTHING ELSE!
         """
 
         response = completion(
@@ -907,56 +905,7 @@ def create_pitch_summary_report(
         return f"Error creating summary report: {str(e)}"
 
 
-# Updated agent with enhanced integration
-startup_pitch_agent = LlmAgent(
-    name="startup_pitch_agent",
-    model=MODEL_CONFIG["landing_builder"],
-    instruction=STARTUP_PITCH_PROMPT
-    + """
-
-    **Integration Guidelines:**
-    When generating a pitch deck:
-    1. Always deploy the PDF to the renderer backend for instant access
-    2. Provide direct download links and landing page URLs
-    3. Include analytics tracking information
-    4. Present deployment status and access instructions clearly
-    5. Offer next steps for sharing and monitoring
-
-    **Response Format:**
-    After successful deployment, present:
-    - Immediate access links (download, landing page, preview)
-    - Deployment confirmation with file details
-    - Analytics dashboard information
-    - Professional summary of the opportunity
-    - Clear instructions for investor sharing
-    - Next steps for pitch presentation
-
-    **Error Handling:**
-    If deployment fails:
-    - Explain what went wrong clearly
-    - Provide the generated PDF data as fallback
-    - Suggest alternative deployment options
-    - Offer to retry deployment
-    """,
-    description=(
-        "Creates comprehensive startup pitch decks from market analysis and deploys them "
-        "to the renderer backend. Generates professional PDFs with instant download links, "
-        "optional landing pages, and analytics tracking for investor presentations."
-    ),
-    tools=[
-        FunctionTool(func=generate_and_deploy_pitch_deck),
-        FunctionTool(func=get_deployment_status),
-        FunctionTool(func=create_pitch_summary_report),
-        FunctionTool(func=deploy_to_renderer),
-    ],
-    output_key="startup_pitch_deployment",
-)
-
-
-# Additional utility functions for enhanced functionality
-
-
-def create_investor_email_template(pitch_result: Dict[str, Any]) -> str:
+def generate_investor_email_template(pitch_result: Dict[str, Any]) -> str:
     """
     Generate a professional email template for sharing the pitch deck with investors
     """
@@ -1286,11 +1235,11 @@ startup_pitch_agent = LlmAgent(
         "and due diligence packages."
     ),
     tools=[
-        FunctionTool(func=generate_and_deploy_pitch_deck),
+        FunctionTool(func=generate_pitch_deck),
         FunctionTool(func=get_deployment_status),
         FunctionTool(func=create_pitch_summary_report),
         # FunctionTool(func=deploy_to_renderer),
-        FunctionTool(func=create_investor_email_template),
+        FunctionTool(func=generate_investor_email_template),
         FunctionTool(func=create_social_media_posts),
         FunctionTool(func=generate_presentation_notes),
         FunctionTool(func=create_due_diligence_package),

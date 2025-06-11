@@ -16,7 +16,6 @@ from google.genai import Client
 from cosm.config import MODEL_CONFIG
 from litellm import completion
 from cosm.settings import settings
-from google.adk.models.lite_llm import LiteLlm
 
 from ..tools.market_research import (
     analyze_market_size,
@@ -378,13 +377,11 @@ class ParallelMarketAnalyzer:
                 }},
                 "confidence_level": "low/medium/high"
             }}
-
-            RETURN ONLY JSON!
             """
 
             # Execute AI analysis synchronously
             response = completion(
-                model=MODEL_CONFIG["market_analyzer"],
+                model=MODEL_CONFIG["market_analyzer_openai"],
                 api_key=settings.OPENAI_API_KEY,
                 messages=[{"role": "user", "content": analysis_prompt}],
                 response_format={"type": "json_object"},
@@ -724,9 +721,7 @@ What's your preference?"
 
 market_analyzer_agent = LlmAgent(
     name="market_analyzer_agent",
-    model=LiteLlm(
-        model=MODEL_CONFIG["market_analyzer"], api_key=settings.OPENAI_API_KEY
-    ),
+    model=MODEL_CONFIG["market_analyzer"],
     instruction=ANALYZER_PROMPT,
     description=(
         "Enhanced market validation agent with pure threading implementation "

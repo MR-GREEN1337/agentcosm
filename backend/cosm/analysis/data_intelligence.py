@@ -712,8 +712,6 @@ def generate_integrated_market_intelligence(
             "recommended_actions": ["action1", "action2"],
             "confidence_level": "high/medium/low"
         }}
-
-        RETURN ONLY JSON AND NOTHING ELSE!!!!!!!!!!!!!
         """
 
         response = completion(
