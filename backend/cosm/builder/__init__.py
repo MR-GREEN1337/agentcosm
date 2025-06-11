@@ -1248,7 +1248,6 @@ def generate_landing_page_with_ai(
             model=MODEL_CONFIG["landing_builder"],
             messages=[{"role": "user", "content": landing_prompt[:1048176]}],
             temperature=0.7,
-            max_tokens=6000,  # Increased for more comprehensive output
             stream=False,
         )
 

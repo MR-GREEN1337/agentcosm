@@ -1,4 +1,4 @@
-FROM node:23-slim AS base
+FROM node:20-alpine AS base
 
 # Dependencies stage
 FROM base AS deps
@@ -22,7 +22,7 @@ FROM base AS builder
 WORKDIR /app
 
 # Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
+#COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Disable telemetry
