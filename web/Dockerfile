@@ -2,7 +2,12 @@ FROM node:23-slim AS base
 
 # Dependencies stage
 FROM base AS deps
-RUN apt-get update && apt-get install -y --no-install-recommends libc6 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  libc6 \
+  build-essential \
+  python3 \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Add caching for npm
@@ -25,6 +30,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm config set fetch-retry-maxtimeout 600000
 RUN npm config set fetch-retries 5
+
+RUN npm rebuild lightningcss
 
 # Build the app
 RUN npm run build

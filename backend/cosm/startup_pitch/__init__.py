@@ -959,7 +959,7 @@ Generated: {pitch_result.get('generation_timestamp', 'Recently')[:19]}
     return template
 
 
-def create_social_media_posts(pitch_result: Dict[str, Any]) -> Dict[str, str]:
+def generate_social_media_posts(pitch_result: Dict[str, Any]) -> Dict[str, str]:
     """
     Generate social media posts for promoting the pitch deck
     """
@@ -1240,7 +1240,7 @@ startup_pitch_agent = LlmAgent(
         FunctionTool(func=create_pitch_summary_report),
         # FunctionTool(func=deploy_to_renderer),
         FunctionTool(func=generate_investor_email_template),
-        FunctionTool(func=create_social_media_posts),
+        FunctionTool(func=generate_social_media_posts),
         FunctionTool(func=generate_presentation_notes),
         FunctionTool(func=create_due_diligence_package),
     ],
