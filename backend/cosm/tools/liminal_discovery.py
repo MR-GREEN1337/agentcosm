@@ -8,7 +8,6 @@ import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
-from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.tavily import tavily_quick_search
@@ -114,7 +113,9 @@ def synthesize_liminal_connections(
         Make each opportunity SPECIFIC and ACTIONABLE with clear next steps.
         """
 
-        response = completion(
+        from cosm.utils import robust_completion
+
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": synthesis_prompt}],

@@ -14,7 +14,6 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client
 from cosm.config import MODEL_CONFIG
-from litellm import completion
 from cosm.settings import settings
 
 from ..tools.market_research import (
@@ -378,9 +377,10 @@ class ParallelMarketAnalyzer:
                 "confidence_level": "low/medium/high"
             }}
             """
+            from cosm.utils import robust_completion
 
             # Execute AI analysis synchronously
-            response = completion(
+            response = robust_completion(
                 model=MODEL_CONFIG["market_analyzer_openai"],
                 api_key=settings.OPENAI_API_KEY,
                 messages=[{"role": "user", "content": analysis_prompt}],

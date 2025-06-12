@@ -15,7 +15,6 @@ from queue import Queue
 from ..tools.tavily import tavily_research_suite, tavily_quick_search
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-from litellm import completion
 
 
 @dataclass
@@ -374,7 +373,9 @@ def extract_liminal_signals_from_parallel_results(
         ]
         """
 
-        response = completion(
+        from cosm.utils import robust_completion
+
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": liminal_analysis_prompt}],

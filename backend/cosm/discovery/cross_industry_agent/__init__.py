@@ -10,11 +10,11 @@ import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
 from cosm.tools.parallel_search import parallel_cross_industry_search
+from cosm.utils import robust_completion
 
 thread_local = threading.local()
 
@@ -158,7 +158,7 @@ def analyze_cross_industry_arbitrage_with_ai(
         }}
         """
 
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": analysis_prompt}],
@@ -189,7 +189,7 @@ def analyze_cost_disparities_with_ai(
     Analyze cost disparities across industries using AI
     """
     try:
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": cost_analysis_prompt}],
@@ -227,7 +227,7 @@ def analyze_asset_utilization_with_ai(
     Analyze underutilized assets across industries using AI
     """
     try:
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": asset_analysis_prompt}],

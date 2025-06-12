@@ -1250,7 +1250,7 @@ def generate_landing_page_with_ai(
 
         print(f" Landing page prompt size: {len(landing_prompt)}")
 
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["landing_builder"],
             messages=[{"role": "user", "content": landing_prompt[:1048176]}],
             temperature=0.7,
@@ -1464,7 +1464,7 @@ def generate_advanced_content_data(
         Make it venture-scale ambitious with clear conversion psychology.
         """
 
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["brand_creator"],
             messages=[{"role": "user", "content": content_prompt[:1048576]}],
             response_format={"type": "json_object"},

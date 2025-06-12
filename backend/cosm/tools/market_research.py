@@ -14,9 +14,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import Counter
 from cosm.config import MODEL_CONFIG as CONFIG
-from litellm import completion
 from cosm.settings import settings
 from cosm.discovery.explorer_agent import safe_json_loads
+from cosm.utils import robust_completion
 
 # Initialize Gemini client
 client = Client()
@@ -399,7 +399,7 @@ def extract_pain_signals_with_gemini(
         Only return the JSON object, no other text.
         """
 
-        response = completion(
+        response = robust_completion(
             model=CONFIG["market_research"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
@@ -443,7 +443,7 @@ def extract_competitors_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = completion(
+            response = robust_completion(
                 model=CONFIG["market_research"],
                 api_key=settings.OPENAI_API_KEY,
                 messages=[{"role": "user", "content": prompt}],
@@ -531,7 +531,7 @@ def extract_trends_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = completion(
+            response = robust_completion(
                 model=CONFIG["market_research"],
                 api_key=settings.OPENAI_API_KEY,
                 messages=[{"role": "user", "content": prompt}],
@@ -627,7 +627,7 @@ def generate_insights_with_gemini(research_data: Dict[str, Any]) -> List[str]:
         Return a JSON array of insights, each as a string that is specific, actionable, and based on the data.
         """
 
-        response = completion(
+        response = robust_completion(
             model=CONFIG["market_research"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
@@ -1654,7 +1654,7 @@ def assess_market_risks(
         Base your analysis on the actual data provided, not general assumptions.
         """
 
-        response = completion(
+        response = robust_completion(
             model=CONFIG["market_research"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],
@@ -1803,7 +1803,7 @@ def generate_recommendation(
         Consider multiple scenarios and provide flexible strategies.
         """
 
-        response = completion(
+        response = robust_completion(
             model=CONFIG["market_research"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": prompt}],

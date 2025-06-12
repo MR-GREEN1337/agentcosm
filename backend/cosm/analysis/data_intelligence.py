@@ -18,7 +18,6 @@ import os
 import sys
 import traceback
 from pathlib import Path
-from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from ..tools.search import search_tool
@@ -713,8 +712,9 @@ def generate_integrated_market_intelligence(
             "confidence_level": "high/medium/low"
         }}
         """
+        from cosm.utils import robust_completion
 
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["data_intelligence"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": intelligence_prompt}],

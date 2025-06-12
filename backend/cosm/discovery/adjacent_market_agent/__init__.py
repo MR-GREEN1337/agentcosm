@@ -10,12 +10,12 @@ from typing import Dict, List, Any
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
 from cosm.tools.parallel_search import parallel_adjacent_market_search
 import json
+from cosm.utils import robust_completion
 
 client = Client()
 thread_local = threading.local()
@@ -144,7 +144,7 @@ def analyze_adjacent_connections_with_ai(
         }}
         """
 
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": analysis_prompt}],
@@ -174,7 +174,7 @@ def analyze_upstream_market_with_ai(
     Analyze upstream markets using AI for a specific keyword
     """
     try:
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": upstream_prompt}],
@@ -212,7 +212,7 @@ def analyze_downstream_market_with_ai(
     Analyze downstream markets using AI for a specific keyword
     """
     try:
-        response = completion(
+        response = robust_completion(
             model=MODEL_CONFIG["market_explorer_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": downstream_prompt}],

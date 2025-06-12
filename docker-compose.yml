@@ -33,8 +33,6 @@ services:
     platform: linux/amd64
     ports:
       - "8001:8001"
-    env_file:
-      - ./renderer/.env
     networks:
       - app-network
 

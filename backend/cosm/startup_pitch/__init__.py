@@ -25,7 +25,6 @@ import tempfile
 import os
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-from litellm import completion
 import base64
 
 # Renderer backend URL
@@ -384,7 +383,9 @@ def create_investment_narrative_with_ai(
         5. Presents compelling risk/reward ratio
         """
 
-        response = completion(
+        from cosm.utils import robust_completion
+
+        response = robust_completion(
             model=MODEL_CONFIG["builder_agents"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": synthesis_prompt}],

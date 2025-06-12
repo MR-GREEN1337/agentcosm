@@ -12,6 +12,7 @@ COPY .env .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY /cosm/ ./cosm/
+COPY service-account.json ./
 
 # Set environment
 ENV PYTHONPATH=/app

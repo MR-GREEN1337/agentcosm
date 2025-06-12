@@ -8,7 +8,6 @@ from google.adk.tools import FunctionTool
 from typing import Dict, List, Any
 import json
 from datetime import datetime
-from litellm import completion
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
@@ -204,7 +203,9 @@ def perform_comprehensive_synthesis_with_ai(
         - MARKET READY (timing is right for adoption)
         """
 
-        response = completion(
+        from cosm.utils import robust_completion
+
+        response = robust_completion(
             model=MODEL_CONFIG["discovery_agent_openai"],
             api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": synthesis_prompt}],
