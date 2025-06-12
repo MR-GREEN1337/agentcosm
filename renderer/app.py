@@ -75,9 +75,6 @@ class DeploymentRequest(BaseModel):
     analytics: Dict[str, Any] = Field(
         default_factory=dict, description="Analytics config"
     )
-    premium_features: Dict[str, Any] = Field(
-        default_factory=dict, description="Premium feature flags"
-    )
 
 
 class PDFStorageRequest(BaseModel):
@@ -495,7 +492,6 @@ async def deploy_website(deployment: DeploymentRequest, request: Request):
             "seo_optimization": deployment.seo_optimization,
             "meta_data": deployment.meta_data,
             "analytics": deployment.analytics,
-            "premium_features": deployment.premium_features,
             "created_at": datetime.now().isoformat(),
             "view_count": 0,
             "performance_score": performance_score,
@@ -525,7 +521,6 @@ async def deploy_website(deployment: DeploymentRequest, request: Request):
             "performance_score": performance_score,
             "seo_score": seo_score,
             "conversion_score": conversion_score,
-            "premium_features_enabled": bool(deployment.premium_features),
             "deployment_details": {
                 "created_at": datetime.now().isoformat(),
                 "site_name": deployment.site_name,
@@ -674,7 +669,6 @@ async def deploy_pitch_deck(pitch_request: PitchDeckRequest):
                     "primary_cta": "Download Pitch Deck",
                     "cta_tracking": True,
                 },
-                premium_features={"pdf_integration": True, "analytics": True},
             )
 
             # Deploy the landing page
@@ -964,7 +958,6 @@ async def get_site_metrics(site_id: str):
             "last_activity": metrics.get("last_activity"),
         },
         "features": {
-            "premium_features": bool(site_data.get("premium_features")),
             "conversion_optimized": bool(site_data.get("conversion_elements")),
             "seo_optimized": bool(site_data.get("seo_optimization")),
             "visual_assets": bool(site_data.get("visual_assets")),
@@ -1140,10 +1133,6 @@ async def dashboard():
                     <div class="stat-number">{total_clicks}</div>
                     <div class="stat-label">CTA Clicks</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number">{len([s for s in DEPLOYED_SITES.values() if s.get('premium_features')])}</div>
-                    <div class="stat-label">Premium Sites</div>
-                </div>
             </div>
 
             <button onclick="window.location.reload()" class="refresh-btn">🔄 Refresh Data</button>
@@ -1235,7 +1224,6 @@ async def root():
             "jinja2_templating",
             "embedded_css_js",
             "basic_analytics",
-            "premium_deployment",
             "performance_scoring",
             "responsive_design",
             "pdf_storage",

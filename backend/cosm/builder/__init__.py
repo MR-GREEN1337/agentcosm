@@ -853,7 +853,7 @@ def build_landing_page(
 
         # Prepare advanced deployment payload
         deployment_payload = {
-            "site_name": f"{brand_data.get('brand_name', 'startup').lower().replace(' ', '-')}-premium",
+            "site_name": f"{brand_data.get('brand_name', 'startup').lower().replace(' ', '-')}",
             "assets": {
                 "html_template": landing_html,
                 "css_styles": "",  # CSS embedded in HTML for performance
@@ -899,7 +899,6 @@ def build_landing_page(
                     "live_url": deploy_result.get("live_url"),
                     "deployment_id": deploy_result.get("deployment_id"),
                     "features": [
-                        "premium_design",
                         "conversion_optimized",
                         "seo_ready",
                         "mobile_first",
@@ -1660,15 +1659,6 @@ def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, A
 
         RENDERER_SERVICE_URL = settings.RENDERER_SERVICE_URL
 
-        # Add premium deployment flags
-        deployment_payload["premium_features"] = {
-            "conversion_optimization": True,
-            "ab_testing": True,
-            "analytics_integration": True,
-            "performance_optimization": True,
-            "seo_optimization": True,
-        }
-
         response = requests.post(
             f"{RENDERER_SERVICE_URL}/api/deploy",
             json=deployment_payload,
@@ -1687,7 +1677,6 @@ def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, A
                 "deployment_id": result.get("deployment_id"),
                 "site_id": result.get("site_id"),
                 "status": "deployed",
-                "premium_features_enabled": True,
                 "performance_score": result.get("performance_score", 95),
                 "seo_score": result.get("seo_score", 98),
                 "conversion_score": result.get("conversion_score", 92),
