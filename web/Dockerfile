@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 # Dependencies stage
 FROM base AS deps
@@ -21,19 +21,17 @@ RUN \
 FROM base AS builder
 WORKDIR /app
 
-# Copy dependencies
-#COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Robust NPM download
 RUN npm config set fetch-retry-maxtimeout 600000
 RUN npm config set fetch-retries 5
 
 RUN npm rebuild lightningcss
 
-# Build the app
 RUN npm run build
 
 # Runner stage

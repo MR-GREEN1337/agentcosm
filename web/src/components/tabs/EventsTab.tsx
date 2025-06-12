@@ -385,7 +385,7 @@ const LastAgentMessage = ({
   copiedMessageId: string | null;
   messageId: string;
 }) => {
-  const config = AGENT_CONFIGS[agent as keyof typeof AGENT_CONFIGS] || {
+  const config: any = AGENT_CONFIGS[agent as keyof typeof AGENT_CONFIGS] || {
     name: agent,
     icon: Bot,
     color: 'blue',
