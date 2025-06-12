@@ -1,3 +1,7 @@
+"""
+Robust Litellm completion() with retry and exponential backoff
+"""
+
 import time
 import random
 from functools import wraps
