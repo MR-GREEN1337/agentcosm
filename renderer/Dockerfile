@@ -6,14 +6,12 @@ WORKDIR /app
 RUN apt-get update && apt-get -y install libpq-dev gcc libcairo2-dev
 
 COPY /requirements.txt .
-COPY .env .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
 ENV PYTHONPATH=/app
 ENV PORT=8001
-ENV $(cat .env | xargs)
 
 EXPOSE 8001
 

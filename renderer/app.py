@@ -12,7 +12,6 @@ import uuid
 import base64
 from datetime import datetime
 from jinja2 import Environment, BaseLoader
-from settings import settings
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -24,7 +23,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

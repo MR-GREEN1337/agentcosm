@@ -20,4 +20,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Run directly
-CMD ["adk", "api_server"]
+CMD ["adk", "api_server", "--allow_origins", "*"]
