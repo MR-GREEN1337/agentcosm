@@ -40,9 +40,6 @@ export default function AgentDevUI() {
   const initialBusinessQuerySent = useRef<boolean>(false);
   const [lastAiResponse, setLastAiResponse] = useState('');
 
-  // Add new ref to track the most recent complete AI message
-  const latestCompleteAiMessageRef = useRef<string>('');
-
   const {
     sendMessage,
     events: sseEvents,

@@ -10,6 +10,7 @@ interface SSEEvent {
     role?: string;
   };
   timestamp?: number;
+  //@ts-ignore
   actions?: any;
   function_responses?: any;
   partial?: boolean;

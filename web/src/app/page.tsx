@@ -29,7 +29,7 @@ interface PageProps {
   className?: string;
 }
 
-export const CanvasRevealEffect = ({
+const CanvasRevealEffect = ({
   animationSpeed = 10,
   opacities = [0.3, 0.3, 0.3, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8, 1],
   colors = [[0, 255, 255]],
@@ -726,7 +726,7 @@ function MiniNavbar() {
   );
 }
 
-export const Page = ({ className }: PageProps) => {
+const LandingPage = ({ className }: PageProps) => {
   const [businessQuery, setBusinessQuery] = useState('');
 
   const handleBusinessQuerySubmit = (e: React.FormEvent) => {
@@ -859,6 +859,6 @@ export const Page = ({ className }: PageProps) => {
   );
 };
 
-export default function LandingPage() {
-  return <Page />;
+export default function Page() {
+  return <LandingPage />;
 }

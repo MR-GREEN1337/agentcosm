@@ -3,8 +3,11 @@ version: '3.8'
 services:
   web:
     build: ./web
+    platform: linux/amd64
     ports:
       - "3000:3000"
+    env_file:
+      - ./web/.env
     environment:
       - NODE_ENV=production
       - BACKEND_URL=http://backend:8000
@@ -15,8 +18,11 @@ services:
 
   backend:
     build: ./backend
+    platform: linux/amd64
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
       - RENDERER_URL=http://renderer:8001
     depends_on:
@@ -26,11 +32,10 @@ services:
 
   renderer:
     build: ./renderer
+    platform: linux/amd64
     ports:
       - "8001:8001"
+    env_file:
+      - ./renderer/.env
     networks:
       - app-network
-
-networks:
-  app-network:
-    driver: bridge

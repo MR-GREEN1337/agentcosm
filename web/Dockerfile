@@ -1,4 +1,4 @@
-FROM node:20-slim AS base
+FROM node:20 AS base
 
 # Dependencies stage
 FROM base AS deps
@@ -30,9 +30,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm config set fetch-retry-maxtimeout 600000
 RUN npm config set fetch-retries 5
 
-RUN npm rebuild lightningcss
+RUN npm install --force && npm rebuild && npm run build
 
-RUN npm run build
 
 # Runner stage
 FROM base AS runner
