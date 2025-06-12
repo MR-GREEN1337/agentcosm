@@ -3,24 +3,21 @@ FROM python:3.13-slim
 ENV PYTHONUNBUFFERED=true
 WORKDIR /app
 
+# Install required system packages
 RUN apt-get update && apt-get -y install libpq-dev gcc libcairo2-dev
 
+# Copy app files and install dependencies
 COPY /requirements.txt .
 COPY .env .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY /cosm/ ./cosm/
 
+# Set environment
 ENV PYTHONPATH=/app
 ENV PORT=8000
 
-# Expose envs
-RUN export $(cat .env | xargs)
-
 EXPOSE 8000
 
-# Create an entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-CMD ["/app/entrypoint.sh"]
+# Run directly
+CMD ["adk", "api_server"]

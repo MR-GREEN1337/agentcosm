@@ -19,3 +19,7 @@ done
 
 # Run the server
 exec adk api_server $ARGS
+"""
+
+
+exec adk api_server $ARGS
