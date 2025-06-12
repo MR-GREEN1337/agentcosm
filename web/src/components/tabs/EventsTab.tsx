@@ -369,6 +369,177 @@ const AgentActivityPanel = ({
   );
 };
 
+// Component to display the last agent's message
+const LastAgentMessage = ({
+  agent,
+  message,
+  onCopy,
+  onAgentClick,
+  copiedMessageId,
+  messageId,
+}: {
+  agent: string;
+  message: any;
+  onCopy: (text: string, messageId: string) => void;
+  onAgentClick: (agent: string) => void;
+  copiedMessageId: string | null;
+  messageId: string;
+}) => {
+  const config = AGENT_CONFIGS[agent as keyof typeof AGENT_CONFIGS] || {
+    name: agent,
+    icon: Bot,
+    color: 'blue',
+  };
+
+  const IconComponent = config.icon;
+  const colorClasses = {
+    purple: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+    green: 'bg-green-500/10 border-green-500/30 text-green-400',
+    orange: 'bg-orange-500/10 border-orange-500/30 text-orange-400',
+    red: 'bg-red-500/10 border-red-500/30 text-red-400',
+    blue: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+  };
+
+  const getMessageContent = (event: any) => {
+    let messageText = '';
+    if (event.text && typeof event.text === 'string' && event.text.trim()) {
+      messageText = event.text.trim();
+    } else if (event.content?.parts?.length > 0) {
+      for (const part of event.content.parts) {
+        if (part.text && typeof part.text === 'string' && part.text.trim()) {
+          messageText = part.text.trim();
+          break;
+        }
+      }
+    } else if (typeof event.content === 'string' && event.content.trim()) {
+      messageText = event.content.trim();
+    }
+    return messageText;
+  };
+
+  const formatTimestamp = (timestamp: number) => {
+    try {
+      const date = new Date(timestamp * 1000);
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+
+      if (isToday) {
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      } else {
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        const month = months[date.getMonth()];
+        const day = date.getDate();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${month} ${day}, ${hours}:${minutes}`;
+      }
+    } catch {
+      return '';
+    }
+  };
+
+  const messageContent = getMessageContent(message);
+  if (!messageContent) return null;
+
+  return (
+    <div className="flex gap-3 group relative justify-start">
+      <div className="flex-shrink-0">
+        <button
+          onClick={() => onAgentClick(agent)}
+          className={cn(
+            'w-8 h-8 rounded-lg border flex items-center justify-center transition-all hover:scale-105',
+            colorClasses[config.color as keyof typeof colorClasses],
+          )}
+        >
+          {config.avatar ? (
+            <img
+              src={config.avatar}
+              alt={config.name}
+              className="w-full h-full object-cover rounded-lg"
+            />
+          ) : (
+            IconComponent && <IconComponent className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+      <div className="flex flex-col gap-1 max-w-[70%]">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-medium text-gray-600 dark:text-[#a0a0a8]">
+            {config.name}
+          </span>
+        </div>
+        <div className="flex items-end gap-2">
+          <div
+            className={cn(
+              'rounded-2xl px-4 py-3 relative border',
+              colorClasses[config.color as keyof typeof colorClasses],
+            )}
+          >
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <MarkdownText
+                text={messageContent}
+                className="whitespace-pre-wrap break-words"
+              />
+            </div>
+          </div>
+
+          {/* Message actions */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => onCopy(messageContent, messageId)}
+                >
+                  {copiedMessageId === messageId ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAgentClick(agent)}>
+                  <Bot className="mr-2 h-4 w-4" />
+                  View Agent Details
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        {message.timestamp && (
+          <span className="text-xs text-gray-500 dark:text-[#6a6a70] px-1 text-left">
+            {formatTimestamp(message.timestamp)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Loading component for main coordinator
 const CoordinatorLoadingMessage = ({
   agentMessages,
@@ -648,6 +819,7 @@ export function EventsTab({
   const conversationBlocks: Array<{
     userMessage?: any;
     coordinatorMessage?: any;
+    lastAgentMessage?: { agent: string; message: any };
     agentActivity: Record<string, any[]>;
     timestamp: number;
   }> = [];

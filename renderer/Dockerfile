@@ -9,7 +9,7 @@ COPY /requirements.txt .
 COPY .env .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY /src/ ./src/
+COPY . .
 
 ENV PYTHONPATH=/app
 ENV PORT=8000

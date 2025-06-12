@@ -13,7 +13,7 @@ WORKDIR /app
 # Add caching for npm
 COPY package.json package-lock.json* ./
 RUN \
-  if [ -f package-lock.json ]; then export CI=1 && npm ci --omit=dev; \
+  if [ -f package-lock.json ]; then export CI=1 &&   npm ci --omit=dev; \
   else echo "Warning: Lockfile not found." && npm install --omit=dev; \
   fi
 

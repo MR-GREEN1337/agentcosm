@@ -1,5 +1,4 @@
 # agentcosm
-## Parallelize discover_comprehensive_market_signals
 ## Sometims last answer is given by non root agent, we need to show that too
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 

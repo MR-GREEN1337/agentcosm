@@ -213,7 +213,7 @@ def robust_completion(model: str, messages: list, **kwargs) -> Optional[Dict[str
 
     for attempt in range(max_retries):
         try:
-            response = completion(model=model, messages=messages, **kwargs)
+            response = completion(model=model, messages=messages[:1048576], **kwargs)
 
             # Validate response structure
             if response and hasattr(response, "choices") and response.choices:
@@ -328,7 +328,7 @@ def generate_advanced_brand_strategy(market_context: Dict[str, Any]) -> Dict[str
 
         response = robust_completion(
             model=MODEL_CONFIG["brand_creator"],
-            messages=[{"role": "user", "content": brand_prompt}],
+            messages=[{"role": "user", "content": brand_prompt[:1048576]}],
             response_format={"type": "json_object"},
             temperature=0.8,
             max_tokens=3000,
@@ -1244,6 +1244,8 @@ def generate_landing_page_with_ai(
         Return ONLY the complete HTML code with no markdown formatting.
         """
 
+        print(f" Landing page prompt size: {len(landing_prompt)}")
+
         response = completion(
             model=MODEL_CONFIG["landing_builder"],
             messages=[{"role": "user", "content": landing_prompt[:1048176]}],
@@ -1460,7 +1462,7 @@ def generate_advanced_content_data(
 
         response = completion(
             model=MODEL_CONFIG["brand_creator"],
-            messages=[{"role": "user", "content": content_prompt}],
+            messages=[{"role": "user", "content": content_prompt[:1048576]}],
             response_format={"type": "json_object"},
             temperature=0.8,
             max_tokens=3000,
