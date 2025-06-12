@@ -819,7 +819,7 @@ export function EventsTab({
   const conversationBlocks: Array<{
     userMessage?: any;
     coordinatorMessage?: any;
-    lastAgentMessage?: { agent: string; message: any };
+    lastAgentMessage?: { agent: string; message: any }; // Add this
     agentActivity: Record<string, any[]>;
     timestamp: number;
   }> = [];
@@ -836,6 +836,7 @@ export function EventsTab({
       currentBlock = {
         userMessage: event,
         coordinatorMessage: null,
+        lastAgentMessage: null, // Add this
         agentActivity: {},
         timestamp: event.timestamp || Date.now() / 1000,
       };
@@ -849,6 +850,9 @@ export function EventsTab({
         currentBlock.agentActivity[author] = [];
       }
       currentBlock.agentActivity[author].push(event);
+
+      // Track last agent message
+      currentBlock.lastAgentMessage = { agent: author, message: event };
     }
   });
 
@@ -1042,6 +1046,16 @@ export function EventsTab({
                       <span className="text-xs text-gray-500 dark:text-[#6a6a70] px-1 text-left">
                         {formatTimestamp(block.coordinatorMessage.timestamp)}
                       </span>
+                    )}
+                    {!block.coordinatorMessage && block.lastAgentMessage && (
+                      <LastAgentMessage
+                        agent={block.lastAgentMessage.agent}
+                        message={block.lastAgentMessage.message}
+                        onCopy={handleCopy}
+                        onAgentClick={handleAgentClick}
+                        copiedMessageId={copiedMessageId}
+                        messageId={`agent-${blockIndex}`}
+                      />
                     )}
                   </div>
                 </div>

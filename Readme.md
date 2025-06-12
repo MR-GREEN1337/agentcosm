@@ -1,6 +1,4 @@
 # agentcosm
-## Sometims last answer is given by non root agent, we need to show that too
-## Implement 429 error handling, with retry decorator on litellm's completion()
 ## Add file upload in messageinput
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
