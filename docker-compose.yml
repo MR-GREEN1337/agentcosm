@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web:
     build: ./web
@@ -39,3 +37,7 @@ services:
       - ./renderer/.env
     networks:
       - app-network
+
+networks:
+  app-network:
+    driver: bridge
