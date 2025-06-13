@@ -17,6 +17,7 @@ import time
 from cosm.config import MODEL_CONFIG
 from cosm.tools.pexels import get_pexels_media, get_curated_pexels_media
 from cosm.prompts import BRAND_CREATOR_PROMPT, LANDING_BUILDER_PROMPT
+from cosm.settings import settings
 
 client = Client()
 
@@ -332,6 +333,7 @@ def generate_advanced_brand_strategy(market_context: Dict[str, Any]) -> Dict[str
 
         response = robust_completion(
             model=MODEL_CONFIG["brand_creator"],
+            api_key=settings.GOOGLE_API_KEY,
             messages=[{"role": "user", "content": brand_prompt[:1048576]}],
             response_format={"type": "json_object"},
             temperature=0.8,
@@ -1251,6 +1253,7 @@ def generate_landing_page_with_ai(
 
         response = robust_completion(
             model=MODEL_CONFIG["landing_builder"],
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": landing_prompt[:1048176]}],
             temperature=0.7,
             stream=False,
@@ -1465,6 +1468,7 @@ def generate_advanced_content_data(
 
         response = robust_completion(
             model=MODEL_CONFIG["brand_creator"],
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": content_prompt[:1048576]}],
             response_format={"type": "json_object"},
             temperature=0.8,

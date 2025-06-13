@@ -24,7 +24,6 @@ from .builder import (
 )
 
 from cosm.startup_pitch import startup_pitch_agent
-from .settings import settings
 from .tools.market_research import (
     comprehensive_market_research,
     analyze_competitive_landscape,
@@ -55,8 +54,6 @@ class MarketOpportunityAgent:
     """
 
     def __init__(self):
-        self.project_id = settings.GOOGLE_CLOUD_PROJECT_ID
-
         # PHASE 1: PARALLEL LIMINAL DISCOVERY
         # Uses ADK ParallelAgent to explore multiple market dimensions simultaneously
         self.liminal_discovery_phase = ParallelAgent(
