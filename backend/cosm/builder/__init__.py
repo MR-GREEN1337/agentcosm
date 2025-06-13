@@ -2,7 +2,6 @@
 Builder Agents - Landing Page Builder + Brand Creator
 """
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client, types
 from typing import Dict, Any, List, Optional
@@ -18,6 +17,7 @@ from cosm.config import MODEL_CONFIG
 from cosm.tools.pexels import get_pexels_media, get_curated_pexels_media
 from cosm.prompts import BRAND_CREATOR_PROMPT, LANDING_BUILDER_PROMPT
 from cosm.settings import settings
+from cosm.utils import ResilientLlmAgent
 
 client = Client()
 
@@ -2142,7 +2142,7 @@ def generate_fallback_domain_strategy(brand_name: str) -> Dict[str, Any]:
 # ENHANCED AGENT DEFINITIONS
 # =============================================================================
 
-brand_creator_agent = LlmAgent(
+brand_creator_agent = ResilientLlmAgent(
     name="brand_creator_agent",
     model=MODEL_CONFIG["landing_builder"],
     instruction=BRAND_CREATOR_PROMPT
@@ -2173,7 +2173,7 @@ brand_creator_agent = LlmAgent(
 )
 
 
-landing_builder_agent = LlmAgent(
+landing_builder_agent = ResilientLlmAgent(
     name="landing_builder_agent",
     model=MODEL_CONFIG["landing_builder"],
     instruction=LANDING_BUILDER_PROMPT

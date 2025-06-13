@@ -10,11 +10,12 @@ from dataclasses import dataclass
 from functools import wraps
 import threading
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
+
+from cosm.utils import ResilientLlmAgent
 
 from ..tools.market_research import (
     analyze_market_size,
@@ -183,7 +184,7 @@ class ParallelMarketAnalyzer:
             with ThreadPoolExecutor(max_workers=2) as ai_executor:
                 # Submit AI scoring task
                 scoring_future = ai_executor.submit(
-                    self.calculate_ai_powered_score_threading,
+                    self.calculate_ai_powered_score,
                     validation_report["market_size_analysis"],
                     validation_report["competition_analysis"],
                     validation_report["demand_validation"],
@@ -193,7 +194,7 @@ class ParallelMarketAnalyzer:
 
                 # Submit recommendations task
                 recommendations_future = ai_executor.submit(
-                    self.generate_strategic_recommendations_threading, validation_report
+                    self.generate_strategic_recommendations, validation_report
                 )
 
                 ai_analysis_futures = [scoring_future, recommendations_future]
@@ -318,7 +319,7 @@ class ParallelMarketAnalyzer:
 
         return results
 
-    def calculate_ai_powered_score_threading(
+    def calculate_ai_powered_score(
         self,
         market_size_data: Dict[str, Any],
         competition_data: Dict[str, Any],
@@ -425,7 +426,7 @@ class ParallelMarketAnalyzer:
             scoring_result["error"] = str(e)
             return scoring_result
 
-    def generate_strategic_recommendations_threading(
+    def generate_strategic_recommendations(
         self, validation_report: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
@@ -635,7 +636,7 @@ parallel_analyzer = ParallelMarketAnalyzer(max_workers=6, batch_size=5)
 
 
 # Pure threading wrappers for ADK integration
-def comprehensive_market_validation_with_scoring_threading(
+def comprehensive_market_validation_with_scoring(
     opportunity_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
@@ -644,7 +645,7 @@ def comprehensive_market_validation_with_scoring_threading(
     return parallel_analyzer.comprehensive_market_validation_parallel(opportunity_data)
 
 
-def rank_opportunities_with_integrated_analysis_threading(
+def rank_opportunities_with_integrated_analysis(
     opportunities: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """
@@ -719,7 +720,7 @@ What's your preference?"
 - **Thread-Safe Execution**: No async/await context issues
 """
 
-market_analyzer_agent = LlmAgent(
+market_analyzer_agent = ResilientLlmAgent(
     name="market_analyzer_agent",
     model=MODEL_CONFIG["market_analyzer"],
     instruction=ANALYZER_PROMPT,
@@ -728,8 +729,8 @@ market_analyzer_agent = LlmAgent(
         "for high-performance market analysis without async/await context issues."
     ),
     tools=[
-        FunctionTool(func=comprehensive_market_validation_with_scoring_threading),
-        FunctionTool(func=rank_opportunities_with_integrated_analysis_threading),
+        FunctionTool(func=comprehensive_market_validation_with_scoring),
+        FunctionTool(func=rank_opportunities_with_integrated_analysis),
     ],
     output_key="market_validation",
 )

@@ -4,7 +4,6 @@ Creates comprehensive startup pitch decks and deploys them to the renderer
 Returns downloadable links and optional landing pages
 """
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from typing import Dict, Any
 import json
@@ -26,6 +25,7 @@ import os
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 import base64
+from cosm.utils import ResilientLlmAgent
 
 # Renderer backend URL
 RENDERER_URL = settings.RENDERER_SERVICE_URL
@@ -1195,7 +1195,7 @@ def create_due_diligence_package(pitch_result: Dict[str, Any]) -> Dict[str, Any]
 
 
 # Enhanced agent initialization with all tools
-startup_pitch_agent = LlmAgent(
+startup_pitch_agent = ResilientLlmAgent(
     name="startup_pitch_agent",
     model=MODEL_CONFIG["landing_builder"],
     instruction=STARTUP_PITCH_PROMPT

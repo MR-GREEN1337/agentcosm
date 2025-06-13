@@ -2,7 +2,6 @@
 Market Explorer Agent
 """
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client
 from typing import Dict, List, Any, Optional
@@ -15,6 +14,7 @@ from functools import partial
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
+from cosm.utils import ResilientLlmAgent
 
 # Import consolidated Tavily tools
 from ...tools.tavily import (
@@ -688,7 +688,7 @@ def validate_signals_cross_platform(signals_data: Dict[str, Any]) -> Dict[str, A
 
 
 # Create the enhanced agent with parallel processing capabilities
-market_explorer_agent = LlmAgent(
+market_explorer_agent = ResilientLlmAgent(
     name="market_explorer_agent",
     model=MODEL_CONFIG["market_explorer"],
     instruction=EXPLORER_AGENT_PROMPT,

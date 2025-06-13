@@ -1,5 +1,6 @@
 # agentcosm
 ## Add file upload in messageinput
+## See if i can make the litellm wrapper with retry & exponential backoff
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 ![Landing Page](assets/landing_page.png)

@@ -3,10 +3,12 @@ Enhanced Market Opportunity Agent with True Liminal Discovery
 Uses ADK Multi-Agent Patterns for Breakthrough Opportunity Finding
 """
 
-from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
+from google.adk.agents import ParallelAgent, SequentialAgent
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.tools import FunctionTool, LongRunningFunctionTool
 from google.genai import types
+
+from cosm.utils import ResilientLlmAgent
 
 from .discovery import (
     market_explorer_agent,
@@ -69,7 +71,7 @@ class MarketOpportunityAgent:
 
         # PHASE 2: CONNECTION SYNTHESIS
         # Specialized agent that finds breakthrough connections between parallel discoveries
-        self.connection_synthesis_phase = LlmAgent(
+        self.connection_synthesis_phase = ResilientLlmAgent(
             name="liminal_connection_synthesizer",
             model=MODEL_CONFIG["primary_model"],
             instruction="""
@@ -149,7 +151,7 @@ class MarketOpportunityAgent:
         )
 
         # ROOT AGENT: Master Coordinator
-        self.root_agent = LlmAgent(
+        self.root_agent = ResilientLlmAgent(
             name="liminal_market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
             instruction=(

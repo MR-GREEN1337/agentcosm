@@ -3,7 +3,6 @@ Cross-Industry Pattern Discovery Agent - Fixed Implementation
 Uses parallel search to find patterns across different industries for arbitrage opportunities
 """
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from typing import Dict, List, Any
 import json
@@ -14,7 +13,7 @@ from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
 from cosm.tools.parallel_search import parallel_cross_industry_search
-from cosm.utils import robust_completion
+from cosm.utils import robust_completion, ResilientLlmAgent
 
 thread_local = threading.local()
 
@@ -443,7 +442,7 @@ def identify_underutilized_industry_assets(keywords: List[str]) -> Dict[str, Any
 
 
 # Create the cross-industry pattern agent
-cross_industry_agent = LlmAgent(
+cross_industry_agent = ResilientLlmAgent(
     name="cross_industry_agent",
     model=MODEL_CONFIG["market_explorer"],
     instruction=CROSS_INDUSTRY_PROMPT,

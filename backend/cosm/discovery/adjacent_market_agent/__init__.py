@@ -3,7 +3,6 @@ Adjacent Market Discovery Agent - Fixed Implementation
 Uses parallel web search to discover markets adjacent to primary market for liminal connections
 """
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.genai import Client
 from typing import Dict, List, Any
@@ -15,7 +14,7 @@ from cosm.settings import settings
 from cosm.tools.search import search_tool
 from cosm.tools.parallel_search import parallel_adjacent_market_search
 import json
-from cosm.utils import robust_completion
+from cosm.utils import robust_completion, ResilientLlmAgent
 
 client = Client()
 thread_local = threading.local()
@@ -434,7 +433,7 @@ def identify_integration_opportunities(
 
 
 # Create the adjacent market agent
-adjacent_market_agent = LlmAgent(
+adjacent_market_agent = ResilientLlmAgent(
     name="adjacent_market_agent",
     model=MODEL_CONFIG["market_explorer"],
     instruction=ADJACENT_MARKET_PROMPT,

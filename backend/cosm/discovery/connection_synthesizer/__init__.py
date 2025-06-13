@@ -3,7 +3,6 @@ Connection Synthesizer Agent
 Synthesizes discoveries from parallel agents to find breakthrough liminal opportunities
 """
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from typing import Dict, List, Any
 import json
@@ -11,6 +10,7 @@ from datetime import datetime
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from cosm.tools.search import search_tool
+from cosm.utils import ResilientLlmAgent
 
 CONNECTION_SYNTHESIZER_PROMPT = """
 You are the Connection Synthesizer Agent, the master synthesizer who finds
@@ -410,7 +410,7 @@ def calculate_synthesis_confidence(synthesis_result: Dict[str, Any]) -> float:
 
 
 # Create the connection synthesizer agent
-connection_synthesizer_agent = LlmAgent(
+connection_synthesizer_agent = ResilientLlmAgent(
     name="connection_synthesizer_agent",
     model=MODEL_CONFIG["discovery_agent"],
     instruction=CONNECTION_SYNTHESIZER_PROMPT,

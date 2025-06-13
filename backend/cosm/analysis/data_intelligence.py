@@ -3,7 +3,6 @@ Data Intelligence Agent - Fixed File Access Security
 Combines BigQuery Intelligence + Code Executor capabilities with proper file access controls
 """
 
-from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from google.cloud import bigquery
 from google.genai import Client
@@ -22,6 +21,7 @@ from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from ..tools.search import search_tool
 from google.adk.models.lite_llm import LiteLlm
+from cosm.utils import ResilientLlmAgent
 
 # Initialize clients
 bq_client = (
@@ -840,7 +840,7 @@ def extract_visualization_data(
     return visualizations
 
 
-data_intelligence_agent = LlmAgent(
+data_intelligence_agent = ResilientLlmAgent(
     name="data_intelligence_agent",
     model=LiteLlm(
         model=MODEL_CONFIG["data_intelligence"], api_key=settings.OPENAI_API_KEY
