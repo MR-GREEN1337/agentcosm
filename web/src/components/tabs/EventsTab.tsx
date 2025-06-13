@@ -550,16 +550,36 @@ const CoordinatorLoadingMessage = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const steps = [
-    'Analyzing market opportunities',
-    'Coordinating research agents',
-    'Processing insights',
-    'Generating recommendations',
+    'Booting up innovation protocols 🤖💡',
+    'Scanning VC radar for hot sectors 📡💸',
+    'Sniffing out unmet founder needs 🕵️‍♀️',
+    'Indexing AI-first business ideas 📚🧠',
+    'Gathering GPT-era insights 📊✨',
+    'Whispering with market sentiment bots 🗣️📈',
+    'Plotting disruption trajectories 🚀📍',
+    'Translating hype into strategy 🔄🔥',
+    'Aligning product-market-vision fit 🧲🎯',
+    'Fetching SaaS gold from data mines ⛏️📊',
+    'Tapping into the startup hive-mind 🐝🧬',
+    'Sourcing gaps in billion-dollar markets 💼🧭',
+    'Scanning angel tweets for inspiration 🐦💭',
+    'Connecting dots like a VC whisperer 🔗🧞‍♂️',
+    'Processing founder FOMO signals 😱📉📈',
+    'Simulating launch scenarios in parallel universes 🌌🚦',
+    'Loading lean startup wisdom 📦📘',
+    'Unpacking user pain points 🔍💔',
+    'Spying on trends before they trend 👁️🚨',
+    'Converting chaos into clarity 🌪️➡️🔍',
+    'Consulting with the algorithmic boardroom 🧑‍💼📟',
+    'Visualizing exits before the entry 🛣️🚪💰',
+    'Forecasting virality spikes 📊🚀',
+    'Drafting elevator pitches for Mars 🪐📢',
   ];
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentStep((prev) => (prev + 1) % steps.length);
-    }, 1500);
+    }, 3500);
 
     return () => clearInterval(interval);
   }, []);
