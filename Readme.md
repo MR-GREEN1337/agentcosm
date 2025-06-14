@@ -1,7 +1,6 @@
 # agentcosm
 ## Add file upload in messageinput
-## See if i can make the litellm wrapper with retry & exponential backoff
-## Improve ResilientLlmAgent to only retry only llm api call, not the netire agent call
+## Improve data intelligence app, to be more dyanmic, also send plots to renderer
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 ![Landing Page](assets/landing_page.png)
