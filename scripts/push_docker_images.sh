@@ -4,19 +4,20 @@ USERNAME=mrgreen1337
 
 set -e  # exit on any command failure
 
-# Helper function to run commands in background and track their PIDs
-run_in_bg() {
-  "$@" &
-  echo $!
-}
-
 echo "Building linux/amd64 images in parallel..."
 
-# Start builds in background
-build_pids=()
-build_pids+=($(run_in_bg docker build --platform=linux/amd64 -t $USERNAME/agentcosm-web:latest ./web))
-build_pids+=($(run_in_bg docker build --platform=linux/amd64 -t $USERNAME/agentcosm-backend:latest ./backend))
-build_pids+=($(run_in_bg docker build --platform=linux/amd64 -t $USERNAME/agentcosm-renderer:latest ./renderer))
+# Start builds in background and capture PIDs directly
+docker build --platform=linux/amd64 -t $USERNAME/agentcosm-web:latest ./web &
+web_pid=$!
+
+docker build --platform=linux/amd64 -t $USERNAME/agentcosm-backend:latest ./backend &
+backend_pid=$!
+
+docker build --platform=linux/amd64 -t $USERNAME/agentcosm-renderer:latest ./renderer &
+renderer_pid=$!
+
+# Store PIDs in array
+build_pids=($web_pid $backend_pid $renderer_pid)
 
 # Wait for builds and check status
 for pid in "${build_pids[@]}"; do
@@ -30,11 +31,18 @@ echo "Building finished successfully."
 
 echo "Pushing images to Docker Hub in parallel..."
 
-# Start pushes in background
-push_pids=()
-push_pids+=($(run_in_bg docker push $USERNAME/agentcosm-web:latest))
-push_pids+=($(run_in_bg docker push $USERNAME/agentcosm-backend:latest))
-push_pids+=($(run_in_bg docker push $USERNAME/agentcosm-renderer:latest))
+# Start pushes in background and capture PIDs directly
+docker push $USERNAME/agentcosm-web:latest &
+web_push_pid=$!
+
+docker push $USERNAME/agentcosm-backend:latest &
+backend_push_pid=$!
+
+docker push $USERNAME/agentcosm-renderer:latest &
+renderer_push_pid=$!
+
+# Store PIDs in array
+push_pids=($web_push_pid $backend_push_pid $renderer_push_pid)
 
 # Wait for pushes and check status
 for pid in "${push_pids[@]}"; do
