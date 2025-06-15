@@ -9,7 +9,7 @@ import requests
 import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from google.genai import Client, types
+from google.genai import Client
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import Counter
@@ -76,9 +76,7 @@ def comprehensive_market_research(
         # Calculate opportunity score and insights in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
             score_future = executor.submit(calculate_opportunity_score, research_report)
-            insights_future = executor.submit(
-                generate_insights_with_gemini, research_report
-            )
+            insights_future = executor.submit(generate_insights, research_report)
 
             research_report["opportunity_score"] = score_future.result()
             research_report["actionable_insights"] = insights_future.result()
@@ -137,9 +135,7 @@ def search_and_extract_signals(query: str, keyword: str) -> List[Dict[str, Any]]
         # Process results in parallel
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {
-                executor.submit(
-                    extract_pain_signals_with_gemini, result, keyword
-                ): result
+                executor.submit(extract_pain_signals, result, keyword): result
                 for result in search_results
             }
 
@@ -216,7 +212,7 @@ def search_and_extract_competitors(query: str, keyword: str) -> List[Dict[str, A
     """Helper function to search and extract competitors"""
     try:
         search_results = search_web(query, max_results=3)
-        competitors = extract_competitors_with_gemini(search_results, keyword)
+        competitors = extract_competitors(search_results, keyword)
         time.sleep(0.5)  # Rate limiting
         return competitors
     except Exception as e:
@@ -270,7 +266,7 @@ def search_and_extract_demand(query: str, keyword: str) -> List[Dict[str, Any]]:
     """Helper function to search and extract demand data"""
     try:
         search_results = search_web(query, max_results=2)
-        demand_indicators = extract_demand_with_gemini(search_results, keyword)
+        demand_indicators = extract_demand(search_results, keyword)
         time.sleep(0.5)  # Rate limiting
         return demand_indicators
     except Exception as e:
@@ -334,7 +330,7 @@ def search_and_extract_trends(query: str, keyword: str) -> List[Dict[str, Any]]:
     """Helper function to search and extract trend data"""
     try:
         search_results = search_web(query, max_results=2)
-        trends = extract_trends_with_gemini(search_results, keyword)
+        trends = extract_trends(search_results, keyword)
         time.sleep(0.5)  # Rate limiting
         return trends
     except Exception as e:
@@ -378,7 +374,7 @@ def search_web(query: str, max_results: int = 3) -> List[Dict[str, str]]:
     return results
 
 
-def extract_pain_signals_with_gemini(
+def extract_pain_signals(
     search_result: Dict[str, str], keyword: str
 ) -> Optional[Dict[str, Any]]:
     """Uses Gemini to extract pain signals from search results"""
@@ -419,7 +415,7 @@ def extract_pain_signals_with_gemini(
     return None
 
 
-def extract_competitors_with_gemini(
+def extract_competitors(
     search_results: List[Dict[str, str]], keyword: str
 ) -> List[Dict[str, Any]]:
     """Uses Gemini to extract competitor information"""
@@ -464,7 +460,7 @@ def extract_competitors_with_gemini(
     return competitors
 
 
-def extract_demand_with_gemini(
+def extract_demand(
     search_results: List[Dict[str, str]], keyword: str
 ) -> List[Dict[str, Any]]:
     """Uses Gemini to extract demand indicators"""
@@ -488,16 +484,16 @@ def extract_demand_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = client.models.generate_content(
+            response = robust_completion(
                 model=CONFIG["market_research"],
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", temperature=0.3
-                ),
+                api_key=settings.OPENAI_API_KEY,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
             )
 
-            if response and response.text:
-                indicators = json.loads(response.text)
+            if response and response.choices[0].message.content:
+                indicators = safe_json_loads(response.choices[0].message.content)
                 demand_indicators.extend(indicators)
 
         except Exception as e:
@@ -507,7 +503,7 @@ def extract_demand_with_gemini(
     return demand_indicators
 
 
-def extract_trends_with_gemini(
+def extract_trends(
     search_results: List[Dict[str, str]], keyword: str
 ) -> List[Dict[str, Any]]:
     """Uses Gemini to extract trend information"""
@@ -609,7 +605,7 @@ def calculate_demand_score(demand_data: Dict[str, Any]) -> float:
     return min(score, 1.0)
 
 
-def generate_insights_with_gemini(research_data: Dict[str, Any]) -> List[str]:
+def generate_insights(research_data: Dict[str, Any]) -> List[str]:
     """Generates actionable insights using Gemini"""
     try:
         prompt = f"""
@@ -797,7 +793,7 @@ def search_and_extract_market_size(query: str, keyword: str) -> List[Dict[str, A
     """Helper function to search and extract market size data"""
     try:
         search_results = search_web(query, max_results=3)
-        size_data = extract_market_size_with_gemini(search_results, keyword)
+        size_data = extract_market_size(search_results, keyword)
         time.sleep(0.5)  # Rate limiting
         return size_data
     except Exception as e:
@@ -1003,13 +999,9 @@ def search_and_extract_demand_validation(
         search_results = search_web(query, max_results=2)
 
         if search_type == "demand":
-            validation_data = extract_demand_signals_with_gemini(
-                search_results, keyword
-            )
+            validation_data = extract_demand_signals(search_results, keyword)
         else:  # pain validation
-            validation_data = extract_pain_validation_with_gemini(
-                search_results, keyword
-            )
+            validation_data = extract_pain_validation(search_results, keyword)
 
         time.sleep(0.5)  # Rate limiting
         return validation_data
@@ -1018,7 +1010,7 @@ def search_and_extract_demand_validation(
         return []
 
 
-def extract_market_size_with_gemini(
+def extract_market_size(
     search_results: List[Dict[str, str]], keyword: str
 ) -> List[Dict[str, Any]]:
     """Extract market size data using Gemini"""
@@ -1043,16 +1035,16 @@ def extract_market_size_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = client.models.generate_content(
+            response = robust_completion(
                 model=CONFIG["market_research"],
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", temperature=0.3
-                ),
+                api_key=settings.OPENAI_API_KEY,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
             )
 
-            if response and response.text:
-                data_points = json.loads(response.text)
+            if response and response.choices[0].message.content:
+                data_points = safe_json_loads(response.choices[0].message.content)
                 market_data.extend(data_points)
 
         except Exception as e:
@@ -1062,7 +1054,7 @@ def extract_market_size_with_gemini(
     return market_data
 
 
-def extract_demand_signals_with_gemini(
+def extract_demand_signals(
     search_results: List[Dict[str, str]], keyword: str
 ) -> List[Dict[str, Any]]:
     """Extract demand signals using Gemini"""
@@ -1087,16 +1079,16 @@ def extract_demand_signals_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = client.models.generate_content(
+            response = robust_completion(
                 model=CONFIG["market_research"],
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", temperature=0.3
-                ),
+                api_key=settings.OPENAI_API_KEY,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
             )
 
-            if response and response.text:
-                signals = json.loads(response.text)
+            if response and response.choices[0].message.content:
+                signals = safe_json_loads(response.choices[0].message.content)
                 demand_signals.extend(signals)
 
         except Exception as e:
@@ -1106,7 +1098,7 @@ def extract_demand_signals_with_gemini(
     return demand_signals
 
 
-def extract_pain_validation_with_gemini(
+def extract_pain_validation(
     search_results: List[Dict[str, str]], pain_point: str
 ) -> List[Dict[str, Any]]:
     """Extract pain point validation using Gemini"""
@@ -1131,16 +1123,16 @@ def extract_pain_validation_with_gemini(
             Only return the JSON array, no other text.
             """
 
-            response = client.models.generate_content(
+            response = robust_completion(
                 model=CONFIG["market_research"],
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", temperature=0.3
-                ),
+                api_key=settings.OPENAI_API_KEY,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.3,
             )
 
-            if response and response.text:
-                validation_points = json.loads(response.text)
+            if response and response.choices[0].message.content:
+                validation_points = safe_json_loads(response.choices[0].message.content)
                 validations.extend(validation_points)
 
         except Exception as e:

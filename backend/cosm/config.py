@@ -5,7 +5,7 @@ MODEL_CONFIG = {
     "market_explorer_openai": "gpt-4.1-mini",  # Market intelligence + trends + gaps
     "brand_creator": "gpt-4.1-mini",  # Brand + copy creation
     "landing_builder": "gemini-2.5-pro-preview-05-06",  # Landing pages + dashboards
-    "market_research": "gemini-2.0-flash",
+    "market_research": "gpt-4.1-mini",
     "discovery_agent": "gemini-2.0-flash",
     "discovery_agent_openai": "gpt-4.1-mini",
     "trend_tracker": "gpt-4.1-mini",

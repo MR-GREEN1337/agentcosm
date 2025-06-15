@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL =
+export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   'https://agentcosm-backend-527185366316.europe-west1.run.app';
 

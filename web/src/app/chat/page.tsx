@@ -12,7 +12,7 @@ import { MessageInput } from '@/components/MessageInput';
 import { useSSE } from '@/hooks/use-sse';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Folder, FileText, Database, GitBranch, TestTube } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, API_URL } from '@/lib/api';
 import Link from 'next/link';
 import { PlanetIcon } from '@/components/PlanetIcon';
 import { ModeToggle } from '@/components/ThemeToggle';
@@ -46,7 +46,7 @@ export default function AgentDevUI() {
     isLoading,
   } = useSSE(
     selectedApp && currentSession && userId
-      ? `${process.env.NEXT_PUBLIC_API_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}&modalities=TEXT`
+      ? `${API_URL}/run_live?app_name=${selectedApp}&user_id=${userId}&session_id=${currentSession}&modalities=TEXT`
       : null,
   );
 
