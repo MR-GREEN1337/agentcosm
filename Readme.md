@@ -1,6 +1,4 @@
 # agentcosm
-## Add file upload in messageinput
-## Improve data intelligence app, to be more dyanmic, also send plots to renderer
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 ![Landing Page](assets/landing_page.png)
