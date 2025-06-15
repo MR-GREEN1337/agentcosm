@@ -14,7 +14,6 @@ from google.adk.tools import FunctionTool
 from google.genai import Client
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-
 from cosm.utils import ResilientLlmAgent
 
 from ..tools.market_research import (

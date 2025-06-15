@@ -978,7 +978,7 @@ def get_premium_visual_assets(
             hero_images = get_pexels_media(term, "images", 5, orientation="landscape")
             if hero_images.get("images"):
                 # Filter for high quality and relevance
-                filtered_images = filter_images(hero_images["images"])
+                filtered_images = filter_premium_images(hero_images["images"])
                 if filtered_images:
                     visual_assets["hero_bg"] = filtered_images[0]
                     visual_assets["hero_alternatives"] = filtered_images[1:3]
@@ -993,7 +993,9 @@ def get_premium_visual_assets(
             feature_terms[0], "images", 3, orientation="landscape"
         )
         if feature_images.get("images"):
-            visual_assets["features_bg"] = filter_images(feature_images["images"])[0]
+            visual_assets["features_bg"] = filter_premium_images(
+                feature_images["images"]
+            )[0]
 
         # Fetch testimonial visuals
         print("📸 Fetching testimonial visuals...")
@@ -1004,7 +1006,7 @@ def get_premium_visual_assets(
             orientation="square",
         )
         if testimonial_images.get("images"):
-            visual_assets["testimonials_bg"] = filter_images(
+            visual_assets["testimonials_bg"] = filter_premium_images(
                 testimonial_images["images"]
             )
 
@@ -1017,13 +1019,13 @@ def get_premium_visual_assets(
             cta_terms[0], "images", 2, orientation="landscape"
         )
         if cta_images.get("images"):
-            visual_assets["cta_bg"] = filter_images(cta_images["images"])[0]
+            visual_assets["cta_bg"] = filter_premium_images(cta_images["images"])[0]
 
         # Add curated fallbacks if needed
         if not visual_assets:
             curated = get_curated_pexels_media("images", 5)
             if curated.get("images"):
-                filtered_curated = filter_images(curated["images"])
+                filtered_curated = filter_premium_images(curated["images"])
                 visual_assets["hero_bg"] = (
                     filtered_curated[0]
                     if filtered_curated
@@ -1038,7 +1040,7 @@ def get_premium_visual_assets(
         return get_fallback_visual_assets()
 
 
-def filter_images(images: List[Dict]) -> List[Dict]:
+def filter_premium_images(images: List[Dict]) -> List[Dict]:
     """Filter images for premium quality and relevance."""
     filtered = []
 
@@ -1652,12 +1654,12 @@ def generate_performance_config() -> Dict[str, Any]:
 
 
 def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Deploy to rendering service."""
+    """Deploy to premium rendering service with advanced features."""
 
     try:
         from cosm.settings import settings
 
-        print("🚀 Deploying startup landing page...")
+        print("🚀 Deploying premium startup landing page...")
 
         RENDERER_SERVICE_URL = settings.RENDERER_SERVICE_URL
 
@@ -1692,10 +1694,10 @@ def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, A
             }
 
     except requests.exceptions.Timeout:
-        print("❌ deployment timeout")
+        print("❌ Premium deployment timeout")
         return {
             "success": False,
-            "error": "deployment timeout",
+            "error": "Premium deployment timeout - advanced features require more processing time",
             "status": "timeout",
         }
     except requests.exceptions.ConnectionError:
