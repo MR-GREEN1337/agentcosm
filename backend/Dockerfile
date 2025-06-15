@@ -8,11 +8,11 @@ RUN apt-get update && apt-get -y install libpq-dev gcc libcairo2-dev
 
 # Copy app files and install dependencies
 COPY /requirements.txt .
-COPY .env .
+#COPY .env .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY /cosm/ ./cosm/
-COPY service-account.json ./
+COPY ./service-account.json ./
 
 # Set environment
 ENV PYTHONPATH=/app
