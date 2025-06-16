@@ -652,6 +652,8 @@ def analyze_competitive_landscape(
 def check_domain_availability(domain_name: str) -> Dict[str, Any]:
     """
     Checks domain availability for potential business names
+
+    This supposes only domains in use are not available :(, something better needs to be implemented
     """
     try:
         # Simple domain availability check using whois

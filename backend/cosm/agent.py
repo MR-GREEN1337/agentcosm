@@ -73,6 +73,7 @@ class MarketOpportunityAgent:
         self.connection_synthesis_phase = ResilientLlmAgent(
             name="liminal_connection_synthesizer",
             model=MODEL_CONFIG["primary_model"],
+            # api_key=settings.OPENAI_API_KEY,
             instruction="""
             You are the Liminal Connection Synthesizer - an expert at finding breakthrough business
             opportunities that exist between established markets, like Uber, Airbnb, or DoorDash.
@@ -153,6 +154,7 @@ class MarketOpportunityAgent:
         self.root_agent = ResilientLlmAgent(
             name="liminal_market_opportunity_coordinator",
             model=MODEL_CONFIG["primary_model"],
+            # api_key=settings.OPENAI_API_KEY,
             instruction=(
                 ROOT_AGENT_PROMPT
                 + "\n\nYou now orchestrate a breakthrough LIMINAL OPPORTUNITY DISCOVERY SYSTEM that finds "

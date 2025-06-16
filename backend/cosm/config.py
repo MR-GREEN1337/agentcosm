@@ -9,11 +9,11 @@ MODEL_CONFIG = {
     "discovery_agent": "gemini-2.0-flash",
     "discovery_agent_openai": "gpt-4.1-mini",
     "trend_tracker": "gpt-4.1-mini",
-    "market_analyzer": "gemini-2.0-flash",
     "bigquery_agent": "gpt-4.1-mini",
     "data_intelligence": "gpt-4.1-mini",
     "code_executor": "gpt-4.1-mini",
     "market_analyzer_openai": "gpt-4.1-mini",
+    "market_analyzer": "gemini-2.0-flash",
     "temperature": 0.3,
     "max_tokens": 4096,
     "generation_config": {

@@ -1,4 +1,5 @@
 # agentcosm
+## Fix this: google.genai.errors.ClientError: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Tool use with function calling is unsupported', 'status': 'INVALID_ARGUMENT'}}
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 ![Landing Page](assets/landing_page.png)

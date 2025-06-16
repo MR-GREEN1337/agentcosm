@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     GOOGLE_GENAI_USE_VERTEXAI: bool
     GOOGLE_CLOUD_PROJECT_ID: str
 
-    # Service account credentials as JSON string
     GOOGLE_SERVICE_ACCOUNT_JSON: Optional[str] = None
 
     RENDERER_SERVICE_URL: str
@@ -19,6 +18,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
 
     PEXELS_API_KEY: str
+
+    ENVIRONMENT: str = "development"
 
 
 settings = Settings()
