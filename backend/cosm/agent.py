@@ -49,7 +49,7 @@ class MarketOpportunityAgent:
     1. PARALLEL LIMINAL DISCOVERY: Multiple agents explore different market dimensions simultaneously
     2. CONNECTION SYNTHESIS: Specialized agent finds breakthrough connections between markets
     3. VALIDATION & SCORING: Analysis agents validate and score discovered opportunities
-    4. ASSET CREATION: Builder agents create deployable business validation tools
+    4. ASSET CREATION: Builder agents create deployable business validation tools(eg. Landing page, pitch deck, brand identity, etc.)
 
     This finds Uber/Airbnb-style opportunities that exist between established markets.
     """
