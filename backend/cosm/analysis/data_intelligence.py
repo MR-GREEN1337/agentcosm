@@ -24,10 +24,15 @@ from google.adk.models.lite_llm import LiteLlm
 from cosm.utils import ResilientLlmAgent
 
 # Initialize clients
+if settings.GOOGLE_SERVICE_ACCOUNT_JSON:
+    service_account_json = json.loads(settings.GOOGLE_SERVICE_ACCOUNT_JSON)
+else:
+    service_account_json = {}
+
 bq_client = (
     bigquery.Client(
-        credentials=service_account.Credentials.from_service_account_file(
-            "service-account.json"
+        credentials=service_account.Credentials.from_service_account_info(
+            service_account_json
         ),
         project=settings.GOOGLE_CLOUD_PROJECT_ID,
     )

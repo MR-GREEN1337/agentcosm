@@ -1,5 +1,5 @@
 """
-Enhanced Market Opportunity Agent with True Liminal Discovery
+Market Opportunity Agent with Liminal Discovery
 Uses ADK Multi-Agent Patterns for Breakthrough Opportunity Finding
 """
 
@@ -43,7 +43,7 @@ from .tools.search import search_tool
 
 class MarketOpportunityAgent:
     """
-    Enhanced root agent with true liminal market discovery using ADK multi-agent patterns.
+    Enhanced root agent with liminal market discovery using ADK multi-agent patterns.
 
     Architecture:
     1. PARALLEL LIMINAL DISCOVERY: Multiple agents explore different market dimensions simultaneously
