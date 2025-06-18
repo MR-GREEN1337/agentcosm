@@ -809,7 +809,7 @@ def create_dark_logo_variation(brand_name: str, color: str) -> Dict[str, Any]:
 # =============================================================================
 
 
-def build_landing_page(
+def build_and_deploy_landing_page(
     brand_data: Dict[str, Any],
     copy_data: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -2206,6 +2206,6 @@ landing_builder_agent = ResilientLlmAgent(
     Create landing pages that feel like $100M+ startups with enterprise-grade polish.
     """,
     description="Creates and deploys startup landing pages with advanced AI-generated code, comprehensive visual asset integration, and conversion optimization",
-    tools=[FunctionTool(func=build_landing_page)],
+    tools=[FunctionTool(func=build_and_deploy_landing_page)],
     output_key="landing_package",
 )

@@ -13,7 +13,7 @@ import concurrent.futures
 from functools import partial
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-from cosm.tools.search import search_tool
+from cosm.tools.search import search_tool  # noqa: F401
 from cosm.utils import ResilientLlmAgent
 
 # Import consolidated Tavily tools
@@ -700,7 +700,7 @@ market_explorer_agent = ResilientLlmAgent(
     tools=[
         FunctionTool(func=discover_comprehensive_market_signals),
         FunctionTool(func=validate_signals_cross_platform),
-        search_tool,
+        # search_tool,
     ],
     output_key="comprehensive_market_intelligence",
 )

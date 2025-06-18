@@ -38,8 +38,6 @@ from .tools.liminal_discovery import (
 from .prompts import ROOT_AGENT_PROMPT
 from .config import MODEL_CONFIG
 
-from .tools.search import search_tool
-
 
 class MarketOpportunityAgent:
     """
@@ -105,7 +103,7 @@ class MarketOpportunityAgent:
                 FunctionTool(func=synthesize_liminal_connections),
                 FunctionTool(func=validate_connection_strength),
                 FunctionTool(func=rank_liminal_opportunities),
-                search_tool,
+                # search_tool,
             ],
             output_key="liminal_opportunities",
         )
@@ -190,7 +188,7 @@ class MarketOpportunityAgent:
                 LongRunningFunctionTool(func=rank_liminal_opportunities),
                 # Agent orchestration tools - FIXED: Only include workflow as sub-agent
                 AgentTool(agent=self.discovery_workflow),
-                search_tool,
+                # search_tool,
             ],
             sub_agents=[
                 # ONLY the main workflow to avoid parent conflicts

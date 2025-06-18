@@ -125,7 +125,7 @@ How would you like to proceed with your pitch deck?"
 """
 
 
-def generate_pitch_deck(
+def create_pitch_deck(
     market_analysis: Dict[str, Any],
     opportunity_data: Dict[str, Any],
     brand_data: Dict[str, Any],
@@ -1236,7 +1236,7 @@ startup_pitch_agent = ResilientLlmAgent(
         "and due diligence packages."
     ),
     tools=[
-        FunctionTool(func=generate_pitch_deck),
+        FunctionTool(func=create_pitch_deck),
         FunctionTool(func=get_deployment_status),
         FunctionTool(func=create_pitch_summary_report),
         # FunctionTool(func=deploy_to_renderer),

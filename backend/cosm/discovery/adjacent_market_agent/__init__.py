@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-from cosm.tools.search import search_tool
+from cosm.tools.search import search_tool  # noqa: F401
 from cosm.tools.parallel_search import parallel_adjacent_market_search
 import json
 from cosm.utils import robust_completion, ResilientLlmAgent
@@ -445,7 +445,7 @@ adjacent_market_agent = ResilientLlmAgent(
     tools=[
         FunctionTool(func=discover_adjacent_markets_parallel),
         FunctionTool(func=find_upstream_downstream_flows),
-        search_tool,
+        # search_tool,
     ],
     output_key="adjacent_market_intelligence",
 )

@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-from cosm.tools.search import search_tool
+from cosm.tools.search import search_tool  # noqa: F401
 from cosm.utils import ResilientLlmAgent
 
 CONNECTION_SYNTHESIZER_PROMPT = """
@@ -423,7 +423,7 @@ connection_synthesizer_agent = ResilientLlmAgent(
         FunctionTool(func=synthesize_liminal_connections),
         FunctionTool(func=validate_connection_strength),
         FunctionTool(func=rank_liminal_opportunities),
-        search_tool,
+        # search_tool,
     ],
     output_key="synthesized_liminal_opportunities",
 )

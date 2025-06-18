@@ -19,7 +19,6 @@ import traceback
 from pathlib import Path
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-from ..tools.search import search_tool
 from google.adk.models.lite_llm import LiteLlm
 from cosm.utils import ResilientLlmAgent
 
@@ -858,7 +857,7 @@ data_intelligence_agent = ResilientLlmAgent(
     ),
     tools=[
         FunctionTool(func=integrated_data_analysis_and_storage),
-        search_tool,
+        # search_tool,
     ],
     output_key="integrated_data_intelligence",
 )

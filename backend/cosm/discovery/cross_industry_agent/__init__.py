@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
-from cosm.tools.search import search_tool
+from cosm.tools.search import search_tool  # noqa: F401
 from cosm.tools.parallel_search import parallel_cross_industry_search
 from cosm.utils import robust_completion, ResilientLlmAgent
 
@@ -455,7 +455,7 @@ cross_industry_agent = ResilientLlmAgent(
         FunctionTool(func=discover_cross_industry_patterns_parallel),
         FunctionTool(func=find_industry_cost_disparities),
         FunctionTool(func=identify_underutilized_industry_assets),
-        search_tool,
+        # search_tool,
     ],
     output_key="cross_industry_intelligence",
 )
