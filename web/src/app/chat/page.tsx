@@ -400,6 +400,7 @@ export default function AgentDevUI() {
           </div>
 
           {/* Top Navigation Bar */}
+          {/* Top Navigation Bar */}
           <header className="relative bg-background/60 backdrop-blur-md border-b border-primary/10 px-3 sm:px-6 py-3 shadow-sm z-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 sm:gap-6">
@@ -415,6 +416,18 @@ export default function AgentDevUI() {
                     </span>{' '}
                     cosm
                   </h1>
+                </Link>
+
+                <Link
+                  href={
+                    `${process.env.NEXT_PUBLIC_RENDERER_SERVICE_URL}/dashboard` ||
+                    ''
+                  }
+                  className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-200 hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-primary/5"
+                  title="View deployed landing pages"
+                >
+                  <span className="w-1 h-1 rounded-full bg-current opacity-50"></span>
+                  view deployed landing pages & startup pitches
                 </Link>
               </div>
               <div className="flex items-center gap-2 sm:gap-4">
