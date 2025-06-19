@@ -831,7 +831,7 @@ def build_and_deploy_landing_page(
 
         # Get curated visual assets
         print("📸 Curating visual assets...")
-        visual_assets = get_premium_visual_assets(brand_data, copy_data)
+        visual_assets = get_visual_assets(brand_data, copy_data)
         deployment_result["visual_assets"] = visual_assets
 
         # Generate advanced landing page with AI
@@ -878,7 +878,7 @@ def build_and_deploy_landing_page(
             "meta_data": {
                 "title": f"{content_data['brand_name']} - {content_data['tagline']}",
                 "description": content_data.get("description", "")[:160],
-                "site_type": "premium_startup_landing",
+                "site_type": "startup_landing",
                 "og_image": visual_assets.get("hero_bg", {}).get("url", ""),
                 "schema_markup": generate_schema_markup(content_data),
             },
@@ -892,7 +892,7 @@ def build_and_deploy_landing_page(
         }
 
         # Deploy to enhanced service
-        deploy_result = deploy_to_premium_service(deployment_payload)
+        deploy_result = deploy_to_service(deployment_payload)
 
         if deploy_result.get("success"):
             deployment_result.update(
@@ -915,7 +915,7 @@ def build_and_deploy_landing_page(
                     "seo_score": deploy_result.get("seo_score", 98),
                 }
             )
-            print("✅ Premium startup landing experience deployed successfully!")
+            print("✅ Startup landing experience deployed successfully!")
         else:
             deployment_result.update(
                 {"deployment_status": "failed", "error": deploy_result.get("error")}
@@ -929,10 +929,10 @@ def build_and_deploy_landing_page(
         return deployment_result
 
 
-def get_premium_visual_assets(
+def get_visual_assets(
     brand_data: Dict[str, Any], copy_data: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Curate premium visual assets with advanced search and filtering."""
+    """Curate visual assets with advanced search and filtering."""
 
     try:
         # Advanced search terms based on brand positioning
@@ -969,7 +969,7 @@ def get_premium_visual_assets(
         visual_assets = {}
 
         # Fetch hero assets with fallback strategy
-        print("📸 Fetching premium hero visuals...")
+        print("📸 Fetching hero visuals...")
         hero_search_terms = search_strategy["hero"].get(
             category, search_strategy["hero"]["primary"]
         )
@@ -978,7 +978,7 @@ def get_premium_visual_assets(
             hero_images = get_pexels_media(term, "images", 5, orientation="landscape")
             if hero_images.get("images"):
                 # Filter for high quality and relevance
-                filtered_images = filter_premium_images(hero_images["images"])
+                filtered_images = filter_images(hero_images["images"])
                 if filtered_images:
                     visual_assets["hero_bg"] = filtered_images[0]
                     visual_assets["hero_alternatives"] = filtered_images[1:3]
@@ -993,9 +993,7 @@ def get_premium_visual_assets(
             feature_terms[0], "images", 3, orientation="landscape"
         )
         if feature_images.get("images"):
-            visual_assets["features_bg"] = filter_premium_images(
-                feature_images["images"]
-            )[0]
+            visual_assets["features_bg"] = filter_images(feature_images["images"])[0]
 
         # Fetch testimonial visuals
         print("📸 Fetching testimonial visuals...")
@@ -1006,7 +1004,7 @@ def get_premium_visual_assets(
             orientation="square",
         )
         if testimonial_images.get("images"):
-            visual_assets["testimonials_bg"] = filter_premium_images(
+            visual_assets["testimonials_bg"] = filter_images(
                 testimonial_images["images"]
             )
 
@@ -1019,29 +1017,29 @@ def get_premium_visual_assets(
             cta_terms[0], "images", 2, orientation="landscape"
         )
         if cta_images.get("images"):
-            visual_assets["cta_bg"] = filter_premium_images(cta_images["images"])[0]
+            visual_assets["cta_bg"] = filter_images(cta_images["images"])[0]
 
         # Add curated fallbacks if needed
         if not visual_assets:
             curated = get_curated_pexels_media("images", 5)
             if curated.get("images"):
-                filtered_curated = filter_premium_images(curated["images"])
+                filtered_curated = filter_images(curated["images"])
                 visual_assets["hero_bg"] = (
                     filtered_curated[0]
                     if filtered_curated
                     else get_fallback_visual_assets()["hero_bg"]
                 )
 
-        print(f"✅ Successfully curated {len(visual_assets)} premium visual assets")
+        print(f"✅ Successfully curated {len(visual_assets)} visual assets")
         return visual_assets
 
     except Exception as e:
-        print(f"❌ Error curating premium visuals: {e}")
+        print(f"❌ Error curating visuals: {e}")
         return get_fallback_visual_assets()
 
 
-def filter_premium_images(images: List[Dict]) -> List[Dict]:
-    """Filter images for premium quality and relevance."""
+def filter_images(images: List[Dict]) -> List[Dict]:
+    """Filter images for quality and relevance."""
     filtered = []
 
     for img in images:
@@ -1157,16 +1155,16 @@ def generate_landing_page_with_ai(
     brand_data: Dict[str, Any],
     visual_assets: Dict[str, Any],
 ) -> str:
-    """Generate premium startup landing page with advanced AI and modern design patterns."""
+    """Generate startup landing page with advanced AI and modern design patterns."""
 
     try:
         logo_data = brand_data.get("logo_variations", {}).get("primary", {})
         visual_identity = brand_data.get("visual_identity", {})
 
         landing_prompt = f"""
-        Create a premium, conversion-optimized startup landing page for: {brand_data.get("brand_name", "Brand")}
+        Create a, conversion-optimized startup landing page for: {brand_data.get("brand_name", "Brand")}
 
-        DESIGN REQUIREMENTS - PREMIUM STARTUP AESTHETIC:
+        DESIGN REQUIREMENTS - STARTUP AESTHETIC:
         - Inspired by top unicorns: Linear, Stripe, Notion, Figma, Vercel
         - Modern glassmorphism with subtle depth and layering
         - Micro-interactions and smooth animations
@@ -1252,8 +1250,8 @@ def generate_landing_page_with_ai(
         print(f" Landing page prompt size: {len(landing_prompt)}")
 
         response = robust_completion(
-            model=MODEL_CONFIG["landing_builder"],
-            api_key=settings.OPENAI_API_KEY,
+            model=f"gemini/{MODEL_CONFIG['landing_builder']}",
+            api_key=settings.GOOGLE_API_KEY,
             messages=[{"role": "user", "content": landing_prompt[:1048176]}],
             temperature=0.7,
             stream=False,
@@ -1276,7 +1274,7 @@ def generate_landing_page_with_ai(
             return html_content
 
     except Exception as e:
-        print(f"❌ Error generating premium landing page: {e}")
+        print(f"❌ Error generating landing page: {e}")
 
     return ""
 
@@ -1372,7 +1370,7 @@ def generate_advanced_content_data(
 
     try:
         content_prompt = f"""
-        Generate comprehensive, conversion-optimized content for a premium startup landing page.
+        Generate comprehensive, conversion-optimized content for a startup landing page.
 
         Brand: {brand_data.get("brand_name", "")}
         Value Prop: {brand_data.get("value_proposition", "")}
@@ -1653,13 +1651,13 @@ def generate_performance_config() -> Dict[str, Any]:
     }
 
 
-def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Deploy to premium rendering service with advanced features."""
+def deploy_to_service(deployment_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Deploy to rendering service with advanced features."""
 
     try:
         from cosm.settings import settings
 
-        print("🚀 Deploying premium startup landing page...")
+        print("🚀 Deploying startup landing page...")
 
         RENDERER_SERVICE_URL = settings.RENDERER_SERVICE_URL
 
@@ -1672,9 +1670,7 @@ def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, A
 
         if response.status_code == 200:
             result = response.json()
-            print(
-                f"✅ Premium deployment successful: {result.get('live_url', 'URL pending')}"
-            )
+            print(f"✅ Deployment successful: {result.get('live_url', 'URL pending')}")
             return {
                 "success": True,
                 "live_url": result.get("live_url"),
@@ -1686,32 +1682,32 @@ def deploy_to_premium_service(deployment_payload: Dict[str, Any]) -> Dict[str, A
                 "conversion_score": result.get("conversion_score", 92),
             }
         else:
-            print(f"❌ Premium deployment failed: {response.status_code}")
+            print(f"❌ Deployment failed: {response.status_code}")
             return {
                 "success": False,
-                "error": f"Premium deployment failed: {response.status_code} - {response.text}",
+                "error": f"Deployment failed: {response.status_code} - {response.text}",
                 "status": "failed",
             }
 
     except requests.exceptions.Timeout:
-        print("❌ Premium deployment timeout")
+        print("❌ Deployment timeout")
         return {
             "success": False,
-            "error": "Premium deployment timeout - advanced features require more processing time",
+            "error": "Deployment timeout - advanced features require more processing time",
             "status": "timeout",
         }
     except requests.exceptions.ConnectionError:
-        print("❌ Connection error to premium renderer service")
+        print("❌ Connection error to renderer service")
         return {
             "success": False,
-            "error": "Cannot connect to premium renderer service - check RENDERER_SERVICE_URL",
+            "error": "Cannot connect to renderer service - check RENDERER_SERVICE_URL",
             "status": "connection_error",
         }
     except Exception as e:
-        print(f"❌ Premium deployment error: {e}")
+        print(f"❌ Deployment error: {e}")
         return {
             "success": False,
-            "error": f"Premium deployment error: {str(e)}",
+            "error": f"Deployment error: {str(e)}",
             "status": "error",
         }
 
@@ -1820,7 +1816,7 @@ def generate_fallback_brand_package(
                 {"keywords": keywords},
             ),
             "fallback_used": True,
-            "enhancement_level": "premium",
+            "enhancement_level": "basic",
         }
     )
 
@@ -2180,8 +2176,8 @@ landing_builder_agent = ResilientLlmAgent(
     + """
 
     ENHANCED CAPABILITIES:
-    - Build premium, conversion-optimized landing pages with advanced design patterns
-    - Integrate sophisticated visual assets and brand systems
+    - Build conversion-optimized landing pages with advanced design patterns
+    - Integrate visual assets and brand systems
     - Implement modern web technologies (glassmorphism, micro-interactions, animations)
     - Create mobile-first responsive experiences optimized for all devices
     - Add comprehensive SEO optimization and performance enhancements

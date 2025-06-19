@@ -1,10 +1,10 @@
 MODEL_CONFIG = {
-    "primary_model": "gemini-2.5-flash-preview-05-20",
+    "primary_model": "gemini-2.5-flash",
     "openai_model": "openai/gpt-4o-mini",
     "market_explorer": "gemini-2.0-flash",  # Market intelligence + trends + gaps
     "market_explorer_openai": "gpt-4.1-mini",  # Market intelligence + trends + gaps
     "brand_creator": "gpt-4.1-mini",  # Brand + copy creation
-    "landing_builder": "gemini-2.5-pro-preview-05-06",  # Landing pages + dashboards
+    "landing_builder": "gemini-2.5-pro",  # Landing pages + dashboards
     "market_research": "gpt-4.1-mini",
     "discovery_agent": "gemini-2.0-flash",
     "discovery_agent_openai": "gpt-4.1-mini",

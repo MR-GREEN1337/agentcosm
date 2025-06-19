@@ -599,7 +599,7 @@ async def store_pdf(pdf_request: PDFStorageRequest, request: Request):
 
 
 @app.post("/api/pitch/deploy")
-async def deploy_pitch_deck(pitch_request: PitchDeckRequest):
+async def deploy_pitch_deck(pitch_request: PitchDeckRequest, request: Request):
     """Deploy a pitch deck PDF with optional landing page - Main endpoint for startup pitch agent"""
 
     try:
@@ -611,7 +611,7 @@ async def deploy_pitch_deck(pitch_request: PitchDeckRequest):
             metadata=pitch_request.presentation_metadata,
         )
 
-        pdf_result = await store_pdf(pdf_storage_request)
+        pdf_result = await store_pdf(pdf_storage_request, request)
         pdf_id = pdf_result["pdf_id"]
 
         response_data = {
@@ -672,7 +672,7 @@ async def deploy_pitch_deck(pitch_request: PitchDeckRequest):
             )
 
             # Deploy the landing page
-            site_result = await deploy_website(landing_deployment)
+            site_result = await deploy_website(landing_deployment, request)
 
             # Link the PDF to the site
             STORED_PDFS[pdf_id]["associated_site_id"] = site_result["site_id"]

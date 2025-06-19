@@ -16,7 +16,6 @@ from cosm.settings import settings
 from cosm.tools.search import search_tool  # noqa: F401
 from cosm.utils import ResilientLlmAgent
 
-# Import consolidated Tavily tools
 from ...tools.tavily import (
     tavily_comprehensive_research,
     tavily_quick_search,
