@@ -333,7 +333,7 @@ def generate_advanced_brand_strategy(market_context: Dict[str, Any]) -> Dict[str
 
         response = robust_completion(
             model=MODEL_CONFIG["brand_creator"],
-            api_key=settings.GOOGLE_API_KEY,
+            api_key=settings.OPENAI_API_KEY,
             messages=[{"role": "user", "content": brand_prompt[:1048576]}],
             response_format={"type": "json_object"},
             temperature=0.8,
@@ -835,7 +835,7 @@ def build_and_deploy_landing_page(
         deployment_result["visual_assets"] = visual_assets
 
         # Generate advanced landing page with AI
-        print("🤖 Generating landing page with advanced AI...")
+        print("🤖 Generating landing page with Gemini 2.5 pro...")
         landing_html = generate_landing_page_with_ai(brand_data, visual_assets)
 
         # Generate comprehensive content data
@@ -1162,95 +1162,90 @@ def generate_landing_page_with_ai(
         visual_identity = brand_data.get("visual_identity", {})
 
         landing_prompt = f"""
-        Create a, conversion-optimized startup landing page for: {brand_data.get("brand_name", "Brand")}
+        Create a fully responsive, conversion-optimized startup landing page for the following brand:
 
-        DESIGN REQUIREMENTS - STARTUP AESTHETIC:
-        - Inspired by top unicorns: Linear, Stripe, Notion, Figma, Vercel
-        - Modern glassmorphism with subtle depth and layering
-        - Micro-interactions and smooth animations
-        - Perfect typography hierarchy with excellent readability
-        - Mobile-first responsive design that looks perfect on all devices
-        - High-converting CTAs with psychological triggers
-        - Advanced CSS Grid and Flexbox layouts
-        - Progressive enhancement for performance
+        BRAND DETAILS:
+        - Brand Name: {brand_data.get("brand_name", "Brand")}
+        - Tagline: {brand_data.get("tagline", "Empowering the future, today.")}
+        - Hero Headline: {brand_data.get("hero_headline", "Build smarter with next-gen technology.")}
+        - Hero Subheadline: {brand_data.get("hero_subheadline", "Our platform helps you scale effortlessly.")}
+        - Value Proposition: {brand_data.get("value_proposition", "One platform to streamline every aspect of your business.")}
+        - Primary CTA: {brand_data.get("cta_primary", "Get Started Free")}
+        - Secondary CTA: {brand_data.get("cta_secondary", "See How It Works")}
 
-        VISUAL ASSETS TO INTEGRATE:
-        Logo: {logo_data.get("logo_url", "")}
-        Primary Color: {visual_identity.get("primary_color", "#2563eb")}
-        Secondary Color: {visual_identity.get("secondary_color", "#10b981")}
-        Accent Color: {visual_identity.get("accent_color", "#f59e0b")}
-        Gradient: {visual_identity.get("gradient_primary", "linear-gradient(135deg, #2563eb, #10b981)")}
+        VISUAL IDENTITY:
+        - Logo URL: {logo_data.get("logo_url", "")}
+        - Primary Color: {visual_identity.get("primary_color", "#2563eb")}
+        - Secondary Color: {visual_identity.get("secondary_color", "#10b981")}
+        - Accent Color: {visual_identity.get("accent_color", "#f59e0b")}
+        - Gradient: {visual_identity.get("gradient_primary", "linear-gradient(135deg, #2563eb, #10b981)")}
 
         BACKGROUND IMAGES:
-        Hero: {visual_assets.get("hero_bg", {}).get("url", "")}
-        Features: {visual_assets.get("features_bg", {}).get("url", "")}
-        CTA: {visual_assets.get("cta_bg", {}).get("url", "")}
+        - Hero Section BG: {visual_assets.get("hero_bg", {}).get("url", "")}
+        - Features Section BG: {visual_assets.get("features_bg", {}).get("url", "")}
+        - CTA Section BG: {visual_assets.get("cta_bg", {}).get("url", "")}
 
-        CONTENT VARIABLES (use Jinja2 syntax):
-        - {{{{ brand_name }}}} - brand name
-        - {{{{ tagline }}}} - compelling tagline
-        - {{{{ hero_headline }}}} - conversion-focused headline
-        - {{{{ hero_subheadline }}}} - supporting subheadline
-        - {{{{ value_proposition }}}} - unique value proposition
-        - {{{{ cta_primary }}}} - primary CTA text
-        - {{{{ cta_secondary }}}} - secondary CTA text
-        - {{{{ features }}}} - array of feature objects
-        - {{{{ testimonials }}}} - array of testimonial objects
-        - {{{{ social_proof }}}} - social proof statement
+        DESIGN INSPIRATION:
+        - Inspired by brands like Linear, Stripe, Notion, Figma, Vercel
+        - Glassmorphism aesthetic with smooth depth layering
+        - Modern micro-interactions and animations
+        - Typography hierarchy with perfect spacing and readability
+        - Mobile-first design, responsive across all devices
 
-        CONVERSION OPTIMIZATION FEATURES:
-        1. Above-the-fold optimization with clear value prop
-        2. Social proof elements (testimonials, logos, metrics)
-        3. Scarcity and urgency elements
-        4. Progressive disclosure of information
-        5. Multiple CTA placements with different psychological triggers
-        6. Risk reversal elements (guarantees, free trials)
-        7. Trust signals (security badges, certifications)
+        CONVERSION ELEMENTS TO INCLUDE:
+        - Above-the-fold value proposition
+        - Social proof (logos, testimonials, metrics)
+        - Scarcity/urgency messaging
+        - Progressive content disclosure
+        - Multiple CTA placements with conversion psychology
+        - Risk-reduction mechanisms (money-back, free trial)
+        - Trust signals (certifications, badges)
 
-        SECTIONS TO INCLUDE:
-        1. Navigation Bar (sticky, glassmorphism effect)
-        2. Hero Section (compelling headline, subheadline, dual CTAs, hero image/video)
-        3. Social Proof Bar (logos of customers/press mentions)
-        4. Problem Statement (pain points visualization)
-        5. Solution Overview (product preview with benefits)
-        6. Features Grid (3-column, icon + title + description)
-        7. How It Works (3-step process with animations)
-        8. Testimonials Carousel (rotating customer stories)
-        9. Pricing Preview (simple, clear, compelling)
-        10. FAQ Section (address common objections)
-        11. Final CTA Section (urgency + scarcity)
-        12. Footer (comprehensive links, trust signals)
+        LANDING PAGE SECTIONS (STRUCTURE & CONTENT):
+        1. Sticky Navigation Bar with logo and smooth glassmorphism
+        2. Hero Section with logo, headline, subheadline, dual CTAs, and hero image/video
+        3. Social Proof Bar with customer logos or press mentions
+        4. Problem Statement with visual pain points
+        5. Solution Overview featuring product and key benefits
+        6. Features Grid (3-column layout with icon, title, description)
+        7. How It Works (3-step animated visual process)
+        8. Testimonials Carousel with 3–4 customer quotes
+        9. Pricing Overview (simple, clean, persuasive pricing options)
+        10. FAQ Section with 5–7 common questions
+        11. Final CTA with urgency triggers
+        12. Footer with all relevant links, contact info, and trust badges
 
-        MODERN DESIGN PATTERNS:
-        - Glassmorphism cards with backdrop-filter
-        - Smooth scroll with intersection observer animations
-        - Parallax effects on hero section
-        - Gradient overlays and mesh backgrounds
-        - Custom CSS animations and transitions
-        - Dark mode toggle capability
-        - Progressive image loading
-        - Advanced typography with proper spacing
+        MODERN UI/UX PATTERNS:
+        - Glassmorphism cards with `backdrop-filter`
+        - Intersection Observer animations on scroll
+        - Parallax effects in the hero section
+        - Gradient overlays and subtle mesh backgrounds
+        - CSS transitions and custom animations
+        - Dark mode toggle (optional)
+        - Optimized images and lazy loading
+        - Advanced spacing, padding, and font scaling
 
         TECHNICAL REQUIREMENTS:
         - Semantic HTML5 structure
         - CSS Grid and Flexbox for layouts
-        - CSS Custom Properties for theming
-        - Intersection Observer for animations
-        - Proper accessibility (ARIA labels, focus management)
-        - Optimized for Core Web Vitals
-        - Progressive enhancement
+        - CSS Custom Properties for theme control
+        - Vanilla JS with Intersection Observer for animations
+        - Fully accessible (ARIA, keyboard navigation)
+        - Optimized for speed and Core Web Vitals
 
-        Create complete HTML with embedded CSS and JavaScript. Use the latest web standards and best practices.
-        Make it feel like a $100M+ startup that just raised Series A.
-
-        CRITICAL: Use proper Jinja2 template syntax for all dynamic content.
-        Return ONLY the complete HTML code with no markdown formatting.
+        DELIVERABLE:
+        Return a single HTML file that includes:
+        - Complete and well-structured HTML
+        - Embedded CSS and JavaScript
+        - NO templating syntax (no Jinja2, no handlebars, etc.)
+        - Only raw HTML, CSS, and JS using the provided values
+        - Make it look like a premium startup that just raised $50M Series A
         """
 
         print(f" Landing page prompt size: {len(landing_prompt)}")
 
         response = robust_completion(
-            model=f"gemini/{MODEL_CONFIG['landing_builder']}",
+            model=f"vertex_ai/{MODEL_CONFIG['landing_builder']}",
             api_key=settings.GOOGLE_API_KEY,
             messages=[{"role": "user", "content": landing_prompt[:1048176]}],
             temperature=0.7,
@@ -1258,9 +1253,7 @@ def generate_landing_page_with_ai(
         )
 
         if response and response.choices[0].message.content:
-            from cosm.discovery.explorer_agent import safe_json_loads
-
-            html_content = safe_json_loads(response.choices[0].message.content.strip())
+            html_content = response.choices[0].message.content.strip()
 
             # Clean up response
             if "```html" in html_content:

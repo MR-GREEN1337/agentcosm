@@ -148,60 +148,6 @@ def create_complete_html(
     # Process the Jinja template
     rendered_html = process_jinja_template(assets.html_template, enhanced_content)
 
-    # Basic analytics injection
-    analytics_js = f"""
-    <script>
-    // Basic analytics tracking
-    window.SITE_ID = '{site_id}';
-
-    function trackEvent(event_type, data = {{}}) {{
-        fetch('/api/track', {{
-            method: 'POST',
-            headers: {{'Content-Type': 'application/json'}},
-            body: JSON.stringify({{
-                site_id: window.SITE_ID,
-                event_type: event_type,
-                event_data: data,
-                timestamp: new Date().toISOString(),
-                url: window.location.href
-            }})
-        }}).catch(() => {{}});
-    }}
-
-    // Track page view
-    document.addEventListener('DOMContentLoaded', () => {{
-        trackEvent('page_view');
-
-        // Track CTA clicks and PDF downloads
-        document.querySelectorAll('.btn-primary, .btn-cta, [data-track="cta"]').forEach(btn => {{
-            btn.addEventListener('click', () => {{
-                trackEvent('cta_click', {{
-                    text: btn.textContent.trim(),
-                    location: btn.dataset.location || 'unknown'
-                }});
-            }});
-        }});
-
-        document.querySelectorAll('[data-track="pdf-download"]').forEach(btn => {{
-            btn.addEventListener('click', () => {{
-                trackEvent('pdf_download', {{
-                    pdf_id: btn.dataset.pdfId || 'unknown',
-                    pdf_name: btn.dataset.pdfName || 'unknown'
-                }});
-            }});
-        }});
-    }});
-
-    {assets.javascript}
-    </script>
-    """
-
-    # Inject analytics before closing body tag
-    if "</body>" in rendered_html:
-        rendered_html = rendered_html.replace("</body>", f"{analytics_js}\n</body>")
-    else:
-        rendered_html = rendered_html + analytics_js
-
     return rendered_html
 
 

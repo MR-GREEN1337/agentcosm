@@ -29,7 +29,7 @@ import {
 const queryClient = new QueryClient();
 
 export default function AgentDevUI() {
-  const [selectedApp, setSelectedApp] = useState<string>('cosm'); // Default to "cosm"
+  const [selectedApp, setSelectedApp] = useState<string>('cosm');
   const [currentSession, setCurrentSession] = useState<string>('');
   const [userId, setUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('events');
@@ -64,7 +64,7 @@ export default function AgentDevUI() {
     setUserId(localStorage.getItem('userId'));
   }, []);
 
-  // Process SSE events
+  // 🔥 FIXED: Process SSE events with proper deduplication
   useEffect(() => {
     if (sseEvents.length === 0) return;
 
@@ -72,11 +72,24 @@ export default function AgentDevUI() {
     const text = latestEvent.content?.parts?.[0]?.text;
     if (!text) return;
 
+    // Create a unique key for this event
+    const eventKey = `${latestEvent.author}-${latestEvent.timestamp || Date.now()}-${text.substring(0, 50)}`;
+
+    // Skip if we've already processed this exact event
+    if (processedEventsRef.current.has(eventKey) && !latestEvent.isStreaming) {
+      console.log('Skipping already processed event:', eventKey);
+      return;
+    }
+
     setSessionEvents((prev) => {
-      // If this is a streaming event, update the last message
+      // Handle streaming updates
       if (latestEvent.isStreaming || latestEvent.partial) {
         const lastIndex = prev.length - 1;
-        if (lastIndex >= 0 && prev[lastIndex].author === latestEvent.author) {
+        if (
+          lastIndex >= 0 &&
+          prev[lastIndex].author === latestEvent.author &&
+          prev[lastIndex].isStreaming
+        ) {
           const updated = [...prev];
           updated[lastIndex] = {
             ...updated[lastIndex],
@@ -87,7 +100,7 @@ export default function AgentDevUI() {
         }
       }
 
-      // This is a new message or the final version
+      // Create event object
       const eventToAdd = {
         id: latestEvent.id || `event-${Date.now()}-${Math.random()}`,
         author: latestEvent.author || 'assistant',
@@ -98,21 +111,23 @@ export default function AgentDevUI() {
         function_responses: latestEvent.function_responses,
       };
 
-      // 🔥 CRITICAL FIX: Update TTS state immediately when a complete AI message is finalized
-      if (
-        !latestEvent.partial &&
-        !latestEvent.isStreaming &&
-        latestEvent.author === 'liminal_market_opportunity_coordinator'
-      ) {
-        // Use setTimeout to ensure the state update happens after the current render cycle
-        setTimeout(() => {
-          console.log('🎵 Setting TTS message:', text.substring(0, 50) + '...');
-          setLastAiResponse(text);
-        }, 0);
-      }
-
-      // If we were streaming and this is the final message, replace the last one
+      // Handle final message (not streaming)
       if (!latestEvent.partial && !latestEvent.isStreaming) {
+        // Mark this event as processed
+        processedEventsRef.current.add(eventKey);
+
+        // Update TTS state for AI messages
+        if (latestEvent.author === 'liminal_market_opportunity_coordinator') {
+          setTimeout(() => {
+            console.log(
+              '🎵 Setting TTS message:',
+              text.substring(0, 50) + '...',
+            );
+            setLastAiResponse(text);
+          }, 0);
+        }
+
+        // Replace streaming message with final version
         const lastIndex = prev.length - 1;
         if (
           lastIndex >= 0 &&
@@ -124,35 +139,24 @@ export default function AgentDevUI() {
             ...eventToAdd,
             isStreaming: false,
           };
-
-          // 🔥 ADDITIONAL FIX: Also update TTS here for replaced streaming messages
-          if (
-            eventToAdd.author === 'liminal_market_opportunity_coordinator' &&
-            eventToAdd.text
-          ) {
-            setTimeout(() => {
-              console.log(
-                '🎵 Setting TTS message (replaced):',
-                eventToAdd.text.substring(0, 50) + '...',
-              );
-              setLastAiResponse(eventToAdd.text);
-            }, 0);
-          }
-
           return updated;
         }
       }
 
-      // Check if this exact text already exists from the same author
-      const exists = prev.some(
+      // Check for exact duplicates before adding
+      const isDuplicate = prev.some(
         (e) =>
           e.author === eventToAdd.author &&
           e.text === eventToAdd.text &&
-          !e.isStreaming,
+          !e.isStreaming &&
+          Math.abs(e.timestamp - eventToAdd.timestamp) < 2, // Within 2 seconds
       );
 
-      if (exists) {
-        console.log('Skipping duplicate in state:', eventToAdd.text);
+      if (isDuplicate) {
+        console.log(
+          'Skipping duplicate event in state:',
+          eventToAdd.text.substring(0, 50),
+        );
         return prev;
       }
 
@@ -170,28 +174,22 @@ export default function AgentDevUI() {
   // Parse query parameter and create a new session if there's a query
   useEffect(() => {
     const checkAndHandleQueryParam = async () => {
-      // Only proceed if we have a userId and haven't handled the query yet
       if (userId && !initialBusinessQuerySent.current) {
-        // Get query parameter from URL
         const urlParams = new URLSearchParams(window.location.search);
         const queryParam = urlParams.get('query');
 
         if (queryParam) {
-          initialBusinessQuerySent.current = true; // Mark as handled immediately to prevent duplicate processing
+          initialBusinessQuerySent.current = true;
 
           try {
-            // Create a new session in the backend
             const newSessionResponse = await api.post(
               `/apps/${selectedApp}/users/${userId}/sessions`,
             );
             const newSessionId = newSessionResponse.data.id;
 
-            // Update the current session state
             setCurrentSession(newSessionId);
 
-            // Wait a short time for the session to be fully initialized
             setTimeout(async () => {
-              // Create the message object
               const message = {
                 content: {
                   parts: [{ text: queryParam }],
@@ -199,7 +197,6 @@ export default function AgentDevUI() {
                 },
               };
 
-              // Add the user message to the UI immediately
               const userMessage = {
                 id: `user-${Date.now()}`,
                 author: 'user',
@@ -210,13 +207,10 @@ export default function AgentDevUI() {
 
               setSessionEvents([userMessage]);
 
-              // IMPORTANT: Call the actual sendMessage function to trigger AI response
-              // This is what was missing - you need to call sendMessage from useSSE
               if (sendMessage) {
                 await sendMessage(message);
               }
 
-              // Remove the query parameter from URL without refreshing the page
               const newUrl = window.location.pathname;
               window.history.replaceState({}, document.title, newUrl);
             }, 500);
@@ -228,26 +222,32 @@ export default function AgentDevUI() {
     };
 
     checkAndHandleQueryParam();
-  }, [userId, selectedApp, sendMessage]); // Add sendMessage to dependencies
+  }, [userId, selectedApp, sendMessage]);
 
   const handleSessionChange = async (sessionId: string) => {
     setCurrentSession(sessionId);
     setSessionEvents([]);
-    processedEventsRef.current.clear();
-
-    // 🔥 CRITICAL FIX: Clear TTS state immediately when switching sessions
+    processedEventsRef.current.clear(); // 🔥 IMPORTANT: Clear processed events tracker
     setLastAiResponse('');
 
-    // Load session events
     try {
       const response = await api.get(
         `/apps/${selectedApp}/users/${userId}/sessions/${sessionId}`,
       );
       if (response.data.events) {
         const events = response.data.events;
+
+        // 🔥 FIXED: Mark loaded events as processed to prevent duplicates
+        events.forEach((event: any) => {
+          if (event.text) {
+            const eventKey = `${event.author}-${event.timestamp}-${event.text.substring(0, 50)}`;
+            processedEventsRef.current.add(eventKey);
+          }
+        });
+
         setSessionEvents(events);
 
-        // Find the last complete AI message from loaded events
+        // Find the last complete AI message
         let lastAiMessage = '';
         for (let i = events.length - 1; i >= 0; i--) {
           const event = events[i];
@@ -261,7 +261,6 @@ export default function AgentDevUI() {
           }
         }
 
-        // Set TTS state after a delay to ensure proper synchronization
         setTimeout(() => {
           if (lastAiMessage) {
             console.log(
@@ -283,14 +282,11 @@ export default function AgentDevUI() {
     const newSessionId = crypto.randomUUID();
     setCurrentSession(newSessionId);
     setSessionEvents([]);
-    processedEventsRef.current.clear();
-
-    // 🔥 CRITICAL FIX: Clear TTS state for new session
+    processedEventsRef.current.clear(); // 🔥 IMPORTANT: Clear processed events tracker
     setLastAiResponse('');
   };
 
   const handleResendMessage = async (text: string) => {
-    // Create a new message with the resent text
     const message = {
       content: {
         parts: [{ text }],
@@ -300,11 +296,9 @@ export default function AgentDevUI() {
     await handleSendMessage(message);
   };
 
-  // Fix for your chat page handleSendMessage function
   const handleSendMessage = async (message: any) => {
     console.log('🔥 handleSendMessage called with:', message);
 
-    // Add user message to events immediately
     const userMessage = {
       id: `user-${Date.now()}`,
       author: 'user',
@@ -316,10 +310,8 @@ export default function AgentDevUI() {
     console.log('👤 Adding user message to UI:', userMessage);
     setSessionEvents((prev) => [...prev, userMessage]);
 
-    // Scroll to bottom after adding user message
     setTimeout(scrollToBottom, 50);
 
-    // 🚨 CRITICAL: Always call sendMessage for AI response
     console.log('🤖 Calling sendMessage to trigger AI response...');
 
     try {
@@ -331,25 +323,21 @@ export default function AgentDevUI() {
   };
 
   const handleEditMessage = async (messageId: string, newText: string) => {
-    // Find the message and update it
     setSessionEvents((prev) =>
       prev.map((event) =>
         event.id === messageId ? { ...event, text: newText } : event,
       ),
     );
 
-    // Optionally resend the edited message
     await handleResendMessage(newText);
   };
 
   // Initialize session on component mount
   useEffect(() => {
     const initializeSession = async () => {
-      // Check if we have a query parameter - if so, we'll handle session creation in the other effect
       const urlParams = new URLSearchParams(window.location.search);
       const queryParam = urlParams.get('query');
 
-      // If there's a query parameter, skip the normal initialization
       if (queryParam) {
         return;
       }
@@ -370,7 +358,6 @@ export default function AgentDevUI() {
         }
       } catch (error) {
         console.error('Error initializing session:', error);
-        // If there's an error, create a new session anyway
         handleNewSession();
       }
     };
@@ -378,9 +365,9 @@ export default function AgentDevUI() {
     if (userId) {
       initializeSession();
     }
-  }, [userId, selectedApp]); // Only depends on userId and selectedApp
+  }, [userId, selectedApp]);
 
-  // Clear processed events when changing sessions
+  // 🔥 FIXED: Clear processed events when changing sessions
   useEffect(() => {
     processedEventsRef.current.clear();
   }, [currentSession]);
@@ -602,9 +589,9 @@ export default function AgentDevUI() {
                     <MessageInput
                       onSendMessage={handleSendMessage}
                       disabled={false}
-                      lastAiMessage={lastAiResponse} // This should now be properly synchronized
-                      sendMessage={sendMessage} // Pass the SSE sendMessage as backup
-                      isLoading={isLoading} // Pass loading state for debugging
+                      lastAiMessage={lastAiResponse}
+                      sendMessage={sendMessage}
+                      isLoading={isLoading}
                     />
                   </div>
                 </>
@@ -631,7 +618,7 @@ export default function AgentDevUI() {
                         appName={selectedApp}
                         userId={userId as string}
                         currentSession={currentSession}
-                        onSessionChange={handleSessionChange} // Add this line
+                        onSessionChange={handleSessionChange}
                       />
                     )}
                     {activeTab === 'eval' && (
