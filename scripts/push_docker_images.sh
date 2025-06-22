@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Build and push docker images to Docker Hub
+
 USERNAME=mrgreen1337
 
 set -e  # exit on any command failure
@@ -13,7 +15,7 @@ web_pid=$!
 docker build --platform=linux/amd64 -t $USERNAME/agentcosm-backend:latest ./backend &
 backend_pid=$!
 
-docker build --platform=linux/amd64 -t $USERNAME/agentcosm-renderer:latest ./renderer &
+docker build --platform=linux/amd64 -t   $USERNAME/agentcosm-renderer:latest ./renderer &
 renderer_pid=$!
 
 # Store PIDs in array
