@@ -1,5 +1,4 @@
 # agentcosm
-## Fix jinja2 templating
 
 Navigating Liminal Market Spaces to Launch Your Mini-Business
 ![Landing Page](assets/landing_page.png)

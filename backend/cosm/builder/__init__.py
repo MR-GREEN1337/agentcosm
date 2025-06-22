@@ -2133,7 +2133,7 @@ def generate_fallback_domain_strategy(brand_name: str) -> Dict[str, Any]:
 
 brand_creator_agent = ResilientLlmAgent(
     name="brand_creator_agent",
-    model=MODEL_CONFIG["landing_builder"],
+    model=MODEL_CONFIG["brand_creator"],
     instruction=BRAND_CREATOR_PROMPT
     + """
 

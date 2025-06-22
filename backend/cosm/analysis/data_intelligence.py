@@ -17,6 +17,7 @@ import os
 import sys
 import traceback
 from pathlib import Path
+from backend.cosm.discovery.explorer_agent import safe_json_loads
 from cosm.config import MODEL_CONFIG
 from cosm.settings import settings
 from google.adk.models.lite_llm import LiteLlm
@@ -317,12 +318,12 @@ def execute_market_data_analysis(
     Execute comprehensive market data analysis using Python code
     """
     # Escape the data for safe string interpolation
-    market_data_json = (
+    market_data_json = safe_json_loads(
         json.dumps(market_data or {}, default=str, indent=2)
         .replace("\\", "\\\\")
         .replace('"', '\\"')
     )
-    bigquery_data_json = (
+    bigquery_data_json = safe_json_loads(
         json.dumps(bigquery_data or {}, default=str, indent=2)
         .replace("\\", "\\\\")
         .replace('"', '\\"')
